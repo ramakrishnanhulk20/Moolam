@@ -12,7 +12,7 @@ those plus their own keys, the two `/unseal` routes and the three `/sealed` rout
 `/prepare` needs, and the four `/platform` routes need that plus `PRIVY_APP_SECRET` and a platform
 list that loads. The five `/claims` routes and the two `/platform/deliveries` routes are mounted
 with the `/platform` routes, and answer `503` `claims-unavailable` until the host has both
-`CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`. An unmounted route answers `404` like any other path that does not exist. The four
+`CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`. An unmounted route answers `404` like any other path that does not exist. The five
 `/recheck` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
 uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link` answers `503` until
 `SEALED_LINK_TOKEN` is set.
@@ -1567,7 +1567,9 @@ below for you.
 
 Mounted only when the host has `PINATA_JWT`, `PRIVY_APP_ID` and `PRIVY_APP_SECRET`, a signing
 certificate and key that load, and a platform list whose every signature checks out. A refused list
-turns all four `/platform` routes off; it is never half loaded. Not live until the next deploy.
+turns all four `/platform` routes off; it is never half loaded. Live on the hosted verify service. The
+`deliverTo` part and its refusals below belong to the claim and delivery routes, and go live with
+them at the next deploy.
 
 **Headers.** `Authorization: Bearer <platform key>`, the 64 hex characters Moolam issued. The key
 identifies and meters the platform and authorises nothing else.
@@ -1584,8 +1586,10 @@ identifies and meters the platform and authorises nothing else.
 | `signature` | text | The agent owner's 65 byte EIP-712 signature over the PlatformPrepare below |
 | `training` | text | Optional. The AI-use terms as JSON, by the same rule as [`/prepare`](#post-prepare), with no space at either end of `constraintInfo` |
 | `creator`, `wallet`, `agentId` | text | Optional. In platform mode a body may repeat the creator wallet and agent id its key is listed with, and never name others. In co-sign mode it may name no creator or wallet at all |
+| `deliverTo` | text | Optional, platform mode only. JSON of exactly `{ "email": string, "verifiedBy": "google" \| "email-code" \| "platform" }`, at most 2,048 bytes, for a passport that waits for that person's email at Moolam. The address is hashed under the service's claim pepper and goes into no answer, log line or error; see [Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email) |
 
-Any other part name, or a part sent twice, is a `400`.
+Those eleven names, `file` and the ten text parts, are the only ones read. Any other part name, or a
+part sent twice, is a `400`.
 
 The PlatformPrepare the agent's owner signs:
 
@@ -1613,11 +1617,12 @@ curl -s -X POST https://<verify-service>/platform/prepare \
   -F 'training={"aiTraining":"notAllowed"}'
 ```
 
-**The order of checks.** The key, then the body, then the identity fields (P18), then `issuedAt`
+**The order of checks.** The key, then the body, then the identity fields (P18), then `deliverTo`
+when it is sent (its mode, whether the claim routes are open on this host, its shape), then `issuedAt`
 against the latest block's time, then the agent owner's signature, recovered by the rules the
 registry's ECDSA applies and compared with `ownerOf(agentId)` read on chain at that moment (P19),
-then the replay memory, then the platform's quota and the ceiling for every platform. Only then is
-anything signed or pinned. The P and M numbers refer to the
+then the replay memory, then, with `deliverTo`, whether this key may write a ticket now, then the
+platform's quota and the ceiling for every platform. Only then is anything signed or pinned. The P and M numbers refer to the
 [threat model](../security/threat-model#the-platform-kit-and-the-mcp-server). A request refused before the first pin or frozen file gives its quota
 slot back.
 
@@ -1656,9 +1661,16 @@ computed before the pin.
   signedFile: { name, type, bytes, sha256 },  // bytes is base64; serve this file, not the upload
   manifest: { embedded: true },
   training?: { ...terms, standard: "cawg.training-mining/1.1" },
-  platform: { name: string, agentId: string }
+  platform: { name: string, agentId: string },
+  deliverNow?: `0x${string}`       // with deliverTo only: the person's standing choice for this key
 }
 ```
+
+With `deliverTo`, a ticket is written pending after the pins and opens once the chain shows the
+passport under the platform's wallet. `deliverNow` appears only when the person behind that address
+asked Moolam to send this platform's future pictures straight to their wallet, and only to the key
+they chose it for; the platform registers, then hands the passport to that wallet. Every other answer
+reads the same whether or not the address has a Moolam account (P30).
 
 **Response in co-sign mode.** `200`. Nothing is pinned: the four files are frozen on the service's
 volume under their computed content ids until the person has opened the link and the agent has
@@ -1683,10 +1695,12 @@ The service keeps only the handle's sha256. The person's link is `https://moolam
 | --- | --- |
 | `200` | The fields, as above |
 | `400` | A missing or misnamed file, an unknown or repeated part, a mode, title, nonce or `issuedAt` out of shape, or terms the consent contract would refuse |
+| `400` | `deliverTo`: the field was sent in co-sign mode, or is not JSON of exactly an email and one of the three `verifiedBy` words, is over 2,048 bytes, or holds an address the service's one email rule refuses. Only the field's name comes back, never its value |
 | `401` | `unauthorized`: no key, or one no current entry holds. `agent-signature-required`: no `signature` part |
 | `403` | `platform-mismatch` with the `field`: the body named a creator, wallet or agent the key is not listed with |
 | `403` | `prepare-expired` with the `reason` and `chainTime`: `issuedAt` is more than ten minutes before chain time, or more than 60 seconds ahead of it |
 | `403` | `agent-signature-refused`: the signature does not recover to the agent's owner on the identity registry now |
+| `403` | `deliver-closed`: with `deliverTo`, this key's ticket writing is closed, because at least 10 of its tickets were refused and more than one in four. Prepares without `deliverTo` carry on |
 | `409` | `replayed`: this nonce was already accepted for this platform. `same-picture`: this picture was already prepared by this platform inside the window |
 | `409` | `already-registered` with the `passportId`: the registry already holds the signed picture |
 | `413` | Over 20 MB or 40 megapixels, or `signed-file-too-large` |
@@ -1695,8 +1709,10 @@ The service keeps only the handle's sha256. The person's link is `https://moolam
 | `429` | `quota` with `{ used, limit, resetsAt }`: past `PLATFORM_PREPARES_PER_KEY_PER_DAY` in a rolling 24 hours |
 | `429` | `global-limit`, with `retry-after`: past `GLOBAL_PLATFORM_PREPARES_PER_DAY` for every platform together today. `0` closes the route |
 | `429` | `pending-full`: this platform's waiting co-signs already hold 100 MiB of frozen files |
+| `429` | `deliver-full`: with `deliverTo`, a ticket cap is reached: 20 tickets from this key for that address inside a ticket's 180 day life, whatever became of them, 1,000 of this key's tickets still waiting, or 20,000 tickets on the service |
 | `500` | `signed-file-refused`: the signed file did not hash to the passport id. Nothing was pinned |
 | `502` | `sign-failed` or `pin-failed` |
+| `503` | `claims-unavailable`: with `deliverTo`, the host's claim routes are closed (no `CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`), or the ticket file could not be read |
 | `503` | `chain-unreachable`, `busy`, `service-fault`, `cosign-unavailable` (nowhere to freeze files), `pending-full` (5,000 waiting co-signs on the service), `closed` (the replay memory could not be believed after a restart, so every prepare is refused for ten minutes) or `full` (the replay memory holds 20,000 entries) |
 
 Every answer on the four `/platform` routes carries `Cache-Control: no-store`.
@@ -2005,7 +2021,7 @@ stops writing tickets (P26, P38).
 The Model Context Protocol server: six read-only tools and two resources over the passport
 registry, the AI-use register, the index and the ERC-8004 identity registry. Mounted on every host,
 with no sign-in. The tools, their inputs and their answers are in
-[For AI agents (MCP)](../developers/mcp). Not live until the next deploy.
+[For AI agents (MCP)](../developers/mcp). Live on the hosted verify service.
 
 **Request.** A JSON-RPC message, `Content-Type: application/json`, with `Accept` naming both
 `application/json` and `text/event-stream`. A 2026-07-28 client also sends `MCP-Protocol-Version`,

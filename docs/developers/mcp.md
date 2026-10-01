@@ -8,9 +8,11 @@ Moolam runs a Model Context Protocol server, so Claude or any other AI agent can
 read its passport and read what its holder allows AI to do with it. It only reads. There is no
 sign-in, no tool that writes, and the tool list is the same for every caller.
 
-> **Not live yet.** The server is in the code and tested, and goes live with the next deploy of the
-> verify service. Until then, `https://<verify-service>` on this page is a placeholder for its
-> address.
+> **What is live today.** The server runs on the hosted verify service at
+> `https://verifier-production-d76f.up.railway.app/mcp`, with the six tools below, and
+> `https://<verify-service>` on this page stands for that address. One part waits for the next deploy
+> of the verify service: the `credit` cases `held`, `handed`, `confirmed` and `passedOn` described
+> below. Until then the live server answers `credit` by the older rule.
 
 ## The endpoint
 
