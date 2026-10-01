@@ -2,11 +2,11 @@
 // cannot be used inside an ImageResponse, so the rule that asks for it is off
 // for this file only.
 /* eslint-disable @next/next/no-img-element */
-import { readFile } from "node:fs/promises";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
 import { ImageResponse } from "next/og";
 import type { Hex } from "viem";
+import { LINEN, lightBrand } from "@/app/opengraph-image";
 import { readArt, type Art } from "@/components/passport/art";
 import { withUnseal } from "@/lib/data/unseal";
 import { sealedBits } from "@/components/passport/sealed";
@@ -40,10 +40,8 @@ export const revalidate = 3600;
 
 const CARD_HEADERS = { "cache-control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" };
 
-const ACCENT = "#FFB7C5";
-const GROUND = "#0B0B0C";
-const PAPER = "#F5F3EF";
-const PICTURE_WIDTH = 660;
+/** The picture area inside the print's paper border. */
+const PRINT = { width: 452, height: 474, border: 16 };
 const FETCH_TIMEOUT_MS = 6_000;
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
@@ -184,27 +182,22 @@ async function face(family: string, weight: number, text: string): Promise<Array
       return null;
     }
     const file = await fetch(source, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    // A text with no glyph in the family (a title written only in Chinese, for
+    // one) gets an HTML error page here, and the renderer throws on it as a
+    // font, which turned the whole card into a 500. No face is the safe answer.
+    if (!file.ok) {
+      return null;
+    }
     return await file.arrayBuffer();
   } catch {
     return null;
   }
 }
 
-const seal: Promise<string | null> = readFile(
-  new URL("../../../../public/brand/kolam/mark-dark.svg", import.meta.url),
-)
-  .then((file) => `data:image/svg+xml;base64,${file.toString("base64")}`)
-  .catch(() => null);
+const seal = lightBrand(new URL("../../../../public/brand/kolam/mark-light.svg", import.meta.url));
 
-// The lockup is drawn with paper coloured letters for a dark header. On the card
-// the whole wordmark sits in the accent, so the letters are recoloured inside
-// the brand file rather than a second mark being drawn by hand here.
-const wordmark: Promise<string | null> = readFile(
-  new URL("../../../../public/brand/kolam/lockup-horizontal-dark.svg", import.meta.url),
-)
-  .then((file) => file.toString("utf8").split('fill="#F5F1EA"').join(`fill="${ACCENT}"`))
-  .then((file) => `data:image/svg+xml;base64,${Buffer.from(file, "utf8").toString("base64")}`)
-  .catch(() => null);
+// Ink letters with the crimson kolam for the "o", as the light header draws it.
+const wordmark = lightBrand(new URL("../../../../public/brand/kolam/lockup-horizontal-light.svg", import.meta.url));
 
 /**
  * The pinned picture as bytes the renderer can draw.
@@ -348,9 +341,9 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
         word,
         display: heavy === null ? "sans-serif" : "ArchivoDisplay",
         mono: plain === null ? "monospace" : "PlexMono",
-        // A long title takes a smaller face rather than a second line, so the
+        // A long title takes a smaller face rather than a third line, so the
         // card reads the same way at thumbnail size whatever was pinned.
-        titleSize: title.length <= 18 ? 84 : title.length <= 30 ? 66 : 52,
+        titleSize: title.length <= 18 ? 76 : title.length <= 30 ? 60 : 48,
       },
       fonts,
     };
@@ -360,16 +353,16 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
 }
 
 /**
- * The block hash drawn in the renderer's own language.
+ * The block hash drawn in the renderer's own language, in ink on the print.
  *
  * The component the pages use is written in Tailwind classes, which satori
  * cannot read, so the same 16 by 16 grid is laid out here in plain boxes. The
  * cell and the gap are whole pixels: the picture is drawn once at a fixed size,
  * and a fractional cell is where a grid picks up a seam.
  */
-const SKETCH_BOX = 280;
+const SKETCH_BOX = 300;
 const SKETCH_GAP = 2;
-const SKETCH_CELL = (SKETCH_BOX - SKETCH_GAP * (SKETCH_SIDE - 1)) / SKETCH_SIDE;
+const SKETCH_CELL = Math.floor((SKETCH_BOX - SKETCH_GAP * (SKETCH_SIDE - 1)) / SKETCH_SIDE);
 
 function Sketch({ bits }: { bits: boolean[] }) {
   const rows = Array.from({ length: SKETCH_SIDE }, (_, row) => bits.slice(row * SKETCH_SIDE, (row + 1) * SKETCH_SIDE));
@@ -385,7 +378,7 @@ function Sketch({ bits }: { bits: boolean[] }) {
                 display: "flex",
                 width: SKETCH_CELL,
                 height: SKETCH_CELL,
-                background: lit ? PAPER : "rgba(245,243,239,0.07)",
+                background: lit ? LINEN.ink : "rgba(20,19,15,0.08)",
               }}
             />
           ))}
@@ -395,6 +388,19 @@ function Sketch({ bits }: { bits: boolean[] }) {
   );
 }
 
+/** "Registered on Monad, block 1" as its two halves; a line with no comma stays whole. */
+function lineParts(line: string): string[] {
+  const at = line.indexOf(", ");
+  return at === -1 ? [line] : [line.slice(0, at), line.slice(at + 2)];
+}
+
+/**
+ * The print on the wall: the picture as a paper print pinned a couple of
+ * degrees off true, lit softly from the left, with the words in ink beside it.
+ *
+ * The light only ever lifts the ground towards the paper colour, so the ratios
+ * measured on plain Linen are the floor for every line on the card.
+ */
 function CardFace({ card }: { card: Card }) {
   const { title, line, short, bits, still, mark, word, display, mono, titleSize } = card;
   const sealed = bits.length > 0;
@@ -406,132 +412,117 @@ function CardFace({ card }: { card: Card }) {
         height: "100%",
         display: "flex",
         position: "relative",
-        background: GROUND,
+        background: LINEN.ground,
+        backgroundImage: "radial-gradient(64% 92% at 26% 46%, rgba(241,236,227,0.75) 0%, rgba(241,236,227,0) 72%)",
         fontFamily: mono,
       }}
     >
-      {still === null ? (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: PICTURE_WIDTH,
-            height: size.height,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundImage:
-              "radial-gradient(70% 60% at 50% 45%, rgba(255,183,197,0.16) 0%, rgba(11,11,12,0) 70%)",
-          }}
-        >
-          {/* A sealed record puts its fingerprint where the picture would be.
-              Everything else that has no picture keeps the seal. */}
-          {sealed ? (
-            <div style={{ display: "flex", marginTop: -96 }}>
-              <Sketch bits={bits} />
-            </div>
-          ) : mark === null ? null : (
-            <img src={mark} width={220} height={220} alt="" style={{ opacity: 0.5 }} />
-          )}
-        </div>
-      ) : (
-        <img
-          src={still}
-          width={PICTURE_WIDTH}
-          height={size.height}
-          alt=""
-          style={{ position: "absolute", top: 0, left: 0, objectFit: "cover" }}
-        />
-      )}
-
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: PICTURE_WIDTH - 190,
-          width: 190,
-          height: size.height,
+          top: 62,
+          left: 66,
           display: "flex",
-          backgroundImage: `linear-gradient(to right, rgba(11,11,12,0) 0%, ${GROUND} 100%)`,
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: size.width,
-          height: size.height,
-          display: "flex",
-          backgroundImage:
-            "radial-gradient(58% 70% at 96% 4%, rgba(255,183,197,0.26) 0%, rgba(255,183,197,0.05) 40%, rgba(11,11,12,0) 72%)",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          width: size.width,
-          height: 240,
-          display: "flex",
-          backgroundImage:
-            "linear-gradient(to top, rgba(11,11,12,0.97) 0%, rgba(11,11,12,0.78) 46%, rgba(11,11,12,0) 100%)",
-        }}
-      />
-
-      <div style={{ position: "absolute", top: 48, left: 56, display: "flex", alignItems: "center", gap: 18 }}>
-        {mark === null ? null : <img src={mark} width={34} height={34} alt="" />}
-        <div style={{ display: "flex", fontSize: 21, letterSpacing: 4, color: "rgba(245,243,239,0.74)" }}>
-          {short}
-        </div>
-        {sealed ? (
-          <>
-            <div style={{ display: "flex", width: 1, height: 22, background: "rgba(245,243,239,0.28)" }} />
-            <div style={{ display: "flex", fontSize: 21, letterSpacing: 6, color: ACCENT }}>{SEALED_WORD}</div>
-          </>
-        ) : null}
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          bottom: 54,
-          left: 56,
-          width: 720,
-          display: "flex",
-          flexDirection: "column",
+          padding: PRINT.border,
+          background: LINEN.paper,
+          transform: "rotate(-2deg)",
+          boxShadow: `0 34px 60px -18px rgba(${LINEN.shadow},0.42), 0 6px 14px rgba(${LINEN.shadow},0.16)`,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            fontFamily: display,
-            fontWeight: 700,
-            fontSize: titleSize,
-            letterSpacing: -2,
-            lineHeight: 1,
-            color: PAPER,
-          }}
-        >
-          {title}
-        </div>
-        <div style={{ display: "flex", marginTop: 22, fontSize: 24, letterSpacing: 2, color: ACCENT }}>{line}</div>
-        {sealed ? (
+        {still === null ? (
           <div
-            style={{ display: "flex", marginTop: 10, fontSize: 22, letterSpacing: 1, color: "rgba(245,243,239,0.76)" }}
+            style={{
+              width: PRINT.width,
+              height: PRINT.height,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: LINEN.paper,
+              border: "1px solid rgba(20,19,15,0.08)",
+            }}
           >
-            {SEALED_NOTE}
+            {/* A sealed record puts its fingerprint where the picture would be.
+                Everything else that has no picture keeps the seal, so the print
+                is never blank. */}
+            {sealed ? (
+              <Sketch bits={bits} />
+            ) : mark === null ? null : (
+              <img src={mark} width={200} height={200} alt="" style={{ opacity: 0.5 }} />
+            )}
           </div>
-        ) : null}
+        ) : (
+          <img src={still} width={PRINT.width} height={PRINT.height} alt="" style={{ objectFit: "cover" }} />
+        )}
       </div>
 
-      {word === null ? null : (
-        <img src={word} width={238} height={94} alt="" style={{ position: "absolute", bottom: 52, right: 48 }} />
-      )}
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          bottom: 50,
+          left: 618,
+          right: 52,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {mark === null ? null : <img src={mark} width={32} height={32} alt="" />}
+          <div style={{ display: "flex", fontSize: 21, letterSpacing: 3, color: LINEN.faint }}>{short}</div>
+          {sealed ? (
+            <>
+              <div style={{ display: "flex", width: 1, height: 22, background: "rgba(20,19,15,0.24)" }} />
+              <div style={{ display: "flex", fontSize: 21, letterSpacing: 6, color: LINEN.crimson }}>{SEALED_WORD}</div>
+            </>
+          ) : null}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              display: "flex",
+              fontFamily: display,
+              fontWeight: 700,
+              fontSize: titleSize,
+              letterSpacing: -2,
+              lineHeight: 1,
+              color: LINEN.ink,
+            }}
+          >
+            {title}
+          </div>
+          {/* The column beside the print is narrower than the old card's, and
+              the whole line ran one word over it. It is set on two lines at the
+              comma on purpose, so the block number never wraps on its own. */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              marginTop: 24,
+              fontSize: 22,
+              lineHeight: 1.4,
+              letterSpacing: 1,
+              color: LINEN.faint,
+            }}
+          >
+            {lineParts(line).map((part) => (
+              <div key={part} style={{ display: "flex" }}>
+                {part}
+              </div>
+            ))}
+          </div>
+          {sealed ? (
+            <div style={{ display: "flex", marginTop: 10, fontSize: 21, letterSpacing: 1, color: LINEN.muted }}>
+              {SEALED_NOTE}
+            </div>
+          ) : null}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          {word === null ? null : <img src={word} width={228} height={90} alt="" />}
+        </div>
+      </div>
     </div>
   );
 }
@@ -560,9 +551,9 @@ async function asJpeg(drawn: ImageResponse): Promise<Response> {
   try {
     const { default: sharp } = await import("sharp");
     const jpeg = await sharp(png)
-      // Full colour rather than the usual halved chroma: the accent pink of the
-      // seal and the rule sits on near black, which is where halved chroma
-      // smears.
+      // Full colour rather than the usual halved chroma: the crimson of the
+      // kolam and the SEALED word is a thin saturated line on pale paper, which
+      // is where halved chroma smears.
       .jpeg({ quality: JPEG_QUALITY, chromaSubsampling: "4:4:4", mozjpeg: true })
       .toBuffer();
     return new Response(new Uint8Array(jpeg), { headers: { ...CARD_HEADERS, "content-type": "image/jpeg" } });

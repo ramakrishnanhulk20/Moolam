@@ -16,8 +16,22 @@ export const contentType = "image/png";
 export const revalidate = 3600;
 const CARD_HEADERS = { "cache-control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" };
 
-const ACCENT = "#FFB7C5";
-const GROUND = "#0B0B0C";
+/**
+ * The Linen room's colours, the light site's own tokens, which both share cards
+ * draw with. Every text colour clears 4.5:1 on the ground: ink 13.7, muted 5.6,
+ * faint 4.6, crimson 5.1.
+ */
+export const LINEN = {
+  ground: "#e4ddd0",
+  paper: "#f1ece3",
+  ink: "#14130f",
+  muted: "#56534b",
+  faint: "#63605a",
+  crimson: "#a52946",
+  // The room's shadow colour as channels, so it can carry its own opacity.
+  shadow: "58,51,38",
+} as const;
+
 const COUNT_TIMEOUT_MS = 6_000;
 
 const registeredEvent = (registryAbi as AbiEvent[]).find(
@@ -94,6 +108,12 @@ async function face(weight: 400 | 700, text: string): Promise<ArrayBuffer | null
       return null;
     }
     const file = await fetch(source, { signal: AbortSignal.timeout(COUNT_TIMEOUT_MS) });
+    // A text with no glyph in the family (a title written only in Chinese, for
+    // one) gets an HTML error page here, and the renderer throws on it as a
+    // font, which turned the whole card into a 500. No face is the safe answer.
+    if (!file.ok) {
+      return null;
+    }
     return await file.arrayBuffer();
   } catch {
     return null;
@@ -101,16 +121,31 @@ async function face(weight: 400 | 700, text: string): Promise<ArrayBuffer | null
 }
 
 /**
- * The stacked lockup exactly as it was drawn. The file is read rather than
- * redrawn here, so the card can never drift from the mark in the header, the
- * tab and the docs. If the read fails the card still draws, with the word set
- * in the display face.
+ * A light brand file as a data URL, in the Linen room's own ink and crimson.
+ *
+ * The file is read rather than redrawn, so a card can never drift from the mark
+ * in the header, the tab and the docs. The light files carry an older pair
+ * (#0B0B0C letters, #A92A48 kolam), so the two are swapped for the site's tokens
+ * inside the file. A failed read gives null and the card draws without it.
+ * Each caller names its file in full: the bundler resolves the path at build
+ * time, and a path pieced together from a variable resolves to one file for all.
  */
-const lockup: Promise<string | null> = readFile(
-  new URL("../public/brand/kolam/lockup-stacked-dark.svg", import.meta.url),
-)
-  .then((file) => `data:image/svg+xml;base64,${file.toString("base64")}`)
-  .catch(() => null);
+export function lightBrand(file: URL): Promise<string | null> {
+  return readFile(file)
+    .then((bytes) =>
+      bytes
+        .toString("utf8")
+        .split('"#0B0B0C"')
+        .join(`"${LINEN.ink}"`)
+        .split('"#A92A48"')
+        .join(`"${LINEN.crimson}"`),
+    )
+    .then((svg) => `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`)
+    .catch(() => null);
+}
+
+/** The stacked lockup. If the read fails the card still draws, with the word set in the display face. */
+const lockup = lightBrand(new URL("../public/brand/kolam/lockup-stacked-light.svg", import.meta.url));
 
 // The file carries clear space of about a sixth of the box above and below the
 // artwork. The bleed takes that back so the card is laid out on the ink.
@@ -144,15 +179,14 @@ export default async function Card() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: GROUND,
-          backgroundImage: `radial-gradient(120% 90% at 88% 8%, rgba(255,183,197,0.22) 0%, rgba(255,183,197,0.04) 38%, rgba(11,11,12,0) 68%)`,
+          background: LINEN.ground,
           padding: "68px 76px",
           position: "relative",
           fontFamily: text,
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ display: "flex", color: "rgba(245,243,239,0.62)", fontSize: 22, letterSpacing: 6 }}>
+          <div style={{ display: "flex", color: LINEN.faint, fontSize: 22, letterSpacing: 6 }}>
             {KICKER}
           </div>
         </div>
@@ -166,7 +200,7 @@ export default async function Card() {
                 fontSize: 208,
                 fontWeight: 700,
                 letterSpacing: -8,
-                color: "#F5F3EF",
+                color: LINEN.ink,
                 lineHeight: 1,
               }}
             >
@@ -181,7 +215,7 @@ export default async function Card() {
               style={{ marginTop: LOCKUP.bleed, marginBottom: LOCKUP.bleed, marginLeft: -62 }}
             />
           )}
-          <div style={{ display: "flex", marginTop: 22, fontSize: 40, color: "rgba(245,243,239,0.72)" }}>
+          <div style={{ display: "flex", marginTop: 22, fontSize: 40, color: LINEN.muted }}>
             {LINE}
           </div>
         </div>
@@ -191,11 +225,11 @@ export default async function Card() {
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "space-between",
-            borderTop: "1px solid rgba(255,255,255,0.14)",
+            borderTop: "1px solid rgba(20,19,15,0.16)",
             paddingTop: 28,
           }}
         >
-          <div style={{ display: "flex", fontSize: 24, color: "rgba(245,243,239,0.5)", letterSpacing: 3 }}>
+          <div style={{ display: "flex", fontSize: 24, color: LINEN.faint, letterSpacing: 3 }}>
             {`REGISTRY ${addresses.registry.slice(0, 10)}...${addresses.registry.slice(-6)}`}
           </div>
           {count !== null && (
@@ -207,13 +241,13 @@ export default async function Card() {
                   fontSize: 92,
                   fontWeight: 700,
                   letterSpacing: -3,
-                  color: ACCENT,
+                  color: LINEN.crimson,
                   lineHeight: 1,
                 }}
               >
                 {count.toString()}
               </div>
-              <div style={{ display: "flex", paddingBottom: 10, fontSize: 26, color: "rgba(245,243,239,0.5)" }}>
+              <div style={{ display: "flex", paddingBottom: 10, fontSize: 26, color: LINEN.faint }}>
                 passports registered
               </div>
             </div>
