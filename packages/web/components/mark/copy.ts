@@ -47,10 +47,10 @@ export async function markCopy(facts: PassportMarkFacts, locale: string): Promis
       line = t("mark.unread");
       break;
     case "mismatch":
-      // mark.secondPrint needs the layout fingerprint's bits, and a network
-      // verdict on chain carries only the look fingerprint's. Until a verdict
-      // carries both, the plain mismatch line is the one that stays true.
-      line = t("mark.states.mismatch.line");
+      // A verdict on chain carries only the look fingerprint's distance, so a
+      // miss with that one inside the shared limit can only be the layout
+      // fingerprint's, and its line names no number for it.
+      line = mark.secondPrint ? t("mark.secondPrint") : t("mark.states.mismatch.line");
       break;
     case "lookalike":
       line = t("mark.states.lookalike.line", {

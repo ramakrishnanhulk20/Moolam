@@ -10,6 +10,15 @@ import type { DocumentReader } from "../unseal.js";
 import type { CardAnswer, CardReader } from "./agentCard.js";
 import { isZeroAddress, type McpChain } from "./chain.js";
 import type { HandoverReader } from "./handover.js";
+import {
+  defaultMarkReaders,
+  disputeForMark,
+  markAnswer,
+  pictureForMark,
+  type MarkAnswer,
+  type MarkIndexReader,
+  type UnsealedReader,
+} from "./markFacts.js";
 import type { RecentReader } from "./recent.js";
 
 /** Everything the tools and resources read through. Each reader is already behind its memory. */
@@ -21,6 +30,11 @@ export interface McpDeps {
   recent: RecentReader;
   handover: HandoverReader;
   platforms: PlatformList;
+  /**
+   * The trust mark's two readers. Left out, get_passport uses defaultMarkReaders(): the index this
+   * host reads, and nothing at all under a test runner.
+   */
+  mark?: { index: MarkIndexReader; unsealed: UnsealedReader };
 }
 
 /**
@@ -131,6 +145,8 @@ export interface PassportAnswer {
   platform: { status: "kit" | "outsideKit"; name: string; creatorWallet: Address; agentId: string } | null;
   platformList: "loaded" | "unavailable";
   credit: Credit | null;
+  /** The trust mark the site shows, from the same function (mark.ts, held byte for byte with the site's). */
+  mark: MarkAnswer;
   readAt: number;
 }
 
@@ -162,13 +178,20 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
     registeredAt: record.registeredAt,
   };
   const label = deps.platforms.ok ? platformLabel(fields, deps.platforms.platforms) : null;
-  const [holder, dispute, document, agentOwnerNow, handover] = await Promise.all([
+  const markReaders = deps.mark ?? defaultMarkReaders();
+  const [holder, dispute, document, agentOwnerNow, handover, markIndex] = await Promise.all([
     holderOf(deps, id),
     deps.app.verifier.dispute.answerFor(id),
     documentOf(deps, record.metadataURI),
     listedAgentOwner(deps, record.generatorAgentId),
     kitHandover(deps, id, label?.status === "kit"),
+    markReaders.index(id),
   ]);
+  const mark = markAnswer({
+    dispute: disputeForMark(record.disputed, dispute),
+    index: markIndex,
+    picture: await pictureForMark(id, record.metadataURI, document, markReaders.unsealed),
+  });
   const credit = deps.platforms.ok
     ? creditFor(
         {
@@ -210,6 +233,7 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
             },
       platformList: deps.platforms.ok ? "loaded" : "unavailable",
       credit,
+      mark,
       readAt: nowSeconds(),
     },
   };

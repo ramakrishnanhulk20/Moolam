@@ -120,7 +120,7 @@ function BandLink({
       href={href}
       className={`tap group inline-flex items-center gap-2.5 rounded-[8px] border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 ${className} ${
         tone === "amber"
-          ? `${TONE_EDGE.amber} ${TONE_INK.amber} hover:bg-[#875400]/10 [.dark_&]:hover:bg-[#f2a93b]/10`
+          ? `${TONE_EDGE.amber} ${TONE_INK.amber} hover:bg-lookalike/10`
           : "border-line text-text-muted hover:border-accent hover:text-accent"
       }`}
     >

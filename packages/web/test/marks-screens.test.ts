@@ -73,7 +73,7 @@ describe("Explore: the mark's word on a plate", () => {
     const markup = render(createElement(Plate, { plate: { ...PLATE, mark: "lookalike" } }));
     expect(markup).toContain('data-plate-mark="lookalike"');
     expect(markup).toContain(en.mark.states.lookalike.word);
-    expect(markup).toContain("text-[#875400]");
+    expect(markup).toContain("text-lookalike");
 
     const checked = render(createElement(Plate, { plate: { ...PLATE, mark: "checked" } }));
     expect(checked).toContain(en.mark.states.checked.word);

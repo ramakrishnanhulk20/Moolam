@@ -67,6 +67,33 @@ vi.mock("next/link", () => ({
 vi.mock("next/navigation", () => ({ useParams: () => ({ locale: "en" }), useRouter: () => ({ refresh: () => undefined }) }));
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
 vi.mock("@/lib/data/platform-label", () => ({ creditFor: async () => null }));
+vi.mock("@/lib/passport/useEditPassport", async () => {
+  const { initialEditState } = await import("@/lib/passport/edit");
+  const nothing = async () => undefined;
+  return {
+    useEditPassport: () => ({
+      ready: true,
+      isOwner: true,
+      configured: true,
+      granted: true,
+      granting: false,
+      revoking: false,
+      grantFailure: null,
+      state: { ...initialEditState, title: "Nets, cropped for the print" },
+      actions: {
+        grant: nothing,
+        revoke: nothing,
+        choose: () => undefined,
+        setTitle: () => undefined,
+        setNote: () => undefined,
+        submit: nothing,
+        recheck: nothing,
+        signIn: () => undefined,
+        reset: () => undefined,
+      },
+    }),
+  };
+});
 vi.mock("@/lib/recheck/useRecheck", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/recheck/useRecheck")>()),
   useRecheckRequest: (): RecheckControl => ({
@@ -96,6 +123,7 @@ const { FactStrip } = await import("@/components/passport/TopFacts");
 const { markCopy } = await import("@/components/mark/copy");
 const { Plate } = await import("@/components/explore/Plate");
 const { AnswerCard } = await import("@/components/verify/AnswerCard");
+const { Editor } = await import("@/components/passport/Editor");
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../kitchen/reports/marks/", import.meta.url));
@@ -247,7 +275,19 @@ const quiet = { lookalike: { kind: "quiet" } as const, later: { first: null, cou
 const earlierPassport = { id: EARLIER, title: "Nets at Kovalam, first light", registeredAt: REGISTERED - 86_400 * 41 };
 const checked = { network: true, matched: true, phashBits: 0, at: REGISTERED + 540 };
 
-const PASSPORTS: Record<string, { facts: PassportMarkFacts; art?: Art; facts2?: Art }> = {
+const PASSPORTS: Record<string, { facts: PassportMarkFacts; art?: Art; facts2?: Art; platform?: string }> = {
+  "second-print": {
+    facts: { ...quiet, mark: { state: "mismatch", verdict: { ...checked, matched: false, phashBits: 3 }, secondPrint: true }, registeredAt: REGISTERED },
+  },
+  "shown-earlier": {
+    facts: { ...quiet, mark: { state: "waiting" }, registeredAt: REGISTERED, lookalike: { kind: "searching", earlier: earlierPassport } },
+    facts2: { ...art, statements: { sworn: true, seenEarlier: EARLIER } },
+  },
+  platform: {
+    facts: { ...quiet, mark: { state: "checked", verdict: checked }, registeredAt: REGISTERED },
+    facts2: { ...art, statements: { sworn: false, platformStatement: "Imagined by a Dreamloom member, who typed the prompt and chose this picture." } },
+    platform: "Dreamloom",
+  },
   upheld: { facts: { ...quiet, mark: { state: "upheld" }, registeredAt: REGISTERED } },
   mismatch: {
     facts: { ...quiet, mark: { state: "mismatch", verdict: { ...checked, matched: false, phashBits: 27 }, secondPrint: false }, registeredAt: REGISTERED },
@@ -315,7 +355,7 @@ async function passportPage(name: string): Promise<string> {
           hasPasskey: true,
           standing: "unverified",
           txHash: null,
-          platform: null,
+          platform: entry.platform === undefined ? null : { status: "kit", name: entry.platform, platform: {} as never },
           credit: null,
         });
   return renderToStaticMarkup(
@@ -454,6 +494,20 @@ function verifyPage(): string {
   );
 }
 
+function editPage(): string {
+  return renderToStaticMarkup(
+    createElement(
+      Provider,
+      { locale: "en", messages: en, timeZone: "UTC" },
+      createElement(
+        "div",
+        { className: "mx-auto w-full max-w-[1400px] px-5 pb-16 pt-4 sm:px-8" },
+        createElement("div", { className: "max-w-[44rem]" }, createElement(Editor, { parentId: ID, owner: CREATOR })),
+      ),
+    ),
+  );
+}
+
 function page(markup: string, theme: "light" | "dark"): string {
   return `<!doctype html><html class="${theme}" lang="en" style="--font-display:'Archivo';--font-body:'Inter';--font-mono:'IBM Plex Mono';--header-h:64px">
 <head>
@@ -499,6 +553,7 @@ describe.skipIf(browserPath === null)("the trust mark, photographed", () => {
     for (const name of Object.keys(PASSPORTS)) screens.push([`passport-${name}`, await passportPage(name)]);
     screens.push(["explore", explorePage()]);
     screens.push(["verify-first", verifyPage()]);
+    screens.push(["edit-sworn", editPage()]);
     const written: string[] = [];
     for (const [name, markup] of screens) {
       for (const theme of ["light", "dark"] as const) {

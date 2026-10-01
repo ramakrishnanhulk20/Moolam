@@ -2636,7 +2636,7 @@
         "line": "This passport names no picture, so Chainlink has nothing to fetch."
       }
     },
-    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not: {bits} of 256 bits apart. Both have to match, so this passport does not pass.",
+    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
     "simulator": {
       "word": "Test run",
       "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
@@ -2652,7 +2652,9 @@
     "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
     "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
     "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
-    "outside": "Registered outside Moolam's studio: no sworn statement, no web check."
+    "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
+    "seenEarlier": "Before signing, they were shown an earlier passport like this one.",
+    "platformStatement": "{platform}'s statement"
   },
   "lookalike": {
     "found": {

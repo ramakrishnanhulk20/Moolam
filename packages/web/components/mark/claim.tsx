@@ -14,10 +14,10 @@ export interface ClaimCopy {
   outside: string | null;
   /** The registrant's own statements, each drawn as theirs and never as a chain fact (L21). */
   sworn: string | null;
-  platformStatement: string | null;
+  platformStatement: { label: string | null; text: string } | null;
   seenOnline: { line: string; pages: string[]; more: string | null } | null;
   /** The earlier passport the registrant was shown: a link only for a passport id, plain text otherwise. */
-  seenEarlier: { href: string | null; text: string; label: string } | null;
+  seenEarlier: { line: string; href: string | null; text: string; label: string } | null;
 }
 
 export async function claimCopy({
@@ -63,7 +63,14 @@ export async function claimCopy({
     strength,
     outside: registeredOutside(statements) === true ? t("claim.outside") : null,
     sworn: statements?.sworn === true ? t("story.sealed.readoutSworn") : null,
-    platformStatement: statements?.platformStatement ?? null,
+    // Named after the platform only where Moolam's list names it; otherwise the words stand alone.
+    platformStatement:
+      statements?.platformStatement === undefined
+        ? null
+        : {
+            label: platform === null ? null : t("claim.platformStatement", { platform: platform.name }),
+            text: statements.platformStatement,
+          },
     seenOnline:
       seen === undefined
         ? null
@@ -76,6 +83,7 @@ export async function claimCopy({
       earlier === undefined
         ? null
         : {
+            line: t("claim.seenEarlier"),
             href: earlierHref === null ? null : `/passport/${earlierHref}`,
             text: earlierHref === null ? earlier : shortHex(earlierHref, 10, 8),
             label: t("mark.openEarlier"),
@@ -111,26 +119,34 @@ export function ClaimLines({ copy }: { copy: ClaimCopy }) {
             </p>
           )}
           {copy.platformStatement === null ? null : (
-            <blockquote data-claim-platform-statement className="text-base leading-relaxed text-text">
-              {copy.platformStatement}
-            </blockquote>
+            <figure data-claim-platform-statement>
+              {copy.platformStatement.label === null ? null : (
+                <figcaption className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                  {copy.platformStatement.label}
+                </figcaption>
+              )}
+              <blockquote className="mt-1.5 text-base leading-relaxed text-text">{copy.platformStatement.text}</blockquote>
+            </figure>
           )}
           {copy.seenEarlier === null ? null : (
-            <p data-claim-seen-earlier className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {copy.seenEarlier.href === null ? (
-                <span className="break-all font-mono text-xs text-text-muted">{copy.seenEarlier.text}</span>
-              ) : (
-                <Link
-                  href={copy.seenEarlier.href}
-                  className="tap group inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:text-accent"
-                >
-                  {copy.seenEarlier.label}
-                  <span className="normal-case tracking-normal text-text-faint transition-colors duration-200 group-hover:text-accent">
-                    {copy.seenEarlier.text}
-                  </span>
-                </Link>
-              )}
-            </p>
+            <div data-claim-seen-earlier>
+              <p className="text-base leading-relaxed text-text-muted">{copy.seenEarlier.line}</p>
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                {copy.seenEarlier.href === null ? (
+                  <span className="break-all font-mono text-xs text-text-muted">{copy.seenEarlier.text}</span>
+                ) : (
+                  <Link
+                    href={copy.seenEarlier.href}
+                    className="tap group inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:text-accent"
+                  >
+                    {copy.seenEarlier.label}
+                    <span className="normal-case tracking-normal text-text-faint transition-colors duration-200 group-hover:text-accent">
+                      {copy.seenEarlier.text}
+                    </span>
+                  </Link>
+                )}
+              </p>
+            </div>
           )}
           {copy.seenOnline === null ? null : (
             <div data-claim-seen-online>

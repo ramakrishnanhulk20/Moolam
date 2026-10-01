@@ -39,6 +39,8 @@
   --status-pending: #2c55ac;
   --status-disputed: #6d3f96;
   --status-failed: #a92912;
+  /* The look-alike mark's amber, 4.7:1 on Linen (DECISIONS 2026-10-01). */
+  --status-lookalike: #875400;
 
   --scrim-from: rgb(228 221 208 / 0.94);
   --scrim-to: rgb(228 221 208 / 0);
@@ -68,6 +70,7 @@
   --status-pending: #5b8def;
   --status-disputed: #b06fd8;
   --status-failed: #ff5f4d;
+  --status-lookalike: #f2a93b;
 
   --scrim-from: rgb(8 8 10 / 0.92);
   --scrim-to: rgb(8 8 10 / 0);
@@ -91,6 +94,7 @@
   --color-pending: var(--status-pending);
   --color-disputed: var(--status-disputed);
   --color-failed: var(--status-failed);
+  --color-lookalike: var(--status-lookalike);
 
   --font-display: var(--font-display), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;
   --font-body: var(--font-body), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;

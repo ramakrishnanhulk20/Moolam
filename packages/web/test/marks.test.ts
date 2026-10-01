@@ -310,7 +310,7 @@ describe("L5: a look-alike record that failed the index's checks is shown nowher
     expect(markup).toContain('data-lookalike="found"');
     expect(markup).toContain(`href="/passport/${EARLIER}"`);
     expect(markup).toContain(shown(en.lookalike.order));
-    expect(markup).toContain("text-[#875400]");
+    expect(markup).toContain("text-lookalike");
   });
 });
 
@@ -408,7 +408,7 @@ describe("L31: none is not original", () => {
     expect(facts.lookalike.kind).toBe("searching");
     const markup = render(MarkBand({ copy: await markCopy(facts, "en") }));
     expect(markup).toContain('data-lookalike="searching"');
-    expect(markup).not.toContain("text-[#875400]");
+    expect(markup).not.toContain("text-lookalike");
     expect(markup).toContain(shown(en.lookalike.searching.heading));
   });
 });

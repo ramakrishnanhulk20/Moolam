@@ -76,6 +76,16 @@ const passportOutput = z.object({
     })
     .nullable()
     .optional(),
+  mark: z
+    .object({
+      state: z.enum(["unavailable", "upheld", "mismatch", "lookalike", "challenged", "waiting", "checked", "sealed", "nothing"]),
+      secondPrint: z.boolean().optional(),
+      phashDistance: z.number().optional(),
+      checkedAt: z.number().optional(),
+      earlier: hex32.optional(),
+      foundAt: z.number().optional(),
+    })
+    .optional(),
   readAt: z.number().optional(),
 });
 
@@ -176,7 +186,7 @@ export function registerTools(server: McpServer, deps: McpDeps, request: Fastify
     {
       title: "Read a passport",
       description:
-        "Reads one Moolam passport from the registry on Monad: its creator and its current holder as two separate addresses, the ERC-8004 agent id, the kind, the parent, the registration time, the dispute state, the metadata address and title, and the platform label when a listed platform registered it. The title was written by whoever registered the picture.",
+        "Reads one Moolam passport from the registry on Monad: its creator and its current holder as two separate addresses, the ERC-8004 agent id, the kind, the parent, the registration time, the dispute state, the trust mark the Moolam site shows (issued only from Chainlink network verdicts and look-alike records), the metadata address and title, and the platform label when a listed platform registered it. The title was written by whoever registered the picture.",
       inputSchema: z.object({ passportId: passportIdInput }),
       outputSchema: passportOutput,
       annotations: READ_ONLY,

@@ -22,6 +22,7 @@ import {
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useEditPassport, type PassportEdit } from "@/lib/passport/useEditPassport";
 import { Mono } from "./Mono";
+import { SwornLine } from "@/components/studio/SwornLine";
 import { WarningMark } from "@/components/WarningMark";
 
 /**
@@ -271,14 +272,19 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
       </label>
       <p className="mt-2 text-base leading-relaxed text-text-faint">{t("form.noteHint", { limit: NOTE_LIMIT })}</p>
 
-      <button
-        type="button"
-        onClick={() => void edit.actions.submit()}
-        disabled={busy || outstanding || state.file === null || state.title.trim().length === 0}
-        className="mt-7 w-full rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
-      >
-        {t("form.submit")}
-      </button>
+      {/* The verify service writes the sworn line into every edit's document,
+          so the holder reads it beside the press that signs it (L21). */}
+      <div data-edit-submit className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+        <SwornLine className="min-w-0" />
+        <button
+          type="button"
+          onClick={() => void edit.actions.submit()}
+          disabled={busy || outstanding || state.file === null || state.title.trim().length === 0}
+          className="w-full shrink-0 rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
+        >
+          {t("form.submit")}
+        </button>
+      </div>
 
       {state.quota === null ? null : (
         <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">

@@ -14,8 +14,8 @@ import { SwornLine } from "./SwornLine";
  * dark. The pre-sign warning is the same news a passport page will carry, so it
  * wears the same colour rather than the accent or the failure red.
  */
-const AMBER = "text-[#875400] dark:text-[#f2a93b]";
-const AMBER_RULE = "border-[#875400] dark:border-[#f2a93b]";
+const AMBER = "text-lookalike";
+const AMBER_RULE = "border-lookalike";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 

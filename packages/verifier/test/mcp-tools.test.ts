@@ -289,6 +289,8 @@ describe("the MCP tools", () => {
     const result = await client.callTool({ name: "get_passport", arguments: { passportId: KIT_ID } });
     expect(result.isError).not.toBe(true);
     expect(result.structuredContent).toMatchObject({ found: true, passportId: KIT_ID, creator: platformCreator.address });
+    // The trust mark rides on every answer; under a test runner no index is read, so it says it could not tell (L32).
+    expect(result.structuredContent).toMatchObject({ mark: { state: "unavailable" } });
     await client.close();
   });
 
