@@ -4,8 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAddress, type Hex } from "viem";
 import { pinnedUri } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
-import { passportsHeldNotMade, type HeldListing, type PassportListing } from "@/lib/data/passports";
-import { creditFrom, heldPlatformList } from "@/lib/data/platform-label";
+import {
+  passportHandover,
+  passportsHeldNotMade,
+  type HeldListing,
+  type IndexHandover,
+  type PassportListing,
+} from "@/lib/data/passports";
+import { creditFrom, handoverFacts, heldPlatformList, labelFrom } from "@/lib/data/platform-label";
 import type { PlatformList } from "@/lib/platforms/platforms";
 import { passportArt } from "@/lib/studio/metadata";
 
@@ -18,51 +24,83 @@ import { passportArt } from "@/lib/studio/metadata";
  * browser's view only: it is kept in local storage, per wallet, and one press
  * brings everything back.
  *
- * The one exception is a platform's handover: a passport a listed platform
- * registered for this person and then passed to them. The credit rule names
- * the holder as the person who imagined it, so it sits with their own pictures
- * instead, saying where it was drawn.
+ * The one exception is a platform's handover this person confirmed: a passport
+ * a listed platform registered, handed to this wallet first, and this wallet
+ * then stated its own AI-use terms on. The credit rule names them as the
+ * person who imagined it, so it sits with their own pictures instead, saying
+ * where it was drawn and when they confirmed. A handover they have not
+ * confirmed stays here, with the line that says how to confirm it.
  */
 
 export interface HeldPassport extends PassportListing {
   title?: string;
   imageUrl?: string;
+  /** The platform that handed this wallet the passport, when it was the first recipient and has not confirmed. */
+  handedBy?: string;
 }
 
-/** A held passport the credit rule says this wallet imagined, with the platform it was drawn on. */
-export interface ClaimedPassport extends HeldPassport {
+/** A held passport the credit rule says this wallet imagined, with the platform it was drawn on and when it confirmed. */
+export interface ConfirmedPassport extends HeldPassport {
   platform: string;
+  /** Unix seconds of the wallet's first consent entry on it. */
+  confirmedAt: number;
 }
 
 /**
- * The held rows the credit rule gives the "claimed" case with this wallet as
- * the person who imagined them, apart from every other held row. The holder is
- * the wallet the index answered for, so no holder is guessed; the agent's owner
- * is not read, because it only decides the co-signed case, and a co-signed
- * picture held here was imagined by somebody else. A refused list claims nothing.
+ * The held rows the credit rule gives the "confirmed" case with this wallet as
+ * the person who imagined them, apart from every other held row. Among the
+ * rest, a "handed" row this wallet was the first recipient of carries the
+ * platform, so the held grid can say how to confirm it. A wallet that bought a
+ * handed passport from its first recipient gets no such line: its terms would
+ * never confirm anything, only the first recipient's do.
+ *
+ * The holder is the wallet the index answered for, so no holder is guessed;
+ * the agent's owner is not read, because it only decides the co-signed case,
+ * and a co-signed picture held here was imagined by somebody else. A row with
+ * no handover answer reads "unknown" and is credited to nobody (P35). A
+ * refused list credits nothing.
  */
-export function splitClaimed(
+export function splitCredited(
   rows: readonly HeldListing[],
   list: PlatformList,
   wallet: string,
-): { claimed: (HeldListing & { platform: string })[]; held: HeldListing[] } {
+  handovers: ReadonlyMap<string, IndexHandover | "unknown">,
+): { confirmed: (HeldListing & { platform: string; confirmedAt: number })[]; held: (HeldListing & { handedBy?: string })[] } {
   let me: string;
   try {
     me = getAddress(wallet);
   } catch {
-    return { claimed: [], held: [...rows] };
+    return { confirmed: [], held: [...rows] };
   }
-  const claimed: (HeldListing & { platform: string })[] = [];
-  const held: HeldListing[] = [];
+  const confirmed: (HeldListing & { platform: string; confirmedAt: number })[] = [];
+  const held: (HeldListing & { handedBy?: string })[] = [];
   for (const row of rows) {
-    const credit = creditFrom(list, { ...row, holder: me, agentOwnerNow: null });
-    if (credit?.case === "claimed" && credit.imaginedBy === me) {
-      claimed.push({ ...row, platform: credit.platform });
+    const facts = handoverFacts(handovers.get(row.id.toLowerCase()) ?? "unknown");
+    const credit = creditFrom(list, { ...row, holder: me, agentOwnerNow: null, ...facts });
+    if (credit?.case === "confirmed" && credit.imaginedBy === me) {
+      confirmed.push({ ...row, platform: credit.platform, confirmedAt: credit.confirmedAt });
+    } else if (credit?.case === "handed" && credit.heldBy === me && facts.firstRecipient === me) {
+      held.push({ ...row, handedBy: credit.platform });
     } else {
       held.push(row);
     }
   }
-  return { claimed, held };
+  return { confirmed, held };
+}
+
+/**
+ * The index's handover answer for each held row the kit label covers, the only
+ * rows whose credit it can change, so a wallet sent nothing by a platform
+ * costs no read. Any read that fails is "unknown".
+ */
+export async function handoversFor(
+  rows: readonly HeldListing[],
+  list: PlatformList,
+  read: (id: Hex) => Promise<IndexHandover | "unknown"> = passportHandover,
+): Promise<Map<string, IndexHandover | "unknown">> {
+  const covered = rows.filter((row) => labelFrom(list, row)?.status === "kit");
+  const answers = await Promise.all(covered.map(async (row) => await read(row.id).catch(() => "unknown" as const)));
+  return new Map(covered.map((row, index) => [row.id.toLowerCase(), answers[index] ?? "unknown"]));
 }
 
 /** Far more than anyone is sent. The list is one read, with no paging, so it needs a ceiling. */
@@ -125,8 +163,8 @@ function browserStorage(): Storage | null {
 
 export interface HeldPassports {
   status: "reading" | "ready" | "unreadable";
-  /** The handovers this wallet is credited with, drawn with its own pictures and never hidden. */
-  claimed: ClaimedPassport[];
+  /** The handovers this wallet confirmed and is credited with, drawn with its own pictures and never hidden. */
+  confirmed: ConfirmedPassport[];
   shown: HeldPassport[];
   hiddenCount: number;
   hide: (id: string) => void;
@@ -135,7 +173,7 @@ export interface HeldPassports {
 
 /** The held-not-made rows for one wallet, with this browser's hidden list applied. */
 export function useHeldPassports(wallet: Hex): HeldPassports {
-  const [answer, setAnswer] = useState<{ wallet: Hex; rows: HeldPassport[] | null; claimed: ClaimedPassport[] } | null>(
+  const [answer, setAnswer] = useState<{ wallet: Hex; rows: HeldPassport[] | null; confirmed: ConfirmedPassport[] } | null>(
     null,
   );
   // This grid is only ever drawn in the browser, after sign-in, so the store
@@ -153,18 +191,19 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
         if (!live) {
           return;
         }
-        const { claimed, held } = splitClaimed(rows, list, wallet);
-        setAnswer({ wallet, rows: held, claimed });
-        const [heldArt, claimedArt] = await Promise.all([
-          Promise.all(held.map(withArt)),
-          Promise.all(claimed.map(async (row) => ({ ...(await withArt(row)), platform: row.platform }))),
-        ]);
+        const handovers = await handoversFor(rows, list);
+        if (!live) {
+          return;
+        }
+        const { confirmed, held } = splitCredited(rows, list, wallet, handovers);
+        setAnswer({ wallet, rows: held, confirmed });
+        const [heldArt, confirmedArt] = await Promise.all([Promise.all(held.map(withArt)), Promise.all(confirmed.map(withArt))]);
         if (live) {
-          setAnswer({ wallet, rows: heldArt, claimed: claimedArt });
+          setAnswer({ wallet, rows: heldArt, confirmed: confirmedArt });
         }
       } catch {
         if (live) {
-          setAnswer({ wallet, rows: null, claimed: [] });
+          setAnswer({ wallet, rows: null, confirmed: [] });
         }
       }
     })();
@@ -199,7 +238,7 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
 
   return {
     status: current === null ? "reading" : current.rows === null ? "unreadable" : "ready",
-    claimed: current?.claimed ?? [],
+    confirmed: current?.confirmed ?? [],
     shown,
     hiddenCount,
     hide,
@@ -213,7 +252,7 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
  * this runs in the reader's browser. A gateway that fails costs the picture,
  * never the row.
  */
-async function withArt(row: PassportListing): Promise<HeldPassport> {
+async function withArt<Row extends PassportListing>(row: Row): Promise<Row & { title?: string; imageUrl?: string }> {
   const document = pinnedUri(row.metadataURI);
   if (document === undefined) {
     return row;

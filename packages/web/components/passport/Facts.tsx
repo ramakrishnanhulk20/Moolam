@@ -73,7 +73,10 @@ export async function Facts({
   const metadataLink = pinnedUri(passport.metadataURI);
   const unsealedLink = art.unsealed === undefined ? undefined : pinnedUri(art.unsealed.record.uri);
   const credited = credit !== undefined ? credit : await creditFor(passport, async () => owner).catch(() => null);
-  const said = credited === null ? null : creditWords(credited, t);
+  const said =
+    credited === null
+      ? null
+      : creditWords(credited, t, (seconds) => format.dateTime(new Date(seconds * 1000), { dateStyle: "medium" }));
 
   return (
     <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-20">
@@ -157,8 +160,8 @@ export async function Facts({
                   <CopyButton value={owner} />
                 </span>
               )}
-              {/* The claimed line above already names the holder and the handover. */}
-              {owner !== null && credited?.case !== "claimed" && heldElsewhere(passport.creator, owner) ? (
+              {/* The credit line above already names the holder and the handover. */}
+              {owner !== null && !namesHolder(credited) && heldElsewhere(passport.creator, owner) ? (
                 <p data-holder-differs className="mt-2 max-w-[58ch] text-base leading-relaxed text-text-muted">
                   {t("holder.differs", { creator: shortHex(passport.creator), holder: shortHex(owner) })}
                 </p>
@@ -345,28 +348,54 @@ export async function Facts({
   );
 }
 
-type PersonKey = "platform.claimed" | "platform.claimedNote" | "platform.cosigned" | "platform.cosignedNote";
-
 /**
- * The credit case's sentence and the note on what it rests on. A case that
- * names a person with no address to name falls back to the held words, which
- * claim nobody.
+ * The credit case's sentence and the note on what it rests on (P39). Each case
+ * says only what the chain shows: a holder is named only as the holder, the
+ * first recipient only once they confirmed, and the platform only as where the
+ * picture was drawn. A passed-on passport rests on the same handover and
+ * confirmation as a confirmed one, so it carries the same note.
  */
 export function creditWords(
   credit: Credit,
   t: {
-    (key: "platform.held" | "platform.heldNote", values: { platform: string }): string;
-    (key: PersonKey, values: { platform: string; person: string }): string;
+    (key: "platform.held" | "platform.heldNote" | "platform.confirmedNote", values: { platform: string }): string;
+    (key: "platform.handed", values: { platform: string; holder: string }): string;
+    (key: "platform.handedNote"): string;
+    (key: "platform.confirmed", values: { platform: string; person: string; date: string }): string;
+    (key: "platform.passedOn", values: { person: string; holder: string }): string;
+    (key: "platform.cosigned" | "platform.cosignedNote", values: { platform: string; person: string }): string;
   },
+  date: (seconds: number) => string,
 ): { line: string; note: string } {
-  const { platform, imaginedBy } = credit;
-  if (imaginedBy !== null && credit.case !== "unclaimed") {
-    const values = { platform, person: shortHex(imaginedBy) };
-    return credit.case === "claimed"
-      ? { line: t("platform.claimed", values), note: t("platform.claimedNote", values) }
-      : { line: t("platform.cosigned", values), note: t("platform.cosignedNote", values) };
+  const { platform } = credit;
+  switch (credit.case) {
+    case "held":
+      return { line: t("platform.held", { platform }), note: t("platform.heldNote", { platform }) };
+    case "handed":
+      return {
+        line: t("platform.handed", { platform, holder: shortHex(credit.heldBy) }),
+        note: t("platform.handedNote"),
+      };
+    case "confirmed":
+      return {
+        line: t("platform.confirmed", { platform, person: shortHex(credit.imaginedBy), date: date(credit.confirmedAt) }),
+        note: t("platform.confirmedNote", { platform }),
+      };
+    case "passedOn":
+      return {
+        line: t("platform.passedOn", { person: shortHex(credit.imaginedBy), holder: shortHex(credit.heldBy) }),
+        note: t("platform.confirmedNote", { platform }),
+      };
+    case "cosigned": {
+      const values = { platform, person: shortHex(credit.imaginedBy) };
+      return { line: t("platform.cosigned", values), note: t("platform.cosignedNote", values) };
+    }
   }
-  return { line: t("platform.held", { platform }), note: t("platform.heldNote", { platform }) };
+}
+
+/** True for the credit cases whose own line already names today's holder, so the differs line would say it twice. */
+export function namesHolder(credit: Credit | null | undefined): boolean {
+  return credit?.case === "handed" || credit?.case === "confirmed" || credit?.case === "passedOn";
 }
 
 /**

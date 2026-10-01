@@ -725,8 +725,11 @@
     "platform": {
       "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
       "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
-      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
+      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
+      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
+      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
+      "passedOn": "Imagined by {person}. Now held by {holder}.",
       "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
       "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "இந்த வாலட் {platform} என்ற பெயரில் பட்டியலிடப்பட்டுள்ளது, ஆனால் இந்தப் படம் Moolam தளக் கருவித்தொகுப்புக்கு வெளியே பதிவானது."
@@ -1127,7 +1130,8 @@
       "cardNamed": "{agent}, அதன் சொந்த அட்டை சூட்டிய பெயர்",
       "unclaimed": "Not claimed yet",
       "heldBy": "{platform} holds it",
-      "via": "via {platform}"
+      "via": "via {platform}",
+      "handedBy": "handed by {platform}, not confirmed"
     },
     "ownerHint": "இதை உருவாக்கியது நீங்களா? நிர்வகிக்க உள்நுழையுங்கள்.",
     "share": {
@@ -1830,7 +1834,8 @@
     "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுடையவையும் இதைப் போலவே இங்கே இருக்கும்.",
     "makeFirst": "உங்கள் முதல் படத்தைப் பதிவு செய்",
     "signedInAs": "{account}-ஆக உள்நுழைந்துள்ளீர்கள்",
-    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
+    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
+    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
     "held": {
       "heading": "நீங்கள் வைத்திருப்பவை, பிறர் செய்தவை",
       "label": "வைத்திருப்பது நீங்கள், செய்தது நீங்கள் அல்ல",

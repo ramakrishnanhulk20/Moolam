@@ -24,9 +24,9 @@ Codegen writes `.envio/types.d.ts`, which is git-ignored, and `envio-env.d.ts`,
 which is committed and points TypeScript at it. Run codegen after any change to
 `config.yaml` or `schema.graphql`, or the handler types go stale.
 
-Twenty six tests pass against the generated types with the live mainnet
-addresses in `config.yaml`: twenty drive the handlers through Envio's own test
-indexer, and six are table tests over the consent mapping. One of the twenty
+Thirty tests pass against the generated types with the live mainnet
+addresses in `config.yaml`: twenty four drive the handlers through Envio's own
+test indexer, and six are table tests over the consent mapping. One of the twenty four
 replays every `ConsentSet` log Monad holds, read from the chain into
 `test/fixtures/consent-events.json`. `proofs/indexer-tests.txt` holds an earlier
 full run with the codegen version and the WSL command wrapper.
@@ -41,9 +41,17 @@ goes live.
 which is also the ERC-721 token id. It carries the fingerprint (`phash`,
 `blockhash`, `manifestHash`, `fingerprintVersion`), where it came from
 (`creator`, `generator`, `kind`), where it sits in its edit tree (`parent`,
-`root`, `depth`, plus a derived `children` list), who holds it now (`owner`), and
-the running verification tally (`attestationCount`, `matchedCount`,
-`mismatchedCount`, `disputed`).
+`root`, `depth`, plus a derived `children` list), who holds it now (`owner`), the
+first wallet its creator handed it to (`firstTransferTo`, with `firstTransferAt`
+and `firstTransferBlock`), and the running verification tally
+(`attestationCount`, `matchedCount`, `mismatchedCount`, `disputed`).
+
+The three first handover fields are written once, by the first Transfer from the
+creator to any other wallet, and never again: the mint, a creator sending to
+itself, a resale and a passport that comes back to the creator and goes out a
+second time all leave them as they were. A listed platform's credit rests on
+them, because the person credited is the one the platform handed the picture to
+first, never a later buyer. They stay null while the creator still holds it.
 
 It also carries the statement that stands about AI use, flattened from the
 newest `ConsentEntry` so a filter is one indexed query: `consentStated`,

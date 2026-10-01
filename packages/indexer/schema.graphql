@@ -13,6 +13,13 @@ type Passport {
   fingerprintVersion: Int!
   metadataURI: String!
   owner: String! @index
+  # The first wallet the creator handed this passport to, and when. Written once
+  # and never moved, because a platform's credit goes to the person it handed the
+  # picture to first, not to whoever bought it later. Null while the creator has
+  # never let it go.
+  firstTransferTo: String @index
+  firstTransferAt: BigInt
+  firstTransferBlock: BigInt
   registeredAt: BigInt! @index
   registeredBlock: BigInt!
   txHash: String!

@@ -85,7 +85,7 @@ export interface TopFact {
   key: TopFactKey;
   label: string;
   value: string;
-  /** A second, quieter line: the agent's number under its name, or the platform under an unclaimed or claimed credit. */
+  /** A second, quieter line: the agent's number under its name, or the platform under a platform passport's credit. */
   detail?: string;
   /** "#anchor" on this page, or a route inside the app. */
   href: string;
@@ -113,9 +113,9 @@ export interface TopFactsInput {
   privateRecheck: boolean;
   /**
    * Who the one credit rule names (creditFor in lib/data/platform-label.ts).
-   * Only the unclaimed and claimed cases change "Made by"; a co-signed
-   * picture's creator is already the person, and every other passport has no
-   * credit, so "Made by" is the creator's address for both.
+   * Only the held, handed, confirmed and passed-on cases change "Made by"; a
+   * co-signed picture's creator is already the person, and every other
+   * passport has no credit, so "Made by" is the creator's address for both.
    */
   credit?: Credit | null;
 }
@@ -137,8 +137,10 @@ export interface TopFactsSay {
    * credit; without it the value stands alone.
    */
   heldBy?: (platform: string) => string;
-  /** The detail under a claimed passport's holder: the platform that handed it over. Optional as heldBy is. */
+  /** The detail under a confirmed first recipient: the platform that handed it over. Optional as heldBy is. */
   via?: (platform: string) => string;
+  /** The detail under the holder of a handed passport nobody has confirmed. Optional as heldBy is. */
+  handedBy?: (platform: string) => string;
   words: TopFactWords;
 }
 
@@ -163,12 +165,18 @@ export function topFacts(input: TopFactsInput, say: TopFactsSay): TopFact[] {
 
 function madeBy({ creator, credit }: TopFactsInput, say: TopFactsSay): TopFact {
   const base = { key: "madeBy" as const, label: say.words.madeBy, href: anchor("madeBy") };
-  if (credit?.case === "unclaimed") {
-    // Nobody is named until the person who imagined it claims it, and the
-    // platform is said only as the one holding it meanwhile.
+  if (credit?.case === "held") {
+    // Nobody is named while the platform still holds it, and the platform is
+    // said only as the one holding it meanwhile.
     return { ...base, value: say.words.unclaimed, detail: say.heldBy?.(credit.platform), tone: "faint" };
   }
-  if (credit?.case === "claimed" && credit.imaginedBy !== null) {
+  if (credit?.case === "handed") {
+    // The holder is shown, faint, with the detail that nobody has confirmed:
+    // the address alone must never read as the person who imagined it (P39).
+    return { ...base, value: shortHex(credit.heldBy), detail: say.handedBy?.(credit.platform), tone: "faint", mono: true };
+  }
+  if (credit?.case === "confirmed" || credit?.case === "passedOn") {
+    // The first recipient who confirmed, never a later holder.
     return { ...base, value: shortHex(credit.imaginedBy), detail: say.via?.(credit.platform), tone: "text", mono: true };
   }
   return { ...base, value: shortHex(creator), tone: "text", mono: true };

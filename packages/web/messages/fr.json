@@ -718,8 +718,11 @@
     "platform": {
       "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
       "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
-      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
+      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
+      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
+      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
+      "passedOn": "Imagined by {person}. Now held by {holder}.",
       "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
       "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "Ce portefeuille est répertorié sous le nom {platform}, mais cette image a été enregistrée hors du kit Moolam pour plateformes."
@@ -1120,7 +1123,8 @@
       "cardNamed": "{agent}, nommé ainsi par sa propre carte",
       "unclaimed": "Not claimed yet",
       "heldBy": "{platform} holds it",
-      "via": "via {platform}"
+      "via": "via {platform}",
+      "handedBy": "handed by {platform}, not confirmed"
     },
     "ownerHint": "Vous l’avez créée ? Connectez-vous pour la gérer.",
     "share": {
@@ -1823,7 +1827,8 @@
     "showcaseCaption": "Un vrai passeport sur Monad. Les vôtres s’afficheront ici comme celui-ci.",
     "makeFirst": "Enregistrer votre première image",
     "signedInAs": "Connecté en tant que {account}",
-    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
+    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
+    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
     "held": {
       "heading": "Détenu par vous, fait par d'autres",
       "label": "Détenue, pas faite par vous",

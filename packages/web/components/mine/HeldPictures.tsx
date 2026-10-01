@@ -34,6 +34,7 @@ export function HeldGrid({
   onShowHidden: () => void;
 }) {
   const t = useTranslations("mine.held");
+  const mine = useTranslations("mine");
   const studio = useTranslations("studio");
   const common = useTranslations("common");
   const kinds = useTranslations("kind");
@@ -95,6 +96,13 @@ export function HeldGrid({
                     {kinds(String(row.kind))} <span className="mx-1">/</span>
                     {format.dateTime(new Date(Number(row.registeredAt) * 1000), "moment")}
                   </p>
+                  {/* Only the first wallet a platform handed it to can confirm it, so only that wallet is told how. */}
+                  {row.handedBy === undefined ? null : (
+                    <p data-held-handed className="mt-3 flex items-start gap-2 text-sm leading-snug text-text-muted">
+                      <span aria-hidden className="motif mt-[5px] h-[6px] w-[6px] shrink-0" />
+                      <span className="min-w-0">{mine("handedLine", { platform: row.handedBy })}</span>
+                    </p>
+                  )}
                 </div>
               </Link>
               {/* Outside the link, so hiding never opens the passport. */}

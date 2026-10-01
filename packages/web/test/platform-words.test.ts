@@ -9,7 +9,8 @@ import type { Art } from "@/components/passport/art";
 import type { Consent, ConsentEntry } from "@/lib/chain/consent";
 import type { Passport } from "@/lib/chain/registry";
 import type { ExplorePlate } from "@/components/explore/sort";
-import { loadPlatforms, onboardingTypedData, type PlatformList, type PlatformRecord } from "@/lib/platforms/platforms";
+import type { IndexHandover } from "@/lib/data/passports";
+import { loadPlatforms, onboardingTypedData, type Credit, type PlatformList, type PlatformRecord } from "@/lib/platforms/platforms";
 
 /**
  * The platform kit's words on the website (WO-245a): who registered a passport
@@ -53,6 +54,14 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
+// The handover read's cache passes straight through, and the index is a URL a
+// stubbed fetch answers, so no test here reaches the live index.
+vi.mock("next/cache", () => ({ unstable_cache: <T,>(read: T) => read }));
+vi.mock("@/lib/data/source", () => ({
+  activeSource: () => "envio",
+  envioUrl: () => "https://index.example/v1/graphql",
+}));
+
 vi.mock("@/components/passport/Picture", () => ({
   Picture: () => createElement("span", { "data-picture": "true" }),
 }));
@@ -61,9 +70,12 @@ const { Facts } = await import("@/components/passport/Facts");
 const { ConsentSection } = await import("@/components/consent/ConsentSection");
 const { Plate } = await import("@/components/explore/Plate");
 const { HeldGrid } = await import("@/components/mine/HeldPictures");
-const { ClaimedPictures } = await import("@/components/mine/ClaimedPictures");
-const { readHidden, splitClaimed, splitHeld, writeHidden, hiddenKey } = await import("@/components/mine/held");
-const { creditFrom, heldPlatformList, labelFrom, listedAgentOwner, plateMark } = await import("@/lib/data/platform-label");
+const { ConfirmedPictures } = await import("@/components/mine/ConfirmedPictures");
+const { handoversFor, readHidden, splitCredited, splitHeld, writeHidden, hiddenKey } = await import("@/components/mine/held");
+const { UNKNOWN_HANDOVER, creditFrom, handoverFacts, heldPlatformList, labelFrom, listedAgentOwner, plateMark } = await import(
+  "@/lib/data/platform-label"
+);
+const { HANDOVER_ENTRIES_MAX, heldHandover, passportHandover } = await import("@/lib/data/passports");
 const { fileTermsOf, termsDiffer } = await import("@/lib/data/file-terms");
 const { shortHex } = await import("@/lib/chain/client");
 const { topFacts } = await import("@/components/passport/top-facts");
@@ -74,6 +86,9 @@ const creatorKey = privateKeyToAccount(`0x${"b2".repeat(32)}`);
 const HOLDER = "0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a" as Hex;
 /** A person who co-signed with their own key: not a listed wallet. */
 const PERSON = privateKeyToAccount(`0x${"d4".repeat(32)}`).address;
+/** The first wallet the platform hands a passport to (A), and a later buyer (B). */
+const FIRST = privateKeyToAccount(`0x${"e5".repeat(32)}`).address;
+const BUYER = privateKeyToAccount(`0x${"f6".repeat(32)}`).address;
 
 const PLATFORM = "Acme Studio";
 const CARD_NAME = "Totally Real Corp";
@@ -155,10 +170,46 @@ function words(key: string, values?: Record<string, string | number>): string {
   return asRendered(createTranslator({ locale: "en", messages: en, namespace: "passport" })(key as never, values as never));
 }
 
+const HANDED_AT = VALID_FROM + 4_000n;
+const CONFIRMED_AT = VALID_FROM + 5_000n;
+
+/** One index answer, spelled the way the index stores it: every address lowercased. */
+function indexHandover(
+  to: string | null,
+  consent: { writer: string; at: bigint }[] = [],
+  consentCount = consent.length,
+): IndexHandover {
+  return {
+    firstTransferTo: to === null ? null : (to.toLowerCase() as Hex),
+    firstTransferAt: to === null ? null : HANDED_AT,
+    consentCount,
+    consent: consent.map((entry) => ({ writer: entry.writer.toLowerCase() as Hex, at: entry.at })),
+  };
+}
+
+/** The index says the passport never left the platform's wallet. */
+const NEVER_LEFT = indexHandover(null);
+
+/** The credit the page would show, through the same handoverFacts and creditFrom the site calls. */
+function creditOf(
+  list: PlatformList,
+  passport: Passport,
+  holder: string | null,
+  handover: IndexHandover | "unknown" = NEVER_LEFT,
+  agentOwnerNow: string | null = null,
+): Credit | null {
+  return creditFrom(list, { ...passport, holder, agentOwnerNow, ...handoverFacts(handover) });
+}
+
+/** The date the Facts mock above prints for a time in unix seconds. */
+function dated(seconds: bigint): string {
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(Number(seconds) * 1000));
+}
+
 async function drawFacts(
   passport: Passport,
   list: PlatformList,
-  extra: { owner?: Hex; agentName?: string | null; agentOwnerNow?: string | null } = {},
+  extra: { owner?: Hex; agentName?: string | null; agentOwnerNow?: string | null; handover?: IndexHandover | "unknown" } = {},
 ) {
   const owner = extra.owner ?? passport.creator;
   return render(
@@ -171,7 +222,7 @@ async function drawFacts(
       txHash: null,
       platform: labelFrom(list, passport),
       // The same rule the page reads, handed in so the fixture list is the one asked.
-      credit: creditFrom(list, { ...passport, holder: owner, agentOwnerNow: extra.agentOwnerNow ?? null }),
+      credit: creditOf(list, passport, owner, extra.handover ?? NEVER_LEFT, extra.agentOwnerNow ?? null),
       agentName: extra.agentName ?? null,
     }),
   );
@@ -194,13 +245,13 @@ describe("P16: one predicate issues the label", () => {
     expect(plateMark(list, captured, null)).toBeNull();
   });
 
-  it("gives a valid platform passport the unclaimed credit and its note, on the page and on a plate", async () => {
+  it("gives a valid platform passport the held credit and its note, on the page and on a plate", async () => {
     const list = await signedList();
     const made = passportOf({});
 
     expect(labelFrom(list, made)?.status).toBe("kit");
     const markup = await drawFacts(made, list);
-    expect(markup).toContain('data-platform="unclaimed"');
+    expect(markup).toContain('data-platform="held"');
     expect(markup).toContain(words("platform.held", { platform: PLATFORM }));
     expect(markup).toContain(words("platform.heldNote", { platform: PLATFORM }));
     expect(markup).toContain(words("passkeyBound"));
@@ -253,6 +304,7 @@ describe("WO-245b item 3: the facts strip keeps the two names apart", () => {
     date: () => "Sep 27, 2026",
     heldBy: (platform: string) => words("facts.heldBy", { platform }),
     via: (platform: string) => words("facts.via", { platform }),
+    handedBy: (platform: string) => words("facts.handedBy", { platform }),
     words: en.passport.facts,
   };
   const input = {
@@ -273,29 +325,44 @@ describe("WO-245b item 3: the facts strip keeps the two names apart", () => {
     expect(drawn.detail).toBe(`Agent ${AGENT_ID}, named by its own card`);
   });
 
-  it("says Not claimed yet on an unclaimed platform passport, with the platform only as its holder", async () => {
+  it("says Not claimed yet on a platform passport the platform still holds, with the platform only as its holder", async () => {
     const list = await signedList();
-    const credit = creditFrom(list, { ...passportOf({}), holder: creatorKey.address, agentOwnerNow: null });
-    expect(credit?.case).toBe("unclaimed");
+    const credit = creditOf(list, passportOf({}), creatorKey.address);
+    expect(credit?.case).toBe("held");
     const [made] = topFacts({ ...input, credit }, say);
     expect(made.value).toBe("Not claimed yet");
     expect(made.detail).toBe(`${PLATFORM} holds it`);
     expect(made.mono).toBeUndefined();
   });
 
-  it("names the holder on a claimed platform passport, via the platform", async () => {
+  it("shows a handed passport's holder, faint, as handed by the platform and not confirmed (WO-261b)", async () => {
     const list = await signedList();
-    const credit = creditFrom(list, { ...passportOf({}), holder: HOLDER.toLowerCase(), agentOwnerNow: null });
-    expect(credit?.case).toBe("claimed");
+    const credit = creditOf(list, passportOf({}), FIRST, indexHandover(FIRST));
+    expect(credit?.case).toBe("handed");
     const [made] = topFacts({ ...input, credit }, say);
-    expect(made.value).toBe(shortHex(HOLDER));
-    expect(made.detail).toBe(`via ${PLATFORM}`);
+    expect(made.value).toBe(shortHex(FIRST));
+    expect(made.detail).toBe(`handed by ${PLATFORM}, not confirmed`);
+    expect(made.tone).toBe("faint");
     expect(made.mono).toBe(true);
+  });
+
+  it("names the confirmed first recipient via the platform, and keeps naming them after a resale (WO-261b)", async () => {
+    const list = await signedList();
+    const confirmed = indexHandover(FIRST, [{ writer: FIRST, at: CONFIRMED_AT }]);
+    for (const holder of [FIRST.toLowerCase(), BUYER]) {
+      const credit = creditOf(list, passportOf({}), holder, confirmed);
+      expect(credit?.case).toBe(holder === BUYER ? "passedOn" : "confirmed");
+      const [made] = topFacts({ ...input, credit }, say);
+      expect(made.value).toBe(shortHex(FIRST));
+      expect(made.value).not.toBe(shortHex(BUYER));
+      expect(made.detail).toBe(`via ${PLATFORM}`);
+      expect(made.mono).toBe(true);
+    }
   });
 
   it("leaves Made by as the creator's address on a co-signed passport and on every other one", async () => {
     const list = await signedList();
-    const cosigned = creditFrom(list, { ...passportOf({ creator: PERSON }), holder: PERSON, agentOwnerNow: agentOwner.address });
+    const cosigned = creditOf(list, passportOf({ creator: PERSON }), PERSON, "unknown", agentOwner.address);
     expect(cosigned?.case).toBe("cosigned");
     const [person] = topFacts({ ...input, creator: PERSON, credit: cosigned }, say);
     expect(person.value).toBe(shortHex(PERSON));
@@ -343,11 +410,19 @@ describe("P23: holder and creator are two facts", () => {
     );
   });
 
-  it("never repeats a claimed passport's handover as the differs line", async () => {
+  it("never repeats a handed, confirmed or passed-on passport's holder as the differs line (WO-261b)", async () => {
     const list = await signedList();
-    const markup = await drawFacts(passportOf({}), list, { owner: HOLDER });
-    expect(markup).toContain('data-platform="claimed"');
-    expect(markup).not.toContain("data-holder-differs");
+    const confirmed = indexHandover(FIRST, [{ writer: FIRST, at: CONFIRMED_AT }]);
+    const cases = [
+      { owner: FIRST, handover: indexHandover(FIRST), expected: "handed" },
+      { owner: FIRST, handover: confirmed, expected: "confirmed" },
+      { owner: BUYER, handover: confirmed, expected: "passedOn" },
+    ] as const;
+    for (const { owner, handover, expected } of cases) {
+      const markup = await drawFacts(passportOf({}), list, { owner, handover });
+      expect(markup).toContain(`data-platform="${expected}"`);
+      expect(markup).not.toContain("data-holder-differs");
+    }
   });
 
   it("says nothing extra when the creator still holds it, whatever the address case", async () => {
@@ -538,7 +613,7 @@ describe("P15: without the list the base words stand and no label shows", () => 
     const made = passportOf({});
     expect(labelFrom(tampered, made)).toBeNull();
     expect(plateMark(tampered, made, null)).toBeNull();
-    expect(creditFrom(tampered, { ...made, holder: HOLDER, agentOwnerNow: agentOwner.address })).toBeNull();
+    expect(creditOf(tampered, made, HOLDER, indexHandover(HOLDER, [{ writer: HOLDER, at: CONFIRMED_AT }]), agentOwner.address)).toBeNull();
 
     const markup = await drawFacts(made, tampered);
     expect(markup).not.toContain("data-platform");
@@ -572,12 +647,18 @@ describe("WO-245b item 5: the legend names the platform mark", () => {
 });
 
 describe("WO-257: the person who imagined a platform picture is credited, never the platform", () => {
-  it("credits the holder a platform handed the passport to, with the note on what the credit rests on", async () => {
+  it("credits the first recipient who confirmed, with the date and the note on what the credit rests on (WO-261b)", async () => {
     const list = await signedList();
-    const markup = await drawFacts(passportOf({}), list, { owner: HOLDER, agentName: CARD_NAME });
+    const markup = await drawFacts(passportOf({}), list, {
+      owner: HOLDER,
+      agentName: CARD_NAME,
+      handover: indexHandover(HOLDER, [{ writer: HOLDER, at: CONFIRMED_AT }]),
+    });
     const line = /<p data-credit-line[^>]*>(.*?)<\/p>/.exec(markup)?.[1] ?? "";
-    expect(line).toContain(`Imagined by ${shortHex(HOLDER)}. Drawn on ${PLATFORM}, which handed the passport to them.`);
-    expect(markup).toContain(words("platform.claimedNote", { platform: PLATFORM }));
+    expect(line).toContain(
+      `Imagined by ${shortHex(HOLDER)}. Drawn on ${PLATFORM}, which handed the passport to them. They confirmed it on ${dated(CONFIRMED_AT)}.`,
+    );
+    expect(markup).toContain(words("platform.confirmedNote", { platform: PLATFORM }));
     expect(markup).toContain(words("agentListed", { platform: PLATFORM }));
   });
 
@@ -608,9 +689,10 @@ describe("WO-257: the person who imagined a platform picture is credited, never 
     }
   });
 
-  it("gives a claimed passport a credit only when its holder was read", async () => {
+  it("gives a platform passport a credit only when its holder was read", async () => {
     const list = await signedList();
-    expect(creditFrom(list, { ...passportOf({}), holder: null, agentOwnerNow: agentOwner.address })).toBeNull();
+    const confirmed = indexHandover(HOLDER, [{ writer: HOLDER, at: CONFIRMED_AT }]);
+    expect(creditOf(list, passportOf({}), null, confirmed, agentOwner.address)).toBeNull();
     // An agent the list does not name is never read for its owner.
     expect(await listedAgentOwner(list, 7n)).toBeNull();
     expect(await listedAgentOwner(list, 0n)).toBeNull();
@@ -659,7 +741,7 @@ describe("WO-257: the person who imagined a platform picture is credited, never 
   });
 });
 
-describe("WO-257: a platform's handover sits with the person's own pictures on /mine", () => {
+describe("WO-261b: My pictures splits on the confirmed credit", () => {
   const listing = {
     id: `0x${"9e".repeat(32)}` as Hex,
     kind: 0,
@@ -670,34 +752,234 @@ describe("WO-257: a platform's handover sits with the person's own pictures on /
     generatorAgentId: AGENT_ID,
     manifestHash: MANIFEST,
   };
+  const handed = { ...listing, id: `0x${"5a".repeat(32)}` as Hex };
+  const resold = { ...listing, id: `0x${"4f".repeat(32)}` as Hex };
+  const unread = { ...listing, id: `0x${"3e".repeat(32)}` as Hex };
   const gift = { ...listing, id: `0x${"8d".repeat(32)}` as Hex, creator: PERSON };
   const captured = { ...listing, id: `0x${"6b".repeat(32)}` as Hex, kind: 1, generatorAgentId: 0n, manifestHash: ZERO };
 
-  it("moves only the claimed handover out of the held rows, whatever the wallet's address case", async () => {
+  /** The index's answers for HOLDER's rows, keyed by lowercased id as handoversFor keys them. */
+  const handovers = new Map<string, IndexHandover | "unknown">([
+    [listing.id, indexHandover(HOLDER, [{ writer: HOLDER, at: CONFIRMED_AT }])],
+    [handed.id, indexHandover(HOLDER)],
+    // FIRST confirmed and then sold it to HOLDER: HOLDER holds it, FIRST is credited.
+    [resold.id, indexHandover(FIRST, [{ writer: FIRST, at: CONFIRMED_AT }, { writer: HOLDER, at: CONFIRMED_AT + 60n }])],
+    [unread.id, "unknown"],
+  ]);
+
+  it("puts only a confirmed handover with the wallet's own work, whatever the wallet's address case", async () => {
     const list = await signedList();
-    const { claimed, held } = splitClaimed([listing, gift, captured], list, HOLDER.toLowerCase());
-    expect(claimed.map((row) => [row.id, row.platform])).toEqual([[listing.id, PLATFORM]]);
-    expect(held.map((row) => row.id)).toEqual([gift.id, captured.id]);
+    const { confirmed, held } = splitCredited([listing, handed, resold, unread, gift, captured], list, HOLDER.toLowerCase(), handovers);
+    expect(confirmed.map((row) => [row.id, row.platform, row.confirmedAt])).toEqual([[listing.id, PLATFORM, Number(CONFIRMED_AT)]]);
+    expect(held.map((row) => row.id)).toEqual([handed.id, resold.id, unread.id, gift.id, captured.id]);
+    // Only the handover this wallet was first to receive and has not confirmed carries the platform.
+    expect(held.filter((row) => row.handedBy !== undefined).map((row) => [row.id, row.handedBy])).toEqual([[handed.id, PLATFORM]]);
 
     const refused: PlatformList = { ok: false, platforms: [], reason: "fixture" };
-    expect(splitClaimed([listing, gift], refused, HOLDER).claimed).toEqual([]);
+    expect(splitCredited([listing, gift], refused, HOLDER, handovers).confirmed).toEqual([]);
+    // No answer at all for a row reads "unknown", never "held by the platform" or confirmed.
+    expect(splitCredited([listing], list, HOLDER, new Map()).confirmed).toEqual([]);
   });
 
-  it("draws the handover with the line that says where it was drawn, and keeps it out of the held grid", async () => {
+  it("gives a buyer of an unconfirmed handover no line telling it to confirm, since only the first recipient can", async () => {
     const list = await signedList();
-    const { claimed, held } = splitClaimed([listing, gift], list, HOLDER);
+    const { held } = splitCredited([handed], list, BUYER, new Map([[handed.id, indexHandover(FIRST)]]));
+    expect(held.map((row) => [row.id, row.handedBy])).toEqual([[handed.id, undefined]]);
+  });
+
+  it("reads the index only for the rows the kit label covers, and turns a failed read into unknown", async () => {
+    const list = await signedList();
+    const asked: string[] = [];
+    const answers = await handoversFor([listing, gift, captured, handed], list, async (id) => {
+      asked.push(id);
+      if (id === handed.id) {
+        throw new Error("the index is down");
+      }
+      return indexHandover(HOLDER);
+    });
+    expect(asked).toEqual([listing.id, handed.id]);
+    expect(answers.get(handed.id)).toBe("unknown");
+    expect(answers.has(gift.id)).toBe(false);
+  });
+
+  it("draws the confirmed handover with the line that says where it was drawn and when it was confirmed", async () => {
+    const list = await signedList();
+    const { confirmed, held } = splitCredited([listing, handed, gift], list, HOLDER, handovers);
 
     const mine = createTranslator({ locale: "en", messages: en, namespace: "mine" });
-    const own = render(createElement(ClaimedPictures, { rows: claimed }));
-    expect(own).toContain(`data-claimed="${listing.id}"`);
-    expect(own).toContain(asRendered(mine("claimedLine", { platform: PLATFORM })));
-    expect(mine("claimedLine", { platform: PLATFORM })).toBe(`Drawn on ${PLATFORM}, which handed the passport to you.`);
+    // The client provider formats in plain "en", unlike the server mock's "en-GB".
+    const date = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(Number(CONFIRMED_AT) * 1000));
+    const line = mine("confirmedLine", { platform: PLATFORM, date });
+    expect(line).toBe(`Drawn on ${PLATFORM}, which handed the passport to you. You confirmed it on ${date}.`);
+    const own = render(createElement(ConfirmedPictures, { rows: confirmed }));
+    expect(own).toContain(`data-confirmed="${listing.id}"`);
+    expect(/<p data-confirmed-line[^>]*>([\s\S]*?)<\/p>/.exec(own)?.[1]).toContain(line);
     expect(own).not.toContain("data-held-label");
     expect(own).not.toContain("data-held-hide");
+    expect(render(createElement(ConfirmedPictures, { rows: [] }))).not.toContain("data-mine-confirmed");
 
     const others = render(createElement(HeldGrid, { rows: held, hiddenCount: 0, onHide: () => undefined, onShowHidden: () => undefined }));
     expect(others).not.toContain(`data-held="${listing.id}"`);
     expect(others).toContain(`data-held="${gift.id}"`);
-    expect(render(createElement(ClaimedPictures, { rows: [] }))).not.toContain("data-mine-claimed");
+    // The unconfirmed handover sits in the held grid, labelled held, with the line on how to confirm it.
+    const handedLine = mine("handedLine", { platform: PLATFORM });
+    expect(handedLine).toBe(`Handed to you by ${PLATFORM}. State its AI-use terms on the passport page to confirm it is yours.`);
+    expect(others).toContain(`data-held="${handed.id}"`);
+    expect(others.match(/data-held-handed/g)).toHaveLength(1);
+    expect(others).toContain(asRendered(handedLine));
+    expect(others.match(/data-held-label/g)).toHaveLength(2);
+  });
+});
+
+describe("WO-261b: the credit says only what the chain proves (P35, P39)", () => {
+  const confirmedByFirst = indexHandover(FIRST, [{ writer: FIRST, at: CONFIRMED_AT }]);
+
+  function creditLine(markup: string): string | undefined {
+    return /<p data-credit-line[^>]*>(.*?)<\/p>/.exec(markup)?.[1];
+  }
+
+  it("says a handed passport went to its holder, who has not confirmed, and credits nobody", async () => {
+    const list = await signedList();
+    const markup = await drawFacts(passportOf({}), list, { owner: FIRST, handover: indexHandover(FIRST) });
+    expect(markup).toContain('data-platform="handed"');
+    expect(creditLine(markup)).toContain(words("platform.handed", { platform: PLATFORM, holder: shortHex(FIRST) }));
+    expect(words("platform.handed", { platform: PLATFORM, holder: shortHex(FIRST) })).toBe(
+      `Drawn on ${PLATFORM} and handed to ${shortHex(FIRST)}, who has not confirmed it.`,
+    );
+    expect(markup).toContain(words("platform.handedNote"));
+    expect(markup).not.toContain("Imagined by");
+  });
+
+  it("credits the confirmed first recipient after a resale and names the buyer only as the holder", async () => {
+    const list = await signedList();
+    const credit = creditOf(list, passportOf({}), BUYER, confirmedByFirst);
+    expect(credit).toEqual({ case: "passedOn", platform: PLATFORM, imaginedBy: FIRST, heldBy: BUYER, confirmedAt: Number(CONFIRMED_AT) });
+
+    const markup = await drawFacts(passportOf({}), list, { owner: BUYER, handover: confirmedByFirst });
+    expect(markup).toContain('data-platform="passedOn"');
+    const line = creditLine(markup) ?? "";
+    expect(line).toContain(`Imagined by ${shortHex(FIRST)}. Now held by ${shortHex(BUYER)}.`);
+    expect(line).not.toContain(`Imagined by ${shortHex(BUYER)}`);
+    expect(markup).toContain(words("platform.confirmedNote", { platform: PLATFORM }));
+    // The buyer writing terms of their own never makes them the person credited.
+    const buyerTerms = indexHandover(FIRST, [{ writer: FIRST, at: CONFIRMED_AT }, { writer: BUYER, at: CONFIRMED_AT + 600n }]);
+    expect(creditOf(list, passportOf({}), BUYER, buyerTerms)).toMatchObject({ case: "passedOn", imaginedBy: FIRST });
+  });
+
+  it("credits nobody on a stranger push: terms by the holder who was not first, or by the platform, never count", async () => {
+    const list = await signedList();
+    // The platform pushed the passport to FIRST, who never wrote terms; the platform and a buyer did.
+    const pushed = indexHandover(FIRST, [
+      { writer: creatorKey.address, at: VALID_FROM + 3_700n },
+      { writer: BUYER, at: CONFIRMED_AT },
+    ]);
+    for (const holder of [FIRST, BUYER]) {
+      const credit = creditOf(list, passportOf({}), holder, pushed);
+      expect(credit?.case).toBe("handed");
+      expect(credit?.imaginedBy).toBeNull();
+    }
+    const markup = await drawFacts(passportOf({}), list, { owner: BUYER, handover: pushed });
+    expect(markup).not.toContain("Imagined by");
+  });
+
+  it("shows no credit line, and no platform line, when the handover is unknown", async () => {
+    const list = await signedList();
+    const tooLong = indexHandover(FIRST, [{ writer: BUYER, at: CONFIRMED_AT }], HANDOVER_ENTRIES_MAX + 1);
+    const before = indexHandover(FIRST, [{ writer: FIRST, at: HANDED_AT - 1n }]);
+    const half: IndexHandover = { ...indexHandover(FIRST), firstTransferAt: null };
+    for (const handover of ["unknown", tooLong, before, half] as const) {
+      expect(handoverFacts(handover)).toEqual(UNKNOWN_HANDOVER);
+      for (const owner of [creatorKey.address, FIRST, BUYER]) {
+        expect(creditOf(list, passportOf({}), owner, handover)).toBeNull();
+        const markup = await drawFacts(passportOf({}), list, { owner, handover });
+        expect(markup).not.toContain("data-credit-line");
+        expect(markup).not.toContain("data-platform");
+      }
+    }
+    // The index says nothing left the platform while the chain shows someone else holding it: behind, so nobody.
+    expect(creditOf(list, passportOf({}), BUYER, NEVER_LEFT)).toBeNull();
+  });
+
+  it("matches the first recipient's entry whatever the address case, and takes the earliest", () => {
+    const upper = `0x${FIRST.slice(2).toUpperCase()}` as Hex;
+    const facts = handoverFacts({
+      firstTransferTo: FIRST.toLowerCase() as Hex,
+      firstTransferAt: HANDED_AT,
+      consentCount: 2,
+      consent: [
+        { writer: upper, at: CONFIRMED_AT + 60n },
+        { writer: FIRST, at: CONFIRMED_AT },
+      ],
+    });
+    expect(facts).toEqual({ firstRecipient: FIRST, firstRecipientConfirmedAt: CONFIRMED_AT });
+  });
+
+  it("reads the handover from the index in the MCP server's shape, and fails closed on every answer it cannot trust", async () => {
+    const id = `0x${"1d".repeat(32)}` as Hex;
+    const answer = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status }));
+    const good = {
+      data: {
+        Passport: [{ firstTransferTo: FIRST.toLowerCase(), firstTransferAt: String(HANDED_AT), consentCount: 1 }],
+        ConsentEntry: [{ writer: FIRST.toLowerCase(), at: String(CONFIRMED_AT) }],
+      },
+    };
+    try {
+      const fetchGood = answer(good);
+      vi.stubGlobal("fetch", fetchGood);
+      const read = await heldHandover(id);
+      expect(read).toEqual({
+        firstTransferTo: FIRST.toLowerCase(),
+        firstTransferAt: HANDED_AT,
+        consentCount: 1,
+        consent: [{ writer: FIRST.toLowerCase(), at: CONFIRMED_AT }],
+      });
+      const sent = JSON.parse(String((fetchGood.mock.calls[0] as unknown as [string, RequestInit])[1].body)) as {
+        query: string;
+        variables: { id: string; limit: number };
+      };
+      expect(sent.variables).toEqual({ id, limit: HANDOVER_ENTRIES_MAX });
+      expect(sent.query).toContain("firstTransferTo");
+      expect(handoverFacts(read)).toEqual({ firstRecipient: FIRST, firstRecipientConfirmedAt: CONFIRMED_AT });
+
+      const refused = [
+        answer(good, 500),
+        answer({ errors: [{ message: "field 'firstTransferTo' not found in type: 'Passport'" }] }),
+        answer({ data: { Passport: [{ consentCount: 0 }], ConsentEntry: [] } }),
+        answer({ data: { Passport: [], ConsentEntry: [] } }),
+        answer({ data: { Passport: [{ firstTransferTo: FIRST.toLowerCase(), firstTransferAt: null, consentCount: 0 }], ConsentEntry: [] } }),
+        answer({ data: { Passport: [{ firstTransferTo: "not an address", firstTransferAt: "1", consentCount: 0 }], ConsentEntry: [] } }),
+      ];
+      for (const [index, stub] of refused.entries()) {
+        vi.stubGlobal("fetch", stub);
+        expect(await heldHandover(id), `answer ${index}`).toBe("unknown");
+        expect(await passportHandover(`0x${index.toString(16).padStart(64, "0")}` as Hex), `answer ${index}`).toBe("unknown");
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("reads no claimed or claimedNote key anywhere, in any language, and no claimedLine on My pictures", async () => {
+    for (const lang of ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"]) {
+      const messages = (await import(`@/messages/${lang}.json`)).default as typeof en;
+      const platform = Object.keys(messages.passport.platform);
+      expect(platform, lang).not.toContain("claimed");
+      expect(platform, lang).not.toContain("claimedNote");
+      expect(Object.keys(messages.mine), lang).not.toContain("claimedLine");
+      expect(platform, lang).toEqual(expect.arrayContaining(["handed", "handedNote", "confirmed", "confirmedNote", "passedOn"]));
+      expect(Object.keys(messages.passport.facts), lang).toContain("handedBy");
+    }
+    const { readFileSync, readdirSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const files = [
+      "components/passport/Facts.tsx",
+      "components/passport/TopFacts.tsx",
+      "components/passport/top-facts.ts",
+      ...readdirSync(fileURLToPath(new URL("../components/mine", import.meta.url))).map((name) => `components/mine/${name}`),
+    ];
+    for (const path of files) {
+      const text = readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
+      expect(text, path).not.toMatch(/platform\.claimed(Note)?["`]|"claimedLine"|case === "(un)?claimed"/);
+    }
   });
 });

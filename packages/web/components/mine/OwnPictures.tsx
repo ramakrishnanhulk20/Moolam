@@ -7,7 +7,7 @@ import { YourPassports } from "@/components/studio/YourPassports";
 import { Link } from "@/lib/i18n/routing";
 import type { AccountName } from "@/lib/studio/account";
 import { useCreatorPassports } from "@/lib/studio/useCreatorPassports";
-import { ClaimedPictures } from "./ClaimedPictures";
+import { ConfirmedPictures } from "./ConfirmedPictures";
 import { useHeldPassports } from "./held";
 import { HeldPictures } from "./HeldPictures";
 
@@ -66,9 +66,9 @@ export function OwnPictures({
   return (
     <WideLayout>
       <YourPassports passports={passports} heading={t("grid")} lead={lead} empty={empty} />
-      {/* A platform's handover is this person's own picture, so it follows their
-          grid rather than sitting under "made by others". */}
-      <ClaimedPictures rows={held.claimed} />
+      {/* A platform's handover this person confirmed is their own picture, so it
+          follows their grid rather than sitting under "made by others". */}
+      <ConfirmedPictures rows={held.confirmed} />
       <HeldPictures held={held} />
     </WideLayout>
   );

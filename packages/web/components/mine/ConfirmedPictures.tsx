@@ -4,16 +4,17 @@ import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
-import type { ClaimedPassport } from "./held";
+import type { ConfirmedPassport } from "./held";
 
 /**
- * The pictures a listed platform registered for this person and then handed
- * to them. The credit rule names them as the person who imagined each one, so
- * these are drawn as their own work, straight under their own grid and in its
- * card, and the one line on each says where it was drawn and how it arrived.
- * They are never hidden: hiding is for things a wallet was sent, not its own.
+ * The pictures a listed platform handed to this person first, which they then
+ * confirmed by stating their own AI-use terms. The credit rule names them as
+ * the person who imagined each one, so these are drawn as their own work,
+ * straight under their own grid and in its card, and the one line on each says
+ * where it was drawn, how it arrived and when they confirmed it. They are
+ * never hidden: hiding is for things a wallet was sent, not its own.
  */
-export function ClaimedPictures({ rows }: { rows: ClaimedPassport[] }) {
+export function ConfirmedPictures({ rows }: { rows: ConfirmedPassport[] }) {
   const t = useTranslations("mine");
   const studio = useTranslations("studio");
   const common = useTranslations("common");
@@ -25,11 +26,11 @@ export function ClaimedPictures({ rows }: { rows: ClaimedPassport[] }) {
   }
 
   return (
-    <ul data-mine-claimed className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <ul data-mine-confirmed className="mt-8 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {rows.map((row, index) => (
         <motion.li
           key={row.id}
-          data-claimed={row.id}
+          data-confirmed={row.id}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
@@ -63,9 +64,14 @@ export function ClaimedPictures({ rows }: { rows: ClaimedPassport[] }) {
                 {kinds(String(row.kind))} <span className="mx-1">/</span>
                 {format.dateTime(new Date(Number(row.registeredAt) * 1000), "moment")}
               </p>
-              <p data-claimed-line className="mt-3 flex items-start gap-2 text-sm leading-snug text-text-muted">
+              <p data-confirmed-line className="mt-3 flex items-start gap-2 text-sm leading-snug text-text-muted">
                 <span aria-hidden className="motif mt-[5px] h-[6px] w-[6px] shrink-0" />
-                <span className="min-w-0">{t("claimedLine", { platform: row.platform })}</span>
+                <span className="min-w-0">
+                  {t("confirmedLine", {
+                    platform: row.platform,
+                    date: format.dateTime(new Date(row.confirmedAt * 1000), { dateStyle: "medium" }),
+                  })}
+                </span>
               </p>
             </div>
           </Link>

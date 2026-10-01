@@ -725,8 +725,11 @@
     "platform": {
       "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
       "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
-      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
+      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
+      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
+      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
+      "passedOn": "Imagined by {person}. Now held by {holder}.",
       "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
       "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "Esta carteira está listada como {platform}, mas esta imagem foi registrada fora do kit da Moolam para plataformas."
@@ -1127,7 +1130,8 @@
       "cardNamed": "{agent}, nome dado pelo próprio cartão",
       "unclaimed": "Not claimed yet",
       "heldBy": "{platform} holds it",
-      "via": "via {platform}"
+      "via": "via {platform}",
+      "handedBy": "handed by {platform}, not confirmed"
     },
     "ownerHint": "Criou esta imagem? Entre para gerenciá-la.",
     "share": {
@@ -1830,7 +1834,8 @@
     "showcaseCaption": "Um passaporte real na Monad. Os seus vão aparecer aqui como este.",
     "makeFirst": "Registrar sua primeira imagem",
     "signedInAs": "Você entrou como {account}",
-    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
+    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
+    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
     "held": {
       "heading": "Na sua conta, feito por outros",
       "label": "Na sua conta, não feita por você",

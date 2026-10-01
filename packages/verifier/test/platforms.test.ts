@@ -1,20 +1,22 @@
 // Covers the platform list's loader, the one label predicate and the origin lookup: signatures
 // recovered offline, the whole list refused on any bad entry, names colliding after NFKC, case
 // fold and trim, origins held to one canonical https form, the label's terms including a
-// rotation, platformForOrigin against look-alike and retired origins, and creditFor's three cases
-// with every way it gives null.
+// rotation, platformForOrigin against look-alike and retired origins, creditFor's five cases with
+// every way it gives null, and confirmedAtFor's one predicate over a consent history.
 // Does NOT cover the operator script's command line, the web app's copy (platforms-copy.test.ts
 // in packages/web does), ownerOf read from the chain (agentOwnerUnchanged is only given a stub
 // here), smart contract wallets as signers (only plain keys can sign an entry), or look-alike
 // letters from two scripts, which the name rule does not claim to catch, or who controls the host
-// behind a listed origin.
+// behind a listed origin. The first recipient and the consent history are given as values here;
+// reading them from the index and the chain is passportFacts' job and is not covered.
 
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import {
   agentOwnerUnchanged,
+  confirmedAtFor,
   creditFor,
   loadPlatforms,
   nameKey,
@@ -281,23 +283,116 @@ describe("platformLabel", () => {
 
 describe("creditFor", () => {
   const person = stranger.address;
+  const buyer = getAddress("0x4444444444444444444444444444444444444444");
 
   function credited(overrides: Partial<CreditPassport> = {}): CreditPassport {
-    return { ...passport(), holder: acmeCreator.address, agentOwnerNow: acmeOwner.address, ...overrides };
+    return {
+      ...passport(),
+      holder: acmeCreator.address,
+      agentOwnerNow: acmeOwner.address,
+      firstRecipient: null,
+      firstRecipientConfirmedAt: null,
+      ...overrides,
+    };
   }
 
-  it("leaves a kit passport the platform still holds unclaimed, naming nobody", async () => {
+  /** A kit passport the platform handed to `recipient`, with the chain's consent history beside it. */
+  function handedTo(recipient: string, holder: string, history: { writer: string; at: bigint }[]): CreditPassport {
+    return credited({
+      holder,
+      firstRecipient: recipient as `0x${string}`,
+      firstRecipientConfirmedAt: confirmedAtFor(history, recipient),
+    });
+  }
+
+  it("reads a kit passport that never left the platform's wallet as held, naming nobody", async () => {
     const platforms = await loaded([await signed(acme)]);
-    expect(creditFor(credited(), platforms, 3_000n)).toEqual({ case: "unclaimed", platform: "Acme Images", imaginedBy: null });
+    expect(creditFor(credited(), platforms, 3_000n)).toEqual({ case: "held", platform: "Acme Images", imaginedBy: null });
   });
 
-  it("credits the holder once the platform has handed a kit passport on", async () => {
+  it("names nobody for a stranger the platform pushed a picture to, and shows them only as holding it", async () => {
     const platforms = await loaded([await signed(acme)]);
-    expect(creditFor(credited({ holder: person }), platforms, 3_000n)).toEqual({
-      case: "claimed",
+    expect(creditFor(handedTo(person, person, []), platforms, 3_000n)).toEqual({
+      case: "handed",
+      platform: "Acme Images",
+      imaginedBy: null,
+      heldBy: person,
+    });
+  });
+
+  it("credits the first recipient once they confirm by writing their own terms, with the date", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(handedTo(person, person, [{ writer: person, at: 2_500n }]), platforms, 3_000n)).toEqual({
+      case: "confirmed",
       platform: "Acme Images",
       imaginedBy: person,
+      confirmedAt: 2_500,
     });
+  });
+
+  it("keeps crediting the confirmed first recipient after a resale, and shows the buyer only as holding it", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const history = [
+      { writer: person, at: 2_500n },
+      { writer: buyer, at: 2_700n },
+    ];
+    expect(creditFor(handedTo(person, buyer, history), platforms, 3_000n)).toEqual({
+      case: "passedOn",
+      platform: "Acme Images",
+      imaginedBy: person,
+      heldBy: buyer,
+      confirmedAt: 2_500,
+    });
+  });
+
+  it("never credits a consent writer who is not the first recipient", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    // The first recipient sold it on without confirming, and the buyer wrote terms.
+    const credit = creditFor(handedTo(person, buyer, [{ writer: buyer, at: 2_700n }]), platforms, 3_000n);
+    expect(credit).toEqual({ case: "handed", platform: "Acme Images", imaginedBy: null, heldBy: buyer });
+  });
+
+  it("never counts the platform's own terms as a confirmation", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const platformTerms = { writer: acmeCreator.address, at: 1_600n };
+    expect(creditFor(handedTo(person, person, [platformTerms]), platforms, 3_000n)?.case).toBe("handed");
+    expect(creditFor(credited(), platforms, 3_000n)?.case).toBe("held");
+  });
+
+  it("reads a platform's handover to its own second wallet as confirmed when that wallet writes terms (named non-goal)", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const secondWallet = acmeNewCreator.address;
+    expect(creditFor(handedTo(secondWallet, secondWallet, [{ writer: secondWallet, at: 2_500n }]), platforms, 3_000n)).toEqual({
+      case: "confirmed",
+      platform: "Acme Images",
+      imaginedBy: secondWallet,
+      confirmedAt: 2_500,
+    });
+  });
+
+  it("gives null whenever the index could not say who the first recipient was, whoever holds it now", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ firstRecipient: "unknown" }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ firstRecipient: "unknown", holder: person }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ firstRecipient: "unknown", holder: person, firstRecipientConfirmedAt: 2_500n }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("gives null when the index saw no handover but the chain shows someone else holding it", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ holder: person }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("gives null for a first recipient that is the creator itself or not an address", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const creator = acmeCreator.address;
+    expect(creditFor(handedTo(creator.toLowerCase(), person, [{ writer: creator, at: 1_600n }]), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ holder: person, firstRecipient: "0xnot" as `0x${string}` }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("gives null for a confirmation time a JSON number cannot carry", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const tooLate = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
+    expect(creditFor(handedTo(person, person, [{ writer: person, at: tooLate }]), platforms, 3_000n)).toBeNull();
   });
 
   it("credits the creator of a co-signed passport, with the platform as where it was drawn", async () => {
@@ -313,6 +408,7 @@ describe("creditFor", () => {
     const platforms = await loaded([await signed(acme)]);
     expect(creditFor(credited({ holder: null }), platforms, 3_000n)).toBeNull();
     expect(creditFor(credited({ holder: "not an address" }), platforms, 3_000n)).toBeNull();
+    expect(creditFor({ ...handedTo(person, person, [{ writer: person, at: 2_500n }]), holder: null }, platforms, 3_000n)).toBeNull();
   });
 
   it("gives null for a co-signed passport whose agent changed owner, or whose owner was not read", async () => {
@@ -343,13 +439,42 @@ describe("creditFor", () => {
     const upper = (address: string) => `0x${address.slice(2).toUpperCase()}`;
     for (const spell of [lower, upper]) {
       expect(creditFor(credited({ creator: spell(acmeCreator.address), holder: spell(acmeCreator.address) }), platforms, 3_000n)?.case).toBe(
-        "unclaimed",
+        "held",
       );
-      expect(creditFor(credited({ holder: spell(person) }), platforms, 3_000n)).toMatchObject({ case: "claimed", imaginedBy: person });
+      // The index stores addresses lowercase and the chain returns them checksummed, so every side is spelled differently here.
+      const history = [{ writer: spell(person), at: 2_500n }];
+      expect(creditFor(handedTo(spell(person), person, history), platforms, 3_000n)).toMatchObject({ case: "confirmed", imaginedBy: person });
+      expect(creditFor(handedTo(person, spell(person), history), platforms, 3_000n)).toMatchObject({ case: "confirmed", imaginedBy: person });
+      expect(creditFor(handedTo(spell(person), spell(buyer), history), platforms, 3_000n)).toMatchObject({
+        case: "passedOn",
+        imaginedBy: person,
+        heldBy: buyer,
+      });
       expect(
         creditFor(credited({ creator: spell(person), agentOwnerNow: spell(acmeOwner.address) }), platforms, 3_000n),
       ).toMatchObject({ case: "cosigned", imaginedBy: person });
     }
+  });
+});
+
+describe("confirmedAtFor", () => {
+  const person = stranger.address;
+
+  it("takes the earliest entry the first recipient wrote and ignores every other writer", () => {
+    const history = [
+      { writer: acmeCreator.address, at: 1_600n },
+      { writer: person.toLowerCase(), at: 2_900n },
+      { writer: loomCreator.address, at: 2_000n },
+      { writer: person, at: 2_500n },
+    ];
+    expect(confirmedAtFor(history, person)).toBe(2_500n);
+    expect(confirmedAtFor(history.slice(0, 1), person)).toBeNull();
+    expect(confirmedAtFor([], person)).toBeNull();
+  });
+
+  it("matches nothing for a writer or a first recipient that is not an address", () => {
+    expect(confirmedAtFor([{ writer: "not an address", at: 2_500n }], person)).toBeNull();
+    expect(confirmedAtFor([{ writer: person, at: 2_500n }], "not an address")).toBeNull();
   });
 });
 

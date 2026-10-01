@@ -3,7 +3,8 @@
 // malformed input is refused before any read (M2); a registrant's title comes back only inside a
 // JSON field (M4); repeated reads of one passport share one chain read (M5); a listed platform's
 // passport carries its label and an unlisted one none (P16); the credit for who imagined a picture
-// comes back in its three cases, and an unlisted agent's owner is never read; holder, creator and
+// comes back in its five cases from the index's first handover, an index that cannot say gives no
+// credit, and neither an unlisted agent's owner nor a non-kit passport's handover is ever read; holder, creator and
 // the terms' writer are separate facts (P23); metadata terms that differ from the chain's are shown beside the
 // chain's, never in their place (P24); check_picture carries the verify answer's facts and a
 // freshness read against the chain head (M6), and a verify answer too long for one result loses
@@ -26,6 +27,7 @@ import type { DisputeReader } from "../src/disputeRead.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { liveCardReader } from "../src/mcp/agentCard.js";
 import type { ChainPassportRecord, McpChain } from "../src/mcp/chain.js";
+import type { Handover } from "../src/mcp/handover.js";
 import { MAX_RESULT_CHARS } from "../src/mcp/inputs.js";
 import { onboardingTypedData, recordMessage, type PlatformRecord } from "../src/platforms/platforms.js";
 import { buildServer } from "../src/server.js";
@@ -60,6 +62,9 @@ const TERMS_ID = `0x${"d4".repeat(32)}` as Hex;
 const UNCLAIMED_ID = `0x${"e5".repeat(32)}` as Hex;
 const COSIGNED_ID = `0x${"f6".repeat(32)}` as Hex;
 const UNLISTED_AGENT_ID = `0x${"a7".repeat(32)}` as Hex;
+const HANDED_ID = `0x${"a8".repeat(32)}` as Hex;
+const PASSED_ON_ID = `0x${"a9".repeat(32)}` as Hex;
+const NO_HANDOVER_ID = `0x${"aa".repeat(32)}` as Hex;
 
 /** What TERMS_ID's metadata stated at generation: every answer differs from the chain's statement. */
 const GENERATION_TERMS = { aiTraining: "allowed", aiGenerativeTraining: "allowed", aiInference: "notAllowed", dataMining: "notAllowed" };
@@ -118,9 +123,28 @@ const CARD = {
   registrations: [{ agentId: 42, agentRegistry: "eip155:143:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" }],
 };
 
-const calls = { passport: 0, holder: 0, consentAt: 0, agent: 0, headTime: 0, documents: 0, recent: 0 };
+const calls = { passport: 0, holder: 0, consentAt: 0, agent: 0, headTime: 0, documents: 0, recent: 0, handover: 0 };
 /** Every agent id the chain was asked about, in order. */
 const agentIdsRead: bigint[] = [];
+/** Every passport the index was asked a first handover for, in order. */
+const handoverIdsRead: Hex[] = [];
+
+/** The kit passports' first handovers as the index records them; any other id is an index that cannot say. */
+const HANDOVERS: Record<string, Handover> = {
+  [UNCLAIMED_ID]: { firstRecipient: null, confirmedAt: null },
+  [KIT_ID]: { firstRecipient: buyer, confirmedAt: 1_700n },
+  [TERMS_ID]: { firstRecipient: buyer, confirmedAt: 1_700n },
+  [HANDED_ID]: { firstRecipient: stranger, confirmedAt: null },
+  [PASSED_ON_ID]: { firstRecipient: person, confirmedAt: 1_800n },
+};
+
+async function handover(id: Hex): Promise<Handover> {
+  calls.handover += 1;
+  handoverIdsRead.push(id);
+  const known = HANDOVERS[id];
+  if (known === undefined) throw new Error("this index was deployed before the handover fields");
+  return known;
+}
 
 const chain: McpChain = {
   headTime: async () => {
@@ -135,6 +159,7 @@ const chain: McpChain = {
     if (id === UNCLAIMED_ID) return passport(platformCreator.address);
     if (id === COSIGNED_ID) return passport(person);
     if (id === UNLISTED_AGENT_ID) return passport(person, { generatorAgentId: 44n });
+    if (id === HANDED_ID || id === PASSED_ON_ID || id === NO_HANDOVER_ID) return passport(platformCreator.address);
     return undefined;
   },
   holder: async (id) => {
@@ -230,6 +255,7 @@ async function startServer(source: PassportSource): Promise<{ app: FastifyInstan
         calls.recent += 1;
         return [];
       },
+      handover,
       platforms: await platformList(),
     },
   });
@@ -548,17 +574,37 @@ describe("the credit in get_passport", () => {
   it("names who imagined the picture in each case, and the platform only as where it was drawn", async () => {
     const client = await modernClient(creditUrl);
     const credits: unknown[] = [];
-    for (const passportId of [UNCLAIMED_ID, KIT_ID, COSIGNED_ID, UNLISTED_ID]) {
+    for (const passportId of [UNCLAIMED_ID, HANDED_ID, KIT_ID, PASSED_ON_ID, COSIGNED_ID, UNLISTED_ID]) {
       const result = await client.callTool({ name: "get_passport", arguments: { passportId } });
       expect(result.isError).not.toBe(true);
       credits.push((result.structuredContent as { credit: unknown }).credit);
     }
     expect(credits).toEqual([
-      { case: "unclaimed", platform: "Acme Images", imaginedBy: null },
-      { case: "claimed", platform: "Acme Images", imaginedBy: buyer },
+      { case: "held", platform: "Acme Images", imaginedBy: null },
+      { case: "handed", platform: "Acme Images", imaginedBy: null, heldBy: stranger },
+      { case: "confirmed", platform: "Acme Images", imaginedBy: buyer, confirmedAt: 1_700 },
+      { case: "passedOn", platform: "Acme Images", imaginedBy: person, heldBy: stranger, confirmedAt: 1_800 },
       { case: "cosigned", platform: "Acme Images", imaginedBy: person },
       null,
     ]);
+    await client.close();
+  });
+
+  it("gives no credit for a kit passport whose first handover the index cannot give", async () => {
+    const client = await modernClient(creditUrl);
+    const result = await client.callTool({ name: "get_passport", arguments: { passportId: NO_HANDOVER_ID } });
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({ found: true, platform: { status: "kit" }, holder: stranger, credit: null });
+    await client.close();
+  });
+
+  it("asks the index for a first handover only for a kit passport", async () => {
+    const client = await modernClient(creditUrl);
+    handoverIdsRead.length = 0;
+    for (const passportId of [COSIGNED_ID, UNLISTED_ID, UNLISTED_AGENT_ID]) {
+      await client.callTool({ name: "get_passport", arguments: { passportId } });
+    }
+    expect(handoverIdsRead).toEqual([]);
     await client.close();
   });
 

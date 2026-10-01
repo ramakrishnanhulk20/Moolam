@@ -71,6 +71,7 @@ export async function TopFacts({
       date: (seconds) => format.dateTime(new Date(Number(seconds) * 1000), { dateStyle: "medium" }),
       heldBy: (platform) => t("facts.heldBy", { platform }),
       via: (platform) => t("facts.via", { platform }),
+      handedBy: (platform) => t("facts.handedBy", { platform }),
       words: Object.fromEntries(TOP_FACT_WORD_KEYS.map((key) => [key, t(`facts.${key}`)])) as TopFactWords,
     },
   );

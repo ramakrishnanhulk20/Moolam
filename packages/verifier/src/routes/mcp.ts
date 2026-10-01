@@ -8,6 +8,7 @@ import { env } from "../env.js";
 import { liveCardReader, offlineCardReader, type CardAnswer, type CardReader } from "../mcp/agentCard.js";
 import { heldChain, liveMcpChain, offlineMcpChain, type McpChain } from "../mcp/chain.js";
 import type { McpDeps } from "../mcp/facts.js";
+import { envioHandoverReader, unavailableHandoverReader, type HandoverReader } from "../mcp/handover.js";
 import { MAX_BASE64_CHARS } from "../mcp/inputs.js";
 import { heldReads } from "../mcp/memory.js";
 import { envioRecentReader, unavailableRecentReader, type RecentReader } from "../mcp/recent.js";
@@ -56,6 +57,7 @@ export interface McpRouteOptions {
   readDocument?: DocumentReader;
   readCard?: CardReader;
   recent?: RecentReader;
+  handover?: HandoverReader;
   /** A platform list document in place of the bundled one, loaded and checked the same way. */
   platforms?: unknown;
 }
@@ -95,6 +97,12 @@ function liveRecent(): RecentReader {
   return env.PASSPORT_SOURCE === "envio" && env.ENVIO_GRAPHQL_URL !== undefined
     ? envioRecentReader(env.ENVIO_GRAPHQL_URL)
     : unavailableRecentReader();
+}
+
+function liveHandover(): HandoverReader {
+  return env.PASSPORT_SOURCE === "envio" && env.ENVIO_GRAPHQL_URL !== undefined
+    ? envioHandoverReader(env.ENVIO_GRAPHQL_URL)
+    : unavailableHandoverReader();
 }
 
 /** The hostnames a browser Origin may carry: the sites CORS_ORIGINS already names, and no others. */
@@ -226,6 +234,7 @@ export async function mcpRoutes(app: FastifyInstance, options: McpRouteOptions):
     ),
     readCard: heldCards(options.readCard ?? (offline ? offlineCardReader() : liveCardReader())),
     recent: options.recent ?? (offline ? unavailableRecentReader() : liveRecent()),
+    handover: options.handover ?? (offline ? unavailableHandoverReader() : liveHandover()),
     platforms: await loadPlatforms(options.platforms),
   };
   if (!deps.platforms.ok) {

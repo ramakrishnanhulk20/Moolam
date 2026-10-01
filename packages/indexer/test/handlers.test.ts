@@ -81,6 +81,22 @@ function registration(options: {
   };
 }
 
+function transfer(options: {
+  id: `0x${string}`;
+  from: `0x${string}`;
+  to: `0x${string}`;
+  blockNumber: number;
+  timestamp?: number;
+}) {
+  return {
+    contract: "MoolamRegistry" as const,
+    event: "Transfer" as const,
+    block: { number: options.blockNumber, timestamp: options.timestamp ?? DAY_TWO },
+    transaction: { hash: hash(options.blockNumber) },
+    params: { from: options.from, to: options.to, tokenId: BigInt(options.id) },
+  };
+}
+
 function statement(options: {
   id: `0x${string}`;
   uses: readonly [bigint, bigint, bigint, bigint];
@@ -472,6 +488,96 @@ describe("Moolam indexer handlers", () => {
 
     const day = await indexer.DailyStats.getOrThrow("2026-01-15");
     expect(day.registrations).toBe(1);
+  });
+
+  it("writes no first handover for the mint that comes with a registration", async () => {
+    const indexer = createTestIndexer();
+    const id = hash(1);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id }),
+            transfer({ id, from: ZERO_ADDRESS, to: CREATOR, blockNumber: DEPLOY_BLOCK + 100, timestamp: DAY_ONE }),
+          ],
+        },
+      },
+    });
+
+    const passport = await indexer.Passport.getOrThrow(id);
+    expect(passport.firstTransferTo).toBeUndefined();
+    expect(passport.firstTransferAt).toBeUndefined();
+    expect(passport.firstTransferBlock).toBeUndefined();
+  });
+
+  it("records the first handover out of the creator's wallet, lowercase", async () => {
+    const indexer = createTestIndexer();
+    const id = hash(1);
+    const checksummedBuyer = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01" as const;
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id }),
+            transfer({ id, from: CREATOR, to: checksummedBuyer, blockNumber: DEPLOY_BLOCK + 200 }),
+          ],
+        },
+      },
+    });
+
+    const passport = await indexer.Passport.getOrThrow(id);
+    expect(passport.firstTransferTo).toBe(checksummedBuyer.toLowerCase());
+    expect(passport.firstTransferAt).toBe(BigInt(DAY_TWO));
+    expect(passport.firstTransferBlock).toBe(BigInt(DEPLOY_BLOCK + 200));
+  });
+
+  it("keeps the first handover when the first recipient sells it on", async () => {
+    const indexer = createTestIndexer();
+    const id = hash(1);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id }),
+            transfer({ id, from: CREATOR, to: BUYER, blockNumber: DEPLOY_BLOCK + 200 }),
+            transfer({ id, from: BUYER, to: HOLDER, blockNumber: DEPLOY_BLOCK + 300 }),
+          ],
+        },
+      },
+    });
+
+    const passport = await indexer.Passport.getOrThrow(id);
+    expect(passport.owner).toBe(HOLDER);
+    expect(passport.firstTransferTo).toBe(BUYER);
+    expect(passport.firstTransferBlock).toBe(BigInt(DEPLOY_BLOCK + 200));
+  });
+
+  it("keeps the first handover when the passport comes back to the creator and goes out again", async () => {
+    const indexer = createTestIndexer();
+    const id = hash(1);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id }),
+            // Sending to itself hands the picture to nobody, so it is not the handover.
+            transfer({ id, from: CREATOR, to: CREATOR, blockNumber: DEPLOY_BLOCK + 150 }),
+            transfer({ id, from: CREATOR, to: BUYER, blockNumber: DEPLOY_BLOCK + 200 }),
+            transfer({ id, from: BUYER, to: CREATOR, blockNumber: DEPLOY_BLOCK + 300 }),
+            transfer({ id, from: CREATOR, to: HOLDER, blockNumber: DEPLOY_BLOCK + 400 }),
+          ],
+        },
+      },
+    });
+
+    const passport = await indexer.Passport.getOrThrow(id);
+    expect(passport.owner).toBe(HOLDER);
+    expect(passport.firstTransferTo).toBe(BUYER);
+    expect(passport.firstTransferBlock).toBe(BigInt(DEPLOY_BLOCK + 200));
   });
 
   it("creates the creator and records the key when a passkey is bound", async () => {

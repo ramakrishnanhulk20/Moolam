@@ -9,6 +9,7 @@ import type { Hex, IndexState } from "../types.js";
 import type { DocumentReader } from "../unseal.js";
 import type { CardAnswer, CardReader } from "./agentCard.js";
 import { isZeroAddress, type McpChain } from "./chain.js";
+import type { HandoverReader } from "./handover.js";
 import type { RecentReader } from "./recent.js";
 
 /** Everything the tools and resources read through. Each reader is already behind its memory. */
@@ -18,6 +19,7 @@ export interface McpDeps {
   readDocument: DocumentReader;
   readCard: CardReader;
   recent: RecentReader;
+  handover: HandoverReader;
   platforms: PlatformList;
 }
 
@@ -89,6 +91,27 @@ async function listedAgentOwner(deps: McpDeps, agentId: bigint): Promise<Address
   }
 }
 
+const HANDOVER_UNKNOWN = { firstRecipient: "unknown", confirmedAt: null } as const;
+
+/**
+ * The first handover and its confirmation from the index, the one source for both (P35), asked
+ * only for a passport platformLabel calls "kit", since creditFor reads them for nothing else and
+ * the index's query budget is shared. An index the service reads as behind, or one that cannot
+ * answer, gives "unknown", which creditFor turns into no credit.
+ */
+async function kitHandover(
+  deps: McpDeps,
+  id: Hex,
+  isKit: boolean,
+): Promise<{ firstRecipient: Address | null | "unknown"; confirmedAt: bigint | null }> {
+  if (!isKit || deps.app.verifier.indexState().stale) return HANDOVER_UNKNOWN;
+  try {
+    return await deps.handover(id);
+  } catch {
+    return HANDOVER_UNKNOWN;
+  }
+}
+
 export interface PassportAnswer {
   found: true;
   passportId: Hex;
@@ -118,7 +141,8 @@ export type Missing = { found: false; passportId: Hex };
  * verify service's own reader and memory, and its metadata document's title through the configured
  * gateway. The platform label comes from platformLabel over the chain's own fields (P16), and the
  * credit for who imagined the picture from creditFor over the same fields, the holder and a listed
- * agent's owner read now. Holder and creator are two fields and are never merged (P23).
+ * agent's owner read now, and, for a kit passport, the first handover and its confirmation read
+ * from the index. Holder and creator are two fields and are never merged (P23).
  */
 export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<PassportAnswer | Missing>> {
   let record: Awaited<ReturnType<McpChain["passport"]>>;
@@ -130,12 +154,6 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
   if (record === undefined) {
     return { ok: true, value: { found: false, passportId: id } };
   }
-  const [holder, dispute, document, agentOwnerNow] = await Promise.all([
-    holderOf(deps, id),
-    deps.app.verifier.dispute.answerFor(id),
-    documentOf(deps, record.metadataURI),
-    listedAgentOwner(deps, record.generatorAgentId),
-  ]);
   const fields = {
     creator: record.creator,
     kind: record.kind,
@@ -144,7 +162,25 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
     registeredAt: record.registeredAt,
   };
   const label = deps.platforms.ok ? platformLabel(fields, deps.platforms.platforms) : null;
-  const credit = deps.platforms.ok ? creditFor({ ...fields, holder, agentOwnerNow }, deps.platforms.platforms) : null;
+  const [holder, dispute, document, agentOwnerNow, handover] = await Promise.all([
+    holderOf(deps, id),
+    deps.app.verifier.dispute.answerFor(id),
+    documentOf(deps, record.metadataURI),
+    listedAgentOwner(deps, record.generatorAgentId),
+    kitHandover(deps, id, label?.status === "kit"),
+  ]);
+  const credit = deps.platforms.ok
+    ? creditFor(
+        {
+          ...fields,
+          holder,
+          agentOwnerNow,
+          firstRecipient: handover.firstRecipient,
+          firstRecipientConfirmedAt: handover.confirmedAt,
+        },
+        deps.platforms.platforms,
+      )
+    : null;
   return {
     ok: true,
     value: {

@@ -720,8 +720,11 @@
     "platform": {
       "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
       "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
-      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
+      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
+      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
+      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
+      "passedOn": "Imagined by {person}. Now held by {holder}.",
       "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
       "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "이 지갑은 Moolam 목록에 {platform}의 지갑으로 올라 있지만, 이 이미지는 Moolam 플랫폼 키트 밖에서 등록되었습니다."
@@ -1122,7 +1125,8 @@
       "cardNamed": "{agent}, 카드에 스스로 밝힌 이름",
       "unclaimed": "Not claimed yet",
       "heldBy": "{platform} holds it",
-      "via": "via {platform}"
+      "via": "via {platform}",
+      "handedBy": "handed by {platform}, not confirmed"
     },
     "ownerHint": "직접 만들었나요? 로그인해서 관리하세요.",
     "share": {
@@ -1825,7 +1829,8 @@
     "showcaseCaption": "Monad 위의 실제 여권. 내 여권도 여기 이렇게 놓입니다.",
     "makeFirst": "첫 이미지 등록하기",
     "signedInAs": "로그인 계정: {account}",
-    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
+    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
+    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
     "held": {
       "heading": "다른 사람이 만들고 내가 보유한 것",
       "label": "보유 중, 내가 만들지 않음",

@@ -98,6 +98,9 @@ indexer.onEvent(
       // which the registry forces to equal p.creator. So the first owner is
       // always the creator, and only a later Transfer moves it.
       owner: creatorId,
+      firstTransferTo: undefined,
+      firstTransferAt: undefined,
+      firstTransferBlock: undefined,
       registeredAt,
       registeredBlock: BigInt(event.block.number),
       txHash: event.transaction.hash,
@@ -362,9 +365,30 @@ indexer.onEvent(
       return;
     }
 
+    const from = addressId(event.params.from);
+    const to = addressId(event.params.to);
+
+    // The first handover out of the creator's wallet is who a platform gave the
+    // picture to, which is where its credit rests. It is kept the first time and
+    // never again: a later sale, or the passport coming back to the creator and
+    // going out a second time, must not move the credit to someone else. A
+    // creator sending to itself has handed it to nobody, so that is not it either.
+    const firstHandover =
+      passport.firstTransferTo === undefined && from === passport.creator_id && to !== passport.creator_id;
+
     // Owner moves, creator never does. Who made the image is a fact about the
     // past and no sale can rewrite it.
-    context.Passport.set({ ...passport, owner: addressId(event.params.to) });
+    context.Passport.set({
+      ...passport,
+      owner: to,
+      ...(firstHandover
+        ? {
+            firstTransferTo: to,
+            firstTransferAt: BigInt(event.block.timestamp),
+            firstTransferBlock: BigInt(event.block.number),
+          }
+        : {}),
+    });
   },
 );
 

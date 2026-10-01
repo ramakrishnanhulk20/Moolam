@@ -374,14 +374,66 @@ export interface CreditPassport extends LabelPassport {
   holder: string | null;
   /** ownerOf(generatorAgentId) on the ERC-8004 registry read now, or null when it was not or could not be read. */
   agentOwnerNow: string | null;
+  /**
+   * The first wallet the creator transferred the passport to, from the index. Null when the index
+   * says no transfer has left the creator; "unknown" when the index could not say, for example an
+   * older index without the field.
+   */
+  firstRecipient: Address | null | "unknown";
+  /**
+   * Unix seconds of the earliest consent entry whose writer is the first recipient, from the
+   * chain's consent history (confirmedAtFor computes it), or null when they have written none.
+   */
+  firstRecipientConfirmedAt: bigint | null;
 }
 
-export interface Credit {
-  case: "unclaimed" | "claimed" | "cosigned";
-  /** The listed platform's name: where the picture was drawn, never its maker. */
-  platform: string;
-  /** The person who imagined the picture, or null while the platform still holds it. */
-  imaginedBy: Address | null;
+/**
+ * Who a picture drawn on a listed platform is credited to. The platform is only ever where it was
+ * drawn. `confirmedAt` is unix seconds as a number so the value goes into JSON as it is.
+ */
+export type Credit =
+  /** The platform's wallet has never let the passport go: nobody is named yet. */
+  | { case: "held"; platform: string; imaginedBy: null }
+  /** The platform handed it on, and the wallet it went to first has not written its own terms. */
+  | { case: "handed"; platform: string; imaginedBy: null; heldBy: Address }
+  /** The first recipient confirmed by writing their own terms, and still holds it. */
+  | { case: "confirmed"; platform: string; imaginedBy: Address; confirmedAt: number }
+  /** The first recipient confirmed, and someone else holds it now. */
+  | { case: "passedOn"; platform: string; imaginedBy: Address; heldBy: Address; confirmedAt: number }
+  /** The creator's own key approved the picture at registration. */
+  | { case: "cosigned"; platform: string; imaginedBy: Address };
+
+/** One consent entry as the chain's history holds it: who wrote it and when, in unix seconds. */
+export interface CreditConsentEntry {
+  writer: string;
+  at: bigint;
+}
+
+/**
+ * When the first recipient confirmed a passport: the earliest `at` among the consent entries whose
+ * writer is the first recipient, both through getAddress, or null when there is none. That is the
+ * whole predicate. An entry by anyone else never counts, so neither a later buyer's terms nor the
+ * platform's own make anyone the person credited. A writer that is not an address never matches,
+ * and a first recipient that is not an address matches nothing.
+ */
+export function confirmedAtFor(history: readonly CreditConsentEntry[], firstRecipient: string): bigint | null {
+  let recipient: Address;
+  try {
+    recipient = getAddress(firstRecipient);
+  } catch {
+    return null;
+  }
+  let earliest: bigint | null = null;
+  for (const entry of history) {
+    let writer: Address;
+    try {
+      writer = getAddress(entry.writer);
+    } catch {
+      continue;
+    }
+    if (writer === recipient && (earliest === null || entry.at < earliest)) earliest = entry.at;
+  }
+  return earliest;
 }
 
 /**
@@ -389,10 +441,19 @@ export interface Credit {
  * the site and the MCP server say the same thing: the person who imagined it,
  * never the platform.
  *
- * "unclaimed" and "claimed" rest on platformLabel's "kit": the platform's wallet
- * registered it, and the credit follows the holder. While the holder is the
- * creator the platform still holds it and nobody is named; once it has handed the
- * passport on, the holder is named, and that credit rests on the handover alone.
+ * The kit cases rest on platformLabel's "kit": the platform's wallet registered
+ * it. The person credited is only ever the first wallet the platform handed it to,
+ * as the index recorded the handover, and only once that wallet has confirmed by
+ * writing its own terms. A later buyer is shown as holding it, never as having
+ * imagined it, and a wallet the platform pushed a picture to without its say is
+ * never named until it confirms. "held" is a passport that never left the
+ * platform's wallet; "handed" one whose first recipient has not confirmed;
+ * "confirmed" a confirmed first recipient that still holds it; "passedOn" a
+ * confirmed first recipient that no longer does.
+ *
+ * Non-goal: a platform that hands a picture to a second wallet of its own and
+ * writes terms from it reads "confirmed" for that wallet. Nothing on chain tells
+ * a platform's second wallet from a person's.
  *
  * "cosigned" is a creator platformLabel does not know, a Generated passport with
  * a manifest by a current entry's agent, registered inside that entry's window,
@@ -400,10 +461,13 @@ export interface Credit {
  * page's own rule). The creator's own key approved the picture, so the creator is
  * named.
  *
- * Null for everything else: "outsideKit", an unlisted agent, an agent owner that
- * changed or was not read, and a holder that was not read in the kit cases,
- * because credit is never guessed. Every address pair is compared after
- * getAddress on both sides.
+ * Null for everything else, because credit is never guessed: "outsideKit", an
+ * unlisted agent, an agent owner that changed or was not read; in the kit cases
+ * a holder that was not read, a first recipient the index could not give
+ * ("unknown", whoever holds it now), an index that says nothing left the creator
+ * while the chain shows someone else holding it, a first recipient that is the
+ * creator itself, and a confirmation time a JSON number cannot carry. Every
+ * address pair is compared after getAddress on both sides.
  *
  * @param now unix seconds; defaults to the machine clock.
  */
@@ -414,17 +478,8 @@ export function creditFor(
 ): Credit | null {
   const label = platformLabel(input, entries, now);
   if (label !== null) {
-    if (label.status !== "kit" || input.holder === null) return null;
-    let holder: Address;
-    try {
-      holder = getAddress(input.holder);
-    } catch {
-      return null;
-    }
-    // platformLabel only says "kit" for a creator that getAddress accepted.
-    return holder === getAddress(input.creator)
-      ? { case: "unclaimed", platform: label.name, imaginedBy: null }
-      : { case: "claimed", platform: label.name, imaginedBy: holder };
+    if (label.status !== "kit") return null;
+    return kitCredit(input, label.name);
   }
 
   if (input.agentOwnerNow === null) return null;
@@ -446,6 +501,43 @@ export function creditFor(
   // The list rule allows one current entry per agent; two would leave the platform's name in doubt.
   if (matches.length !== 1) return null;
   return { case: "cosigned", platform: matches[0]!.name, imaginedBy: creator };
+}
+
+/** creditFor's kit cases, for a passport platformLabel has already called "kit". */
+function kitCredit(input: CreditPassport, platform: string): Credit | null {
+  // Without the index's word on the first handover even "held" is a guess: the
+  // passport may have gone out to a person who confirmed and then come back.
+  if (input.holder === null || input.firstRecipient === "unknown") return null;
+  let holder: Address;
+  let creator: Address;
+  try {
+    holder = getAddress(input.holder);
+    creator = getAddress(input.creator);
+  } catch {
+    return null;
+  }
+
+  if (input.firstRecipient === null) {
+    // The index has seen no handover while the chain shows someone else holding
+    // it, so the index is behind and nobody can be named yet.
+    return holder === creator ? { case: "held", platform, imaginedBy: null } : null;
+  }
+
+  let recipient: Address;
+  try {
+    recipient = getAddress(input.firstRecipient);
+  } catch {
+    return null;
+  }
+  // The index never records a creator sending to itself, so this is a damaged row.
+  if (recipient === creator) return null;
+
+  const confirmedAt = input.firstRecipientConfirmedAt;
+  if (confirmedAt === null) return { case: "handed", platform, imaginedBy: null, heldBy: holder };
+  if (confirmedAt < 0n || confirmedAt > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return holder === recipient
+    ? { case: "confirmed", platform, imaginedBy: recipient, confirmedAt: Number(confirmedAt) }
+    : { case: "passedOn", platform, imaginedBy: recipient, heldBy: holder, confirmedAt: Number(confirmedAt) };
 }
 
 /** Reads ownerOf(agentId) from the ERC-8004 identity registry. Supplied by the caller that owns a chain client. */

@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { AbiEvent, Hex } from "viem";
+import { z } from "zod";
 import { readArt, type Art } from "@/components/passport/art";
 import {
   CACHE_TAGS,
@@ -273,6 +274,156 @@ export async function passportsHeldNotMade(address: Hex, limit = 24, offset = 0)
     generatorAgentId: /^[0-9]{1,78}$/.test(row.generator?.id ?? "") ? BigInt(row.generator?.id as string) : 0n,
     manifestHash: row.manifestHash,
   }));
+}
+
+/**
+ * How many of a passport's consent entries the handover read takes, oldest
+ * first: the MCP server's number (packages/verifier/src/mcp/handover.ts), so
+ * the site and the server stop reading at the same entry.
+ */
+export const HANDOVER_ENTRIES_MAX = 64;
+
+// The MCP server's query, word for word. The index is the one source for the
+// first handover (P35); the site never reads Transfer logs for it.
+const HANDOVER_QUERY = `query MoolamHandover($id: String!, $limit: Int!) {
+  Passport(where: { id: { _eq: $id } }, limit: 1) {
+    firstTransferTo
+    firstTransferAt
+    consentCount
+  }
+  ConsentEntry(where: { passport_id: { _eq: $id } }, order_by: [{ index: asc }], limit: $limit) {
+    writer
+    at
+  }
+}`;
+
+const indexAddress = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{40}$/)
+  .transform((value) => value.toLowerCase() as Hex);
+
+// Kept as a decimal string so the answer can be held; a bigint cannot.
+const indexSeconds = z
+  .union([z.string().regex(/^[0-9]{1,15}$/), z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)])
+  .transform((value) => String(value));
+
+// Every field is required, null included: an index deployed before the handover
+// fields existed answers with an error or without the field, and both must fail
+// here, never read as "nothing left the platform".
+const handoverSchema = z.object({
+  Passport: z
+    .array(
+      z.object({
+        firstTransferTo: indexAddress.nullable(),
+        firstTransferAt: indexSeconds.nullable(),
+        consentCount: z.number().int().min(0),
+      }),
+    )
+    .max(1),
+  ConsentEntry: z.array(z.object({ writer: indexAddress, at: indexSeconds })).max(HANDOVER_ENTRIES_MAX),
+});
+
+/**
+ * One platform passport's first handover and its consent rows, exactly as the
+ * index holds them. Who confirmed, and when, is worked out from these by
+ * handoverFacts in lib/data/platform-label.ts, with the credit rule's own
+ * confirmedAtFor.
+ */
+export interface IndexHandover {
+  /** The first wallet the creator sent the passport to, or null when it never left the creator. */
+  firstTransferTo: Hex | null;
+  firstTransferAt: bigint | null;
+  /** How many consent entries the passport has in all, which may be more than were read. */
+  consentCount: number;
+  /** The oldest HANDOVER_ENTRIES_MAX consent entries, in the order they were written. */
+  consent: { writer: Hex; at: bigint }[];
+}
+
+/** The same answer with its times still strings, so it can be held. */
+interface HandoverWire {
+  firstTransferTo: Hex | null;
+  firstTransferAt: string | null;
+  consentCount: number;
+  consent: { writer: Hex; at: string }[];
+}
+
+/**
+ * One index query for one passport's handover, or a throw. Refuses a shape it
+ * does not know, a passport the index does not hold yet, and a recipient with
+ * no time or a time with no recipient, as the MCP server's reader does.
+ */
+async function handoverWire(id: Hex): Promise<HandoverWire> {
+  const parsed = handoverSchema.safeParse(
+    await askIndex<unknown>(HANDOVER_QUERY, { id: id.toLowerCase(), limit: HANDOVER_ENTRIES_MAX }),
+  );
+  if (!parsed.success) {
+    throw new Error("the index answered the handover in a shape this reader does not know");
+  }
+  const [passport] = parsed.data.Passport;
+  if (passport === undefined) {
+    throw new Error("the index does not hold this passport yet");
+  }
+  if ((passport.firstTransferTo === null) !== (passport.firstTransferAt === null)) {
+    throw new Error("the index holds half a handover");
+  }
+  return { ...passport, consent: parsed.data.ConsentEntry };
+}
+
+function fromHandoverWire(wire: HandoverWire): IndexHandover {
+  return {
+    firstTransferTo: wire.firstTransferTo,
+    firstTransferAt: wire.firstTransferAt === null ? null : BigInt(wire.firstTransferAt),
+    consentCount: wire.consentCount,
+    consent: wire.consent.map((entry) => ({ writer: entry.writer, at: BigInt(entry.at) })),
+  };
+}
+
+/**
+ * The handover for a passport page, held for a minute under the passport's own
+ * name, so the facts strip and the record below it share one query and a new
+ * consent entry drops it with the rest of the record. Any failure is
+ * "unknown" (P35): the credit rule then names nobody, and a failure is never
+ * held.
+ */
+export async function heldHandover(id: Hex): Promise<IndexHandover | "unknown"> {
+  const held = unstable_cache(async () => await handoverWire(id), ["moolam-passport-handover", id.toLowerCase()], {
+    revalidate: HOLD_SECONDS,
+    tags: [CACHE_TAGS.index, passportTag(id)],
+  });
+  try {
+    return fromHandoverWire(await held());
+  } catch {
+    return "unknown";
+  }
+}
+
+/** Four times what /mine lists at once, so a long visit cannot grow the map without end. */
+const BROWSER_HANDOVERS_MAX = 200;
+
+const browserHandovers = new Map<string, { until: number; answer: Promise<HandoverWire> }>();
+
+/**
+ * The same read for a page that runs in the browser, where the server's cache
+ * does not exist. Held in memory for the same minute, and only while it is
+ * good: a failure is "unknown" and is asked again next time.
+ */
+export async function passportHandover(id: Hex, now = Date.now()): Promise<IndexHandover | "unknown"> {
+  const key = id.toLowerCase();
+  const kept = browserHandovers.get(key);
+  const entry =
+    kept !== undefined && kept.until > now ? kept : { until: now + HOLD_SECONDS * 1_000, answer: handoverWire(id) };
+  if (entry !== kept && browserHandovers.size >= BROWSER_HANDOVERS_MAX) {
+    browserHandovers.delete(browserHandovers.keys().next().value as string);
+  }
+  browserHandovers.set(key, entry);
+  try {
+    return fromHandoverWire(await entry.answer);
+  } catch {
+    if (browserHandovers.get(key) === entry) {
+      browserHandovers.delete(key);
+    }
+    return "unknown";
+  }
 }
 
 /** Every passport one generating agent signed for, newest first. */
