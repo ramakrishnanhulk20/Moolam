@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": []
   },
-  "include": ["main.ts", "workflow.ts", "phash.ts", "decode.ts"]
+  "include": ["main.ts", "workflow.ts", "phash.ts", "decode.ts", "blockhash.ts", "dihedral.ts", "lookalike.ts"]
 }

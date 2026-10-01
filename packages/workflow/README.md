@@ -6,6 +6,19 @@ the perceptual fingerprint itself, and writes the result back on chain as an att
 in that chain of steps trusts Moolam's own servers: the nodes fetch the image and do the maths
 themselves, and they have to agree with each other before anything is signed.
 
+## Two handlers
+
+`initWorkflow` returns two handlers, in this order, and the order matters: `--trigger-index 0` is
+what the droplet's recheck runner and every command below simulate.
+
+| Index | Trigger | What it does |
+| --- | --- | --- |
+| 0 | `PassportRegistered` on the registry | measures the new passport's picture, writes the match verdict to the verdict receiver, then the look-alike step writes to `MoolamLookalikes` |
+| 1 | cron, `0 */10 * * * *` (every ten minutes, UTC) | the catch-up: asks the verify service for passports still missing a network record and writes only what is missing |
+
+`backlogPerRun: 0` leaves the cron handler out entirely, so a config can turn the catch-up off
+without moving index 0.
+
 ## What runs, in order
 
 1. **Trigger.** An EVM log trigger on the registry `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`,
@@ -26,7 +39,7 @@ themselves, and they have to agree with each other before anything is signed.
    for: a node a block or two behind, not a chain that has changed its mind.
 3. **Fetch.** Inside node mode, each node reads the passport's metadata document (an `ipfs://` file
    through the gateway, or an inline `data:application/json,` document), then downloads the
-   thumbnail it names. Two HTTP requests per run, against a limit of five.
+   thumbnail it names. Two HTTP requests for the verdict, against CRE's limit of fifteen a run.
 
    A passport registered sealed names no picture, and its document can never be rewritten, so when
    the document says `sealed: true` with no `thumbnail` or `image` key the node asks the verify
@@ -46,11 +59,28 @@ themselves, and they have to agree with each other before anything is signed.
    against each other on 24 generated images: identical on 11 of them, never more than 2 bits
    apart, against a match threshold of 10. The same test proves the separable DCT gives the same
    64 bits as the plain double sum it replaced.
-5. **Consensus.** The node function returns only `{ recomputed, distance, matched }`, and
-   `consensusIdenticalAggregation` requires a quorum of nodes to have produced the identical
-   verdict. The image bytes never go through consensus, so a CDN serving a slightly different
-   re-encode to one node is fine as long as every node lands on the same answer.
-6. **Write.** The verdict is ABI encoded as
+
+   `blockhash.ts` recomputes the 256-bit block hash the same way: it is blockhash-core's
+   `bmvbhash` at 16 bits a row, the function imghash runs for the verify service, copied step for
+   step. `dihedral.ts` then turns and mirrors the decoded picture into the same eight variants the
+   service's `src/dihedral.ts` builds, same names, same order, and takes both hashes of each.
+   `packages/verifier/test/workflow-blockhash.test.ts` holds this against the service: on the same
+   pixels the block hash is imghash's exactly; on the network's thumbnails of the robustness corpus
+   (24 pictures and their 15 copies each, all eight variants, 3,072 in all) it stays within 28 block
+   hash bits and 6 pHash bits of the service. All of that gap is the two JPEG decoders (jpeg-js here,
+   libjpeg in sharp) rounding pixels differently, and 28 is inside the 36 bits of headroom the live
+   measure left (`kitchen/reports/fingerprint-measure-2026-10-01.md`: the stored block hash and the
+   thumbnail's are at most 4 bits apart on all 39 checkable passports, against a threshold of 40).
+5. **Consensus.** The node function returns `{ recomputed, distance, blockhashDistance, matched }`
+   and the eight fingerprint pairs, and `consensusIdenticalAggregation` requires a quorum of nodes
+   to have produced the identical answer. The image bytes never go through consensus, so a CDN
+   serving a slightly different re-encode to one node is fine as long as every node lands on the
+   same fingerprints.
+6. **Write.** A passport matches when the upright picture's pHash is within 10 bits of the stored
+   one and its block hash within 40 bits of the stored one (both numbers from `lookalike-rule.ts`;
+   the config's `matchThreshold` must equal the shared 10 or the config is refused). A passport
+   whose stored block hash is not this picture's no longer matches on an honest pHash alone. The
+   verdict is ABI encoded as
    `(uint256 chainId, uint64 executedAt, bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed)`,
    signed into a report, and delivered to a receiver that calls `attest` on the registry. A
    simulator run goes through Chainlink's mock forwarder to the public `SimulationReceiver`
@@ -71,6 +101,102 @@ themselves, and they have to agree with each other before anything is signed.
    verdict that landed.
    Chainlink's docs say the receiver status is always success in a simulation, which matches the
    mock forwarder swallowing a refusal (below), so only a deployed run can show one here.
+7. **The look-alike step.** Only after the verdict has landed, so nothing here can hold it back,
+   and only for an original (no parent); an Edited passport skips it. A passport whose own picture
+   did not match its stored fingerprints skips it too, since a run that cannot vouch for the
+   picture cannot say what it looks like.
+   - One `POST {verifierUrl}/lookalikes/candidates` with this run's eight fingerprint pairs and
+     `asOf` set to the new passport's `registeredAt`. The service may name up to three earlier
+     passports. A status other than 200, `not-ready`, or a body that is not exactly
+     `{"status":"ok","candidates":[...]}` with up to three distinct lower case ids is "no answer":
+     nothing is written and the run fails, naming the verdict transaction that did land. A route
+     that is down or rate limited can never be read as "none found".
+   - Each named id is read with `getPassport`. It is kept only when the registry knows it, its
+     `registeredAt` is strictly before the new passport's (the same second is never earlier, by
+     `registeredBefore` in `lookalike-rule.ts`, the file the verify service keeps byte for byte),
+     its creator is someone else, and one of this run's eight variants sits within 10 pHash bits
+     and 40 block hash bits of its stored fingerprints. A read that fails writes nothing.
+   - The earliest kept one is written, with both distances and whether its picture is kept from
+     view: its document, read by the same pinned rule as the new passport's, says `sealed: true`, or
+     cannot be read at all, which counts as sealed. None kept writes the zero id, which means "none
+     among the candidates Moolam's search proposed", never "original".
+   - The report is `(bytes32 kind = keccak256("moolam.lookalike.v1"), uint256 chainId,
+     uint64 executedAt, bytes32 passportId, bytes32 earlierId, uint16 phashDistance,
+     uint16 blockhashDistance, bool earlierSealed)`, 256 bytes, to `lookalikeReceiver` with a gas
+     limit of 400,000. A refused write fails the run like a refused verdict does. A write that
+     landed logs `look-alike written in tx 0x..`, worded apart from the verdict's `report tx` line
+     so the recheck runner never mistakes one for the other.
+
+   Worst case for one log-trigger run: 3 registry reads, 3 picture calls, 1 candidates call, 3
+   candidate reads and 1 document, so 5 of CRE's 15 HTTP calls and 6 of its 15 contract reads.
+
+## The catch-up (index 1, every ten minutes)
+
+Chainlink's log trigger drops events over its quota, and passports registered before activation
+were never run by the network at all. The cron handler fills both gaps.
+
+1. `GET {verifierUrl}/lookalikes/backlog?asOf=<run time less 10 minutes>&n=<backlogPerRun>`. The
+   service names up to seven passports, oldest first. No answer, in the same sense as above, writes
+   nothing and fails the run.
+2. For each id: `getPassport`, the verdict receiver's `lastExecutedAt(id)`, and for an original
+   `MoolamLookalikes.originOf(id).executedAt`. A floor counts as the network's only at or after
+   `activationTime`; verdicts the simulator wrote to `0x0d69` before 2026-09-26 sit below it and
+   so count as missing.
+3. Only what is missing is written: the verdict, the look-alike record, or both, by the same code
+   as index 0. The service only chooses which ids to look at; the chain decides what is missing and
+   the run measures the picture itself.
+
+Budget, by design: 1 HTTP call for the backlog; per passport 2 or 3 reads for the floors, and only
+when something is missing 3 calls for the picture, plus 2 calls and 3 reads for a missing look-alike.
+A passport is started only when its worst case still fits in 15 calls and 15 reads, so at least two
+passports fit in the worst case and four when only verdicts are missing. The rest wait, and the next
+run is offered them again. Look-alike writes per run are capped at this run's share of
+`lookalikesPerDay` (1,000 a day is 7 for the first 136 runs of the UTC day and 6 after), so the
+catch-up never writes more than that in a day. The workflow keeps no count between runs, so the
+log trigger's one write per registration is bounded by Chainlink's log-trigger quota and by the
+verify service's own ceiling on its routes, not by this number.
+
+## Config fields for the look-alike work
+
+In `config.network.json` only. `config.json`, which the droplet runner simulates, has none of
+them, so the look-alike step is off there and its runs are as before.
+
+| Field | Now | Meaning |
+| --- | --- | --- |
+| `lookalikeReceiver` | `0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C` | `MoolamLookalikes`. Absent turns the step off; the zero address runs every read and call and writes nothing (a dry run). Must not be the verdict receiver. |
+| `activationTime` | `0` | Unix seconds when the network deploy went active. `0` means not set, and the catch-up then writes nothing. |
+| `backlogPerRun` | `7` | Passports asked for per catch-up run, 1 to 7. `0` leaves the cron handler out. |
+| `lookalikesPerDay` | `1000` | Look-alike reports the catch-up may write a day. `0` turns the look-alike step off in both handlers. |
+
+Receiver addresses and the activation time come only from this file, never from the service.
+
+## Tomorrow, in this order
+
+1. `MoolamLookalikes` deployed (WO-273): done 2026-10-01 at `0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C`,
+   pins read back, ownership renounced, and set as `lookalikeReceiver`.
+2. The verify service's two routes live on Railway (WO-275a). Until then every log-trigger run's
+   look-alike step finds no route, writes nothing and fails after its verdict lands.
+3. The receiver listing on the policy executed (after 2026-10-02 05:35 UTC), then the network
+   deploy. Ram's yes.
+4. `activationTime` set to the moment that deploy went active, then a redeploy, which gives a new
+   workflow id. Ram's yes again. Until this step the catch-up writes nothing.
+
+## Reading the look-alike records
+
+Each record is the newest per passport. From this folder, with the RPC URL from the root `.env`:
+
+```bash
+cast call 0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C \
+  "originOf(bytes32)((bytes32,uint16,uint16,bool,uint64,uint64))" <passport id> \
+  --rpc-url "$MONAD_MAINNET_RPC_URL"
+```
+
+The answer is `(earlierId, phashDistance, blockhashDistance, earlierSealed, executedAt, writtenAt)`.
+`executedAt` zero means the network has never checked that passport. An `earlierId` of zero with a
+non-zero `executedAt` means Chainlink found no earlier passport by someone else among the candidates
+Moolam's search proposed, which is not proof that nobody registered it first. Every record is also a
+`LookalikeChecked(passportId, earlierId, phashDistance, blockhashDistance, earlierSealed,
+executedAt)` event on the explorer, in a transaction sent to the forwarder `0x76c9...5E62`.
 
 ## Private re-checks: `moolam-sealed-verifier`
 
@@ -149,15 +275,20 @@ What it does not prove:
 
 | File | What it holds |
 | --- | --- |
-| `moolam-verifier/workflow.ts` | The trigger, the read, the fetch, the consensus wrapper and the write |
+| `moolam-verifier/workflow.ts` | Both handlers: the triggers, the reads, the fetches, the consensus wrappers and the writes |
 | `moolam-verifier/phash.ts` | The pure TypeScript fingerprint, matched to sharp-phash |
+| `moolam-verifier/blockhash.ts` | The pure TypeScript block hash, blockhash-core's `bmvbhash` as imghash runs it |
+| `moolam-verifier/dihedral.ts` | The eight turns and mirrors and both hashes of each, as the verify service builds them |
+| `moolam-verifier/lookalike.ts` | The look-alike decisions with no SDK: reading the service's answers, judging candidates, the run's budget and the daily share |
+| `moolam-verifier/lookalike-rule.ts` | The 10 and 40 bit thresholds and `registeredBefore`, byte for byte the verify service's copy; never edited here alone |
 | `moolam-verifier/decode.ts` | JPEG decoding inside the sandbox |
 | `moolam-verifier/picture.ts` | Which picture a run fingerprints, including an unsealed passport's, with no network so it is tested from `packages/recheck-runner/test/workflow-picture.test.ts` |
 | `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, verify service, match threshold, for the simulator (`monad-mainnet`) |
-| `moolam-verifier/config.network.json` | The same, with the network receiver `0x0d69...Eff04`, for the deployed workflow (`monad-network`) |
-| `moolam-verifier/workflow.test.ts` | One whole run through the CRE SDK's test runtime, proving a write only counts when the transaction and the receiver both say success |
+| `moolam-verifier/config.network.json` | The same, with the network receiver `0x0d69...Eff04` and the look-alike fields, for the deployed workflow (`monad-network`) |
+| `moolam-verifier/workflow.test.ts` | Whole runs of both handlers through the CRE SDK's test runtime: a write only counts when the transaction and the receiver both say success, and one named test for each look-alike and catch-up rule |
 | `spike/decode-spike.ts` | The throwaway run that proved a JPEG can be decoded in the sandbox at all |
 | `../verifier/test/workflow-phash.test.ts` | Holds this fingerprint against the verifier's sharp based one |
+| `../verifier/test/workflow-blockhash.test.ts` | Holds the block hash and the eight variants against the verifier's own |
 
 ## Running it
 
@@ -293,8 +424,13 @@ deployed workflow's receiver (see "Two targets").
   that disagrees with every honest node and consensus would fail, but the workflow does not verify
   the CID itself, and a gateway that is down means no attestation rather than a wrong one.
 - Only JPEG thumbnails are decoded. A PNG or WebP thumbnail needs another decoder.
-- The fingerprint catches re-encodes, resizes and metadata strips. It does not catch crops,
-  rotations or mirrors, which sit 21 to 32 bits away, well past the threshold of 10.
+- The verdict catches re-encodes, resizes and metadata strips of the passport's own picture. It
+  compares the upright picture only. The look-alike step tries all eight turns and mirrors, so a
+  quarter-turned or mirrored copy of an earlier passport is found; neither catches crops, which sit
+  21 bits and more away.
+- The look-alike record proves order of registration, never authorship: a thief who registers
+  first is the earlier passport. Its "none" depends on the candidates Moolam's search proposes; a
+  candidate the service withholds is never checked.
 - A passport whose metadata names no image gets no attestation. The workflow refuses rather than
   guessing, which is the right answer but means the demo needs a passport that points at a real
   thumbnail.
