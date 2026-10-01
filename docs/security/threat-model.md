@@ -666,6 +666,149 @@ The rules across all of it:
   the service's volume at `/data`, written whole, so a process killed mid-write leaves the previous
   file.
 
+## Look-alikes, the trust mark and challenges
+
+Added on 2026-10-01. A passport proves who registered a picture first, and nothing stopped a person
+from registering a re-saved copy of someone else's picture as a fresh original. Moolam does not
+refuse a look-alike, because a refusal hands the picture to whoever registers first. It labels one.
+Before signing, the studio and the platform kit say when an earlier passport by someone else looks
+like the picture, and a public camera upload is checked against the web through Google Cloud Vision.
+After registration, Chainlink's workflow measures the picture itself and writes any earlier
+look-alike it can prove to a new receiver, `MoolamLookalikes`. Each passport wears one trust mark,
+issued worst first, and only the network's own writes can light it. A challenge still needs a bond;
+the holder may now sign an answer within 14 days, and the resolver's reasons are published through
+a second new contract, `MoolamDecisions`. What the mark means to a reader is on
+[The trust mark](../concepts/trust-mark); how a challenge runs is in [Disputes](../guides/disputes).
+
+Both contracts are on Monad mainnet with a full Sourcify match:
+[`MoolamLookalikes` 0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C](https://monadvision.com/address/0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C)
+and
+[`MoolamDecisions` 0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F](https://monadvision.com/address/0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F).
+This section states what the code does today. The live attack pass has not run against any of it,
+so every row below is proven by the contract, workflow, service, index and web tests it names. Three
+switches are not on as this is written. The index's network activation time is zero, so nothing in
+it counts as the network's and no passport wears "Checked by Chainlink" yet. The policy's listing of
+`MoolamReceiver` (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), the receiver the network's verdicts
+go through, is queued and can run after 2026-10-02 05:35:29 UTC. The verify service's look-alike
+routes and its web check reach the hosted service with its next deploy. Paths are under
+`packages/verifier` unless they name another package.
+
+### A) What kind of system this is
+
+- **An oracle whose output is a label on a named person.** Chainlink's nodes measure a stranger's
+  picture and write through a forwarder, and the site turns the record into "Registered after a
+  look-alike" on one passport and "A later passport looks the same" on another. The classic faults:
+  a writer that is not who the reader thinks, a replayed or stale report, an order turned round so
+  the original reads as the copy, and a candidate source, Moolam's own search, that can make the
+  oracle say "none" by staying quiet.
+- **A service that repeats what strangers wrote.** The warning before signing carries another
+  registrant's title and date into a creator's studio and into a platform's server. `seenEarlier` and
+  the web pages are pinned for good and drawn on public pages. Anyone can also register straight on
+  chain with a document that says anything.
+- **A client of a paid third party that sees pictures.** A camera upload's public thumbnail goes to
+  Google before the person has decided to register.
+- **Public routes that steer a spender.** The candidates and backlog routes are read by Chainlink's
+  nodes with no credential, and the backlog decides what the network spends gas on.
+- **Two signed-message routes that pin for good:** the holder's answer and the resolver's reasons.
+- **Not applicable:** SQL and shell injection (no database engine, no shell); reentrancy on the two
+  new contracts (neither holds money, `MoolamLookalikes` calls nothing, `MoolamDecisions` only reads
+  the registry and the policy); upgrade abuse (no proxy); user HTML (every title, answer and reason
+  is drawn as text).
+
+### B) Threat model
+
+**Trust boundaries.** Chainlink's forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62 to `onReport`
+on both receivers, the one signed crossing for the network's writes; the owner key of `MoolamReceiver`
+to its setters, a crossing with no delay (`MoolamLookalikes` has no owner, so no such crossing);
+Chainlink's nodes to the candidates and backlog routes, and the answer back into the run; a
+registrant's document and thumbnail, and up to three candidates' records per run; the Envio index to
+the site, the MCP server and the backlog route; Google's answer into a document the creator signs;
+another registrant's title into a studio or a platform's server; the holder's wallet to the answer
+route; the resolver's key to `resolve`, `publish` and the reasons route; the chain and the index to
+the one rule that says which passport came first.
+
+**What an attacker controls.** Directly: the picture bytes, title and sealed flag of every prepare; a
+document written straight on chain, `seenEarlier`, the sworn line and the title included; the
+fingerprints of a passport registered straight on chain; the fingerprints, `asOf` and `n` sent to the
+candidates and backlog routes, by anyone; the answer text, passport id and signature; the evidence
+address on `flag`; how many passports a wallet registers, and when. Indirectly: Vision's page
+addresses and counts, the gateway's bodies, the RPC's and the index's answers and lag, and clock
+values that become `executedAt`.
+
+**What the privileged position holds.** The forwarder's signed path is the only thing that can light
+"Checked by Chainlink" or "Registered after a look-alike". The deployer key owns `MoolamReceiver`
+and is today the policy's owner, resolver and treasury. The verify service holds the Vision key, the
+Pinata key and the index copy, and decides which candidates the network ever hears about. The
+workflow owner 0xf072a8c620bfc818875736e3f2d3a2a339c06584 deploys what the pins accept. The resolver
+key alone decides a bond and the mark "Challenge upheld".
+
+**What an attacker wants.**
+1. To brand an original as a copy: turn the order round (a same-second pair, a replayed older record,
+   an index that joins the wrong way), or write a record through a re-pointed receiver.
+2. To keep a stolen registration clean: register straight on chain to skip the warning, the sworn
+   line and the web check, or make the search or Vision fail so the silence reads as clean.
+3. To show a person a false "someone registered this earlier" as they sign, through crafted
+   fingerprints or a fake `seenEarlier`.
+4. To spend Moolam's money: Vision calls, network reports through junk registrations, pins through the
+   answer and reasons routes.
+5. To plant text or links in front of other people.
+6. To freeze a passport's record with an `executedAt` at the top of the range, or carry an answer
+   over to another dispute.
+
+### C) The standards, and where each is held
+
+The numbers are the ones the code's own comments carry, so each row can be found with a search.
+
+| Invariant | Held by | What proves it |
+|---|---|---|
+| **L1 One signed door.** No look-alike record is stored or emitted unless the call came from the pinned forwarder and the report's metadata names the pinned workflow owner and name. The pins were read back on mainnet before ownership was given up, and nobody can re-point the receiver now | Chainlink's `ReceiverTemplate.onReport`, vendored unchanged in `packages/contracts/src/vendor/chainlink/ReceiverTemplate.sol`, in front of `MoolamLookalikes._processReport`; `script/DeployLookalikes.s.sol` stops on any pin that reads back wrong, then calls `renounceOwnership` and checks the owner is zero | `MoolamLookalikes.t.sol` test_aCallerOtherThanTheForwarderIsRefused, test_aReportFromAnotherWorkflowOwnerIsRefused, test_aReportFromAnotherWorkflowNameIsRefused and test_onceRenouncedNoSetterCanRepointTheReceiver. Read live on 2026-10-01 at block 109,634,577: owner the zero address, forwarder 0x76c9, author 0xf072, name pin `0x34623863303364663034` |
+| **L2 Chain, kind and freshness are inside the signed payload.** A report for another chain, without the look-alike kind word, naming no passport, naming a passport as its own earlier one, or with `executedAt` at or below that passport's stored floor is refused whole. The kind word keeps a verdict report and a look-alike report from being sent to each other's receiver | `MoolamLookalikes._processReport` and `LOOKALIKE_KIND` | test_aReportWithTheWrongKindWordIsRefused, test_aVerdictShapedPayloadIsRefused, test_aReportForAnotherChainIsRefused, test_aReportForPassportZeroIsRefused, test_aReportNamingThePassportAsItsOwnEarlierIsRefused, test_executedAtAtOrBelowTheFloorIsRefused; testFuzz_aPayloadWithoutTheKindWordIsRefused |
+| **L3 Bounded time.** An `executedAt` more than one hour past the block time is refused, so no report can set a floor an honest later run cannot pass | `MAX_FUTURE_SKEW` in `MoolamLookalikes._processReport` | test_executedAtAboveBlockTimePlusOneHourIsRefused; testFuzz_executedAtIsAcceptedOnlyAboveTheFloorAndWithinTheSkew. `MoolamReceiver` has no such bound, stated under the weaknesses below |
+| **L4 Trust is the transaction, not the contract's settings.** A verdict or a look-alike record counts as the network's only when its writer is the named receiver, the transaction went to forwarder 0x76c9, and its block time is at or after the activation time. An activation time of zero marks nothing. A record written after someone re-points a receiver fails this rule and is never shown as Chainlink's | `isNetworkWrite` in `packages/indexer/src/network.ts`, used by the index's attestation and `LookalikeChecked` handlers; on an index without the flag, `networkVerdicts` in `packages/web/components/mark/read.ts` reads the report transaction's `to` | indexer `lookalikes.test.ts`, the five "L4" tests, including "a record sent to the receiver by any transaction but the forwarder's is not the network's" and "with the activation time at zero nothing is the network's"; web `marks.test.ts` "decides from the report transaction's `to` on an index without the flag" and "never calls a verdict from any other receiver the network's, whatever carried it". Not covered: the network itself writing a wrong record |
+| **L5 A record names two different passports in the right order, or nothing.** The index believes a record only when both passports exist in it, they differ, the earlier one was registered in a strictly earlier second, and both distances fit their fingerprints. A zero earlier id is "none", never a match | `isValidLookalike` in `packages/indexer/src/lookalike.ts` | indexer `lookalikes.test.ts` "L5: an earlier passport registered in the same second is not valid", "L5: a record naming the wrong order, or a passport the index has not seen, is not valid" and "L5: a zero earlier id is none, never a match" |
+| **L6 Only the newest record counts.** A newer record replaces the older one, and the passport the older one named loses its count of later look-alikes | the receiver's per-passport floor; the `LookalikeChecked` handler in `packages/indexer/src/EventHandlers.ts` | test_aNewerReportReplacesTheRecord; indexer "L6: a newer record that found none takes the mark off both passports" and "L6: an older record arriving after a newer one changes nothing" |
+| **L7 Nothing to steal.** Neither new contract has a payable function, a `receive` or a `fallback` | `MoolamLookalikes`, `MoolamDecisions` | test_itTakesNoMoneyAndAnswersNoUnknownCall in both `MoolamLookalikes.t.sol` and `MoolamDecisions.t.sol` |
+| **L8 The service proposes, the run proves.** A candidate counts only after this run reads it from the registry and finds it registered strictly earlier, by another creator, with one of this run's own eight turns and mirrors of the new picture inside both thresholds of its stored fingerprints. Of those kept, the earliest is written | `judgeCandidates` in `packages/workflow/moolam-verifier/lookalike.ts`, called by `lookalikeStep` in `workflow.ts` | `workflow.test.ts`, the eight "L8" tests, including "a candidate the chain reads as later never becomes the earlier id", "a candidate by the same creator never becomes the earlier id" and "a candidate stored as a quarter turn of the picture is found through the eight variants" |
+| **L9 Only originals.** A passport registered as an edit skips the look-alike step and asks the service nothing | `isOriginal` in `lookalike.ts` | "L9: an Edited passport skips the look-alike step and asks the service nothing" |
+| **L10 A tie is never "earlier".** Two passports registered in the same second are never earlier than each other, in the warning, the run, the index or the site. One function decides, kept byte for byte the same in the service and the workflow | `registeredBefore` in `src/lookalike-rule.ts` and `packages/workflow/moolam-verifier/lookalike-rule.ts`; `isValidLookalike` in the index | `lookalike-rule.test.ts` "keeps the two lookalike-rule.ts files byte for byte the same" and "never calls one of two passports in the same second earlier than the other"; workflow "L10: a candidate registered in the same second is not earlier"; `lookalike-presign.test.ts` "answers none for a look-alike registered in the very second the picture is being signed" |
+| **L11 One pair of thresholds, both fingerprints.** 10 of 64 pHash bits and 40 of 256 block hash bits, from one file. A verdict matches only when both are inside, and a run whose own measurement misses the chain's stored fingerprints writes "does not match" and no look-alike | `LOOKALIKE_PHASH_BITS` and `LOOKALIKE_BLOCKHASH_BITS` in `lookalike-rule.ts`; `measureThumbnail` and `lookalikeStep` in `workflow.ts` | "L11: a stored block hash this run's picture misses writes does not match and no look-alike" and "L11: the match threshold in config must be the shared one"; `lookalike-rule.test.ts` "takes fingerprint.ts's thresholds, and so every match the service makes, from the shared constants" |
+| **L12 Documents only by the pinned rule.** The earlier passport's document is fetched only as `ipfs://<cid>` through the gateway (one carried inline as a data address is read with no request), and one that cannot be read is reported as sealed, which shows no picture | `readSealed` in `workflow.ts`, through `pinnedFetchUrl` in `pinned.ts` | "L12: an earlier passport whose document says sealed, or cannot be read, is reported sealed" |
+| **L13 and L14 A refused write is a failed run, and the catch-up covers both receivers.** A write the receiver refused is never logged as a success. Every ten minutes the catch-up reads both receivers' floors for each passport the backlog names and writes only what is missing | `writeTo` and `lookalikeStep` in `workflow.ts`; `onBacklogCron` | "L13: a refused look-alike write fails the run and names the verdict that landed", "L14: the backlog writes only the receiver whose floor is missing" and "L14: a passport with both floors at or after activation is left alone" |
+| **L15 Bounded spend.** Each run fits Chainlink's 15 HTTP calls and 15 contract reads; the catch-up takes at most 7 passports a run; look-alike writes are capped by day (1,000 by default), and 0 turns either off | `Budget` and `lookalikeWritesThisRun` in `lookalike.ts`; `backlogPerRun` and `lookalikesPerDay` in the workflow's config schema | "L15: the read budget holds at 15 HTTP calls and 15 reads with seven passports all missing", "L15: the off switches" and "L15: the daily ceiling spreads over the day's 144 runs and never exceeds it" |
+| **L16 The routes are pure functions, shape-checked first.** Candidates: at most eight fingerprint pairs and an `asOf` no more than 60 seconds ahead; at most three ids, registered strictly before `asOf`, the earliest always first. An index not loaded through `asOf` answers "not ready" with no list. Two nodes asking with the same `asOf` get the same bytes | `lookalikeRoutes` in `src/routes/lookalikes.ts` | `lookalike-routes.test.ts`, the "L16" tests, including "answers two asks with the same asOf in the same bytes, whoever asks" and "answers not-ready, with no list, while the index is not loaded through asOf" |
+| **L17 Silence is never "none".** Any status but 200, any body off the schema, "not ready", a list too long or an id in any other form is "no answer", and the run writes nothing | `readServiceAnswer` in `packages/workflow/moolam-verifier/lookalike.ts` | the "L17" tests in `workflow.test.ts`, including "a non-200 or malformed candidates answer writes nothing and fails the run" |
+| **L18 Reads a stranger can start are bounded.** Both routes sit under the service's 60 a minute per address and a ceiling of their own for everyone (600 and 120 a minute), and neither reads the chain, Pinata or the gateway while a request waits | `ceiling` and `lookalikeRoutes` in `src/routes/lookalikes.ts` | "L18: reads no document, block or log while a request waits", "meets the service's 60 a minute per address on the 61st ask" and "refuses everyone past each route's own ceiling for the minute" |
+| **L19 The warning is a read that succeeded, or it says it could not check.** Four answers: an earlier passport by someone else, the person's own earlier one, none as of the time the index was current to, or could not check. The studio never shows nothing | `lookalikeBeforeSigning` in `src/lookalike/presign.ts`, called by `/prepare` and `/platform/prepare` | `lookalike-presign.test.ts` "answers none with the second the index was current to, and reads no wallet or title" and "answers unchecked for a stale index, fingerprints that could not be taken, or wallets that failed or never came" |
+| **L20 A stranger's title is text.** It reaches a studio or a platform's server only as one printable line of at most 120 code points, the id only by the passport id pattern, the date only from the chain | `lookalikeBeforeSigning` and its title reader in `src/lookalike/presign.ts` | "cuts a hostile title to one printable line of at most 120 code points" and "sends the id by the one passport id pattern, lower-cased, and the date from the chain record" |
+| **L21 and L25 The registrant's own words stay theirs.** The sworn line, a platform's statement, `seenEarlier` and the web pages are pinned only in their exact shape, and drawn as the registrant's statement, never as a chain fact. `seenEarlier` becomes a link only when it is a passport id. A document with neither the sworn line nor a platform's statement reads "Registered outside Moolam's studio: no sworn statement, no web check." | `registrantStatements` in `src/statements.ts`; `seenEarlierLink` and `registeredOutside` in `packages/web/components/mark/strength.ts` | `sworn-documents.test.ts` "gives every studio and co-sign document the sworn line and every platform document at most the platform's words, never both"; web `marks.test.ts` "links seenEarlier only when it is a passport id, and draws anything else as text" and "says outside the studio for a document with no sworn line and no platform statement" |
+| **L22 One rule decides what goes to Google.** A studio upload, kind Captured, not sealed, not a platform's, not generated. Only its 512 pixel public thumbnail is sent, after the sign-in and the day's ceiling, with the key in a header and never in an address, redirects refused, and ten seconds to answer | `sendsToWeb` and `webCheck` in `src/webcheck/check.ts`; `visionDetector` in `src/webcheck/vision.ts` | `web-check.test.ts` "sends only a studio upload of a captured picture that is not sealed, not a platform's and not generated", "sends a public upload's published thumbnail once, and never a sealed picture", "puts the key in the x-goog-api-key header, never in the address, and refuses redirects" and "gives up on Vision after ten seconds, aborts the call and answers silent" |
+| **L23 Google's answer is checked like an input, and its absence means nothing.** Pages are kept only as http or https with a host, no query or fragment, at most 10 of at most 256 characters, drawn as text. Zero hits, a failure and a timeout all record nothing, and no screen says "not found online" | `pageAddress` in `src/webcheck/vision.ts`; `webCheck` answers `silent` | "keeps only http and https pages with a host, without query, fragment or credentials, at most 256 characters", "answers silent and records nothing for zero hits or a failed call"; web "lists the web pages as text, never as links, with the count as stored" |
+| **L24 Vision's spend is capped and its key stays out of every log.** 300 checks a day by default, 0 as the off switch | `VISION_CHECKS_PER_DAY` in `src/env.ts`; `safeReason` on every failure | "stops sending once VISION_CHECKS_PER_DAY is spent for the day, read from the environment" and "never writes the key into a log line or an answer, whatever Vision or the network says" |
+| **L26 One signature, one answer, one open dispute.** The holder signs EIP-712 `ChallengeAnswer` over the passport, the dispute's `openedAt` and challenger, the sha256 of the text and a deadline. The service reads the dispute and `ownerOf` at one block, and accepts only while the dispute is open and within 14 days of `openedAt` by chain time. A plain wallet signature only; a used signature is refused | `challengeRoutes` in `src/routes/challenges.ts`; `answerDigest` and `ANSWER_WINDOW_SECONDS` in `src/challenges/answer.ts` | `challenge-answer.test.ts` "refuses a signature that binds another text, passport, dispute, challenger or deadline", "accepts until fourteen days after openedAt by chain time, and not a second later" and "takes only a plain 65 byte wallet signature: a compact, a high-s or a contract wallet's signature is refused" |
+| **L27 The answer is bounded and shown only beside its dispute.** At most 4,000 bytes of printable text whose only control character is the line break, one answer per dispute, pinned as a document that names the passport, `openedAt`, the challenger and the holder | `answerTextProblem` and `answerDocument` in `src/challenges/answer.ts`; the read route in `src/routes/challenges.ts` | "refuses text over 4,000 bytes, empty, with any control character but the line break, or with direction characters, before any chain read", "refuses a reused signature and a second answer to the same dispute" and "shows an answer only beside the dispute it was given for"; web `challenges.test.ts` "refuses an answer for another dispute, passport, registry or chain, or whose hash or signer is wrong" |
+| **L28 The reasons belong to the decision they explain.** `publish` takes the resolver from the policy and the outcome and `openedAt` from the registry at call time, so the caller supplies neither, accepts only an `ipfs://` content id of at most 128 bytes, and only once per dispute. The reasons route pins only for a signature by the policy's resolver over that very outcome. A page shows reasons only when the published outcome is the registry's | `MoolamDecisions.publish`; `decisionRoutes` in `src/routes/decisions.ts`; `decisionView` in `packages/web/lib/disputes/decisions.ts` | `MoolamDecisions.t.sol` test_publishByAnyoneButTheResolverIsRefused, test_theResolverIsReadAtCallTime, test_publishOnAnOpenOrNeverFlaggedDisputeIsRefused, test_aMalformedOrTooLongReasonsAddressIsRefused and test_aSecondPublishForTheSameDisputeIsRefused; `decision-reasons.test.ts` "refuses a stranger's signature, and the resolver's signature over other words or the other outcome"; web `challenges.test.ts` "drops a published decision whose outcome disagrees with the registry" |
+| **L29 A stranger's address is a link only as `ipfs://<cid>`.** The challenger's evidence and the resolver's reasons are followed only as a bare content id through the gateway; anything else is printed as text | `pinnedLink` in `packages/web/lib/disputes/evidence.ts` | web `challenges.test.ts` "holds the pinned rule to ipfs:// and a content id, nothing else" and "draws an https address as text with no link" |
+| **L30 One function issues the mark, worst first.** The site and the MCP server share it byte for byte. A simulator verdict never lights "Checked by Chainlink" or "Does not match" | `issueMark` in `packages/web/components/mark/mark.ts`, the same file as `src/mcp/mark.ts` | web `marks.test.ts` "names the eight marks in the order the design ranks them" and "never lets a simulator verdict light Checked by Chainlink or Does not match"; `mark-copy.test.ts` "keeps the two mark.ts files byte for byte the same" |
+| **L31 "None" is not "original".** A network record with no earlier passport reads "Chainlink found no earlier look-alike among the candidates Moolam's search proposed." | the `lookalike.none` words in `packages/web/messages/en.json` | web `marks.test.ts` "words a network record with no earlier passport exactly as the threat model asks, and never as original" |
+| **L32 The mark is a read.** A fact that could make the mark worse and could not be read gives no mark and a line that says so | `issueMark`'s `unread` state | web `marks.test.ts` "says the mark could not be read when the registry did not answer, and presses no stamp" |
+
+The rules across all of it:
+
+- **One rule, not a list.** "Earlier" is one function over the registry's `registeredAt`. "The
+  network's" is one rule over the transaction and the event. What goes to Google is one predicate. The
+  mark is one function. What they do not cover: the network itself writing a wrong record, and who
+  made a picture.
+- **Compare after the same parser.** Passport ids are lowercased by one function everywhere, creators
+  are compared after one normaliser, and the thresholds come from one file the service and the
+  workflow both keep.
+- **Fail closed.** No candidate without this run's own measurement, no record without two passports
+  in order, no mark on a tie, "could not check" instead of silence, "not ready" instead of a partial
+  list, no answer outside an open dispute, and a refused write is a failed run.
+- **The bond.** A rejected challenge's bond is credited to the policy's treasury. A change of the
+  treasury to the burn address 0x000000000000000000000000000000000000dEaD is queued (change id
+  `0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
+  07:22:03 UTC); until it runs, the treasury is the deployer 0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c.
+
 ## What the screens promise
 
 Three rules for what the web app draws and serves. The first two were added after the code review
@@ -822,5 +965,49 @@ a registrant wrote into their document.
 - **Pictures are not moderated.** A person can say "Not mine" and stop a platform's offers, and a key
   that collects too many refusals stops writing tickets. Moolam does not judge what a title or a
   picture shows.
+- **A look-alike mark proves order, not authorship.** "Registered after a look-alike" says which
+  passport came first. A thief who registers a picture before its maker does is marked as the
+  earlier one, and the maker's later passport carries the mark. The challenge is the remedy.
+- **"None found" rests on Moolam's search.** The network only proves what the verify service
+  proposes. A service that is down, behind, or that leaves a candidate out makes the run write
+  "none", which the site words as none among the candidates Moolam's search proposed, never as
+  original. A search that gives no answer at all writes nothing.
+- **Crafted fingerprints, and an open search.** Someone who knows the algorithms can craft a picture
+  that lands near another's fingerprints, and the public candidates route tells them how near they
+  are. Nothing here defends against that.
+- **Registering straight on chain skips the checks.** A passport registered without Moolam's studio
+  or the kit has no warning, no sworn line and no web check. The page says so in those words, and
+  that is all Moolam can say.
+- **The web check answers one narrow question.** It says whether Google found the picture on the web
+  when Moolam looked, nothing about who posted it first. It sends a public camera picture's 512
+  pixel thumbnail to Google before the person signs, which the studio says beside the upload. When
+  it finds nothing, fails or times out, nothing is recorded, so its absence proves nothing.
+- **Only originals are compared.** A passport registered as an edit skips the look-alike step, so a
+  copy registered as an edit of the copier's own earlier passport is not marked by it.
+- **Two passports in the same second are never ordered.** Monad seals more than one block a second
+  and `registeredAt` counts whole seconds, so neither of two same-second registrations is ever
+  marked as the later one.
+- **The verdict receiver has no ceiling on time and still has an owner.** `MoolamReceiver`
+  (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) cannot change, and it refuses no `executedAt` for
+  being far in the future. A clock fault in the workflow could set a floor no later run passes and
+  freeze that passport's verdict there; the fix would be a new receiver. Its owner, the deployer key,
+  can re-point it in one transaction with no delay. The rule in L4 keeps such a write from ever
+  showing as Chainlink's, but cannot stop it being written. `MoolamLookalikes` has neither problem.
+- **The network's spend is bounded by caps, not by who caused it.** Junk registrations fill the
+  backlog, and the caps in L15 are what limit the cost.
+- **Chainlink's nodes see every public thumbnail they check,** as they always have.
+- **One resolver decides.** Moolam decides challenges today, through one address the policy names.
+  The written rules, the holder's answer and the published reasons make each decision checkable; they
+  do not make it a court's. The holder's answer and the resolver's reasons are their authors' words,
+  and Moolam bounds their bytes and judges nothing else.
+- **A holder in a contract wallet cannot answer.** The answer route takes only a plain wallet
+  signature, so a passport held by a smart account has no way to answer a challenge here.
+- **A quick re-flag can strand a decision's reasons.** A rejected passport can be flagged again at
+  once, and the registry then holds the new dispute. Reasons for the earlier decision that were not
+  yet published can no longer be published through `MoolamDecisions`, because it reads the dispute
+  the registry holds now.
+- **A burned bond is gone for good.** Once the queued treasury change runs, a rejected challenge's
+  bond is credited to an address nobody holds a key for. The registry credits bonds rather than
+  sending them, so nothing reaches that address and nothing can be withdrawn from it.
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.

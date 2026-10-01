@@ -120,9 +120,11 @@ while the registry is paused, so a verification already in flight can still land
 An attestation is a signal, not a verdict. It says a Chainlink CRE workflow downloaded the file the
 passport points at and got a fingerprint this far from the recorded one. It sits next to the
 signatures rather than above them. Every attestation on chain today was written by a simulation run
-of that workflow, one machine and no node consensus, and the passport card says so under each
-verdict. A run on the live network, where a quorum of nodes has to agree, needs deployment
-access this project does not have.
+of that workflow, one machine and no node consensus, and the passport page labels each one a test
+run. Only a verdict from Chainlink's network, where a quorum of nodes has to agree, can turn on a
+passport's trust mark: one written by `MoolamReceiver` in a transaction sent to Chainlink's
+forwarder. That receiver's listing on the policy is queued and can run after 2026-10-02 05:35:29
+UTC. What each mark means, and what lights it, is in [The trust mark](trust-mark).
 
 ## Disputes and bonds
 
@@ -131,7 +133,13 @@ Anyone can challenge a passport by calling `flag(passportId, evidenceURI)` with 
 of the evidence URI is stored, so the URI cannot be swapped for something else later.
 
 The resolver named by the policy settles it. Upheld marks the passport disputed and credits the
-bond back to the challenger. Rejected credits the bond to the treasury. A passport whose challenge
+bond back to the challenger, and the passport's trust mark becomes "Challenge upheld" for good.
+Rejected credits the bond to the policy's treasury, which today is the deployer
+0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c. A change of the treasury to the burn address
+0x000000000000000000000000000000000000dEaD is queued (change id
+`0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
+07:22:03 UTC); once it runs, a rejected bond can never be withdrawn by anyone. How the mark reads
+during and after a challenge is in [The trust mark](trust-mark). A passport whose challenge
 was upheld cannot be flagged again, because the record already says disputed and a second bond
 would be burned for nothing. One whose challenge was rejected can be flagged again with new
 evidence.

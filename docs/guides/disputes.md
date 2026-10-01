@@ -31,6 +31,23 @@ it needs to say. One whose challenge was rejected can be flagged again with new 
 Only the keccak256 of `evidenceURI` is stored, not the URI itself, so what a challenger pointed at
 cannot be quietly swapped for something else afterwards.
 
+## What a challenge needs
+
+The flag panel lists the rules before it asks for the bond, under "What a challenge needs":
+
+1. "The earlier work: the picture you say this passport copies."
+2. "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier
+   passport."
+3. "A Verify answer that shows it is the same picture."
+4. "That it is not a copy you licensed to them."
+
+Then, set apart: "The challenger carries the burden. Without this evidence, the record stands."
+
+A [Verify answer](verify-a-copy) names the first registration of any copy, and a passport that
+Chainlink's network has marked "Registered after a look-alike" names its earlier passport on its own
+page ([The trust mark](../concepts/trust-mark)). Either is a place to start. Registered first is not
+the same as made first, so a challenge can be brought against either passport.
+
 ## The bond
 
 `msg.value` has to be exactly `VerifierPolicy.disputeBond()`, which this deployment set to 1 MON.
@@ -41,6 +58,13 @@ The bond sits in the registry and is never sent anywhere until the dispute is se
 challenge costs an honest challenger nothing but gas. The registry keeps a running `totalBonds`, and
 `rescueNative` computes what the owner may sweep as `balance - totalBonds - totalOwed`, so an open
 bond can never be swept out from under a live dispute.
+
+A rejected challenge's bond is credited to the policy's treasury. Today that is the deployer
+0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c. A change of the treasury to the burn address
+0x000000000000000000000000000000000000dEaD is queued (change id
+`0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
+07:22:03 UTC). Once it runs, a rejected bond is credited to an address nobody holds a key for, so
+nobody can ever withdraw it and Moolam gains nothing from a rejection.
 
 Flagging costs 172,939 gas at the median, including the bond going into escrow.
 
@@ -59,6 +83,14 @@ is the honest shape of it: dispute resolution here is one named party, not a cou
 Whether that party is a person, a multisig or a committee is a deployment choice, and the timelock
 is what stops it being changed quietly.
 
+The flag panel says it the same way, under "Who decides": "Moolam decides challenges today, by these
+rules, and publishes every decision with its reasons. Moolam is one company, not a court." And: "The
+decider is one address named on Monad. Changing it takes a public 24 hour wait." Below that it says
+where a rejected bond goes, read from the policy as the panel opens: while the treasury is any other
+address, "A rejected challenge's bond is credited to the treasury the policy names", with the
+address; only once the treasury is the burn address, "A rejected challenge's bond is burned, so
+Moolam gains nothing either way."
+
 Two outcomes:
 
 - **Upheld.** The passport is marked disputed, permanently, and the bond is credited back to the
@@ -66,7 +98,69 @@ Two outcomes:
   An edit registered from that picture is shown as disputed too, everywhere the app lists it, because
   the registry marks only the passport the challenge named and a copy of a picture proven fake is
   still a copy of a picture proven fake.
-- **Rejected.** The record stands, and the bond is credited to `VerifierPolicy.treasury()`.
+- **Rejected.** The record stands, and the bond is credited to `VerifierPolicy.treasury()`. Where
+  that is today, and the queued change to a burn address, is under [The bond](#the-bond).
+
+## The holder's answer
+
+The wallet that holds a challenged passport can answer in writing before the decision. The passport
+page shows that wallet a form headed "Answer this challenge": "Someone has challenged your passport.
+You have until {date} to answer before Moolam decides. Say why the record is right, and how someone
+else could check it." My pictures lists every challenged picture the wallet holds, so the holder
+does not have to go looking.
+
+The rules, each checked by the verify service against Monad in the same call:
+
+- **Fourteen days.** An answer is taken only while the challenge is open and within 14 days of the
+  moment it was opened, measured by Monad's block time, not the holder's clock.
+- **Only the holder.** The holder's wallet signs the answer as EIP-712 typed data in Moolam's domain,
+  over the passport, the challenge's opening time and challenger, the sha256 of the text and a
+  deadline. Signing costs no gas. The service reads `ownerOf` in the same call and refuses a
+  signature from anyone else. Only a plain wallet signature counts, so a passport held by a smart
+  account cannot answer here.
+- **One answer per challenge.** A second answer, or a signature used before, is refused.
+- **Plain text, line breaks allowed.** The form says: "Up to 4,000 bytes. Your wallet signs it, and it
+  is pinned for good where anyone can read it." An answer can have paragraphs; every other control
+  character, and the characters that flip the direction of text, are refused.
+
+The answer is pinned to IPFS as one document naming the passport, the challenge, the challenger and
+the holder, with the text, its hash, the deadline and the signature, so anyone can check it against
+the chain and the holder's key without Moolam. The page shows it under "The holder's answer", with
+"Signed by" and the holder's address, and only beside the challenge it answers. Until then it reads
+"The holder has not answered yet. They have until {date}.", and after the 14 days "The holder did
+not answer within the 14 days."
+
+## Published decisions
+
+Settling a challenge with `resolve` writes the outcome on Monad, but the registry has no field for
+reasons and cannot change. So the reasons travel through a second contract,
+[`MoolamDecisions`](https://monadvision.com/address/0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F)
+(0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F, verified on Sourcify), in three steps:
+
+1. **The resolver signs.** On the resolver console, the resolver writes the reasons, up to 8,000
+   bytes with line breaks kept, and signs them with their wallet as EIP-712 typed data over the
+   passport, the challenge's opening time, the outcome, the sha256 of the reasons and a deadline.
+2. **The verify service pins them.** It reads, at one block, the resolver the policy names and the
+   registry's record of the challenge, and pins only when the signature is that resolver's, the
+   challenge is settled with that outcome and opening time, and its reasons are not yet published.
+   The document names the passport, the challenge's opening time, the outcome and the resolver,
+   with the reasons and their hash.
+3. **`MoolamDecisions` publishes the address.** The resolver calls `publish(passportId, reasonsURI)`.
+   The contract reads the resolver from the policy, and the outcome and opening time from the
+   registry, at that moment, so the caller supplies neither. It takes only `ipfs://` and a content
+   id, at most 128 bytes, once per challenge, and emits
+   `DecisionPublished(passportId, openedAt, upheld, reasonsURI, resolver)`.
+
+To read one, open the passport. Under "The decision" it says "Upheld on {date}. Moolam agreed with
+the challenge." or "Rejected on {date}. The record stands.", with "Read the reasons" linking the
+pinned document. The page links reasons only when the published outcome is the one the registry
+holds, and only as an `ipfs://` content id. With none published it says "No reasons were published
+with this decision." Without the page, read the `DecisionPublished` events of `MoolamDecisions` on
+MonadVision for the passport id, and open the `reasonsURI` through any IPFS gateway.
+
+One case the contract cannot cover: a rejected passport can be flagged again straight away, and the
+registry then holds the new challenge, so reasons for the earlier decision that were not yet
+published can no longer be published here.
 
 ## Pull payments
 
@@ -108,7 +202,7 @@ until the dispute is settled."
 | "Bond" | The bond in MON |
 | "Opened" | The block timestamp on the dispute |
 | "Evidence hash" | The keccak256 of the evidence URI, in full |
-| The outcome | "Waiting for the resolver named by the policy." while it is open, then what the resolver did and where the bond went |
+| The outcome | "Waiting for the dispute judge to decide." while it is open, then what the resolver did and where the bond went |
 
 The claim is printed carefully. The words ride inside the transaction as a
 `data:text/plain;charset=utf-8` URI, so they are public and permanent, but the chain stores only
@@ -116,8 +210,10 @@ their keccak256. The page reads the URI from the index, hashes it itself, and pr
 when that hash matches the one on the record. An evidence URI that points somewhere else instead of
 carrying text says so: "The evidence for this challenge points somewhere else:".
 
-The poster at the top of the page changes too. A dispute outranks every other standing, so the word
-over the title reads "Disputed" whatever the re-checks said.
+The [trust mark](../concepts/trust-mark) at the top of the page changes too. While a challenge is
+open the passport wears "Challenged", unless "Does not match" or "Registered after a look-alike"
+already holds, since those rank above it. Once a challenge is upheld it wears "Challenge upheld",
+which outranks every other state, for good.
 
 ## Flagging one from the page
 
@@ -129,8 +225,9 @@ cannot usefully dispute itself, and every reader of a passport that already has 
 because the registry refuses a second one.
 
 Opened, it reads "Put a bond behind the claim" over what it costs: "A dispute costs a bond of 1 MON.
-The resolver named by the policy settles it: if they agree with you, the bond is credited back to
-you. If they do not, it goes to the treasury." The bond and your own balance sit side by side, with
+The resolver named by the policy settles it, and if they agree with you, the bond is credited back
+to you." The rules and "Who decides" sit above it, with the line on where a rejected bond goes. The
+bond and your own balance sit side by side, with
 the one line that matters about money: "Moolam pays the network fee. It cannot pay the bond: that is
 your own MON, and it leaves your account the moment this lands."
 
