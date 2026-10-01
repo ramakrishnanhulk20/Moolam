@@ -153,7 +153,7 @@ describe("where the button shows and where it does not", () => {
     );
 
     expect(markup).toContain("data-recheck");
-    expect(markup).toContain("Request a re-check");
+    expect(markup).toContain("Ask Chainlink to check");
     expect(markup).toContain("The verdict usually lands on chain within a few minutes.");
   });
 
@@ -165,7 +165,7 @@ describe("where the button shows and where it does not", () => {
     );
 
     expect(markup).not.toContain("data-recheck");
-    expect(markup).not.toContain("Request a re-check");
+    expect(markup).not.toContain("Ask Chainlink to check");
   });
 
   it("sits under the second opinion line on the verify card", async () => {
@@ -173,7 +173,7 @@ describe("where the button shows and where it does not", () => {
     const markup = await verifyCard(matched, { source: "index", attestations: 0 });
 
     expect(markup).toContain("data-recheck");
-    expect(markup).toContain("Request a re-check");
+    expect(markup).toContain("Ask Chainlink to check");
   });
 
   it("is still offered when the service could not say what anyone else found", async () => {
@@ -218,13 +218,13 @@ describe("every state the reader can meet", () => {
   it("draws each one, and says the one thing that state is about", () => {
     const drawn = scenes.map(([caption, state, spent]) => [caption, control(state, spent)] as const);
 
-    expect(drawn[0][1]).toContain("Request a re-check");
+    expect(drawn[0][1]).toContain("Ask Chainlink to check");
     expect(drawn[1][1]).toContain("Sending the request.");
     expect(drawn[2][1]).toContain("Position 3 in the queue.");
     expect(drawn[3][1]).toContain("Already requested");
     expect(drawn[4][1]).toContain("Waiting in the queue.");
     expect(drawn[5][1]).toContain("Running now");
-    expect(drawn[6][1]).toContain("Done: re-checked");
+    expect(drawn[6][1]).toContain("Done: checked");
     expect(drawn[6][1]).toContain(`${TX}`);
     // The runner's own words wait under Details, not inside the sentence.
     expect(drawn[7][1]).toContain("<span>Could not run</span>");

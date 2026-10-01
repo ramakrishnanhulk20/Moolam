@@ -253,7 +253,7 @@ describe("what the first screen shows of the finding", () => {
     expect(words).toContain("Exhibit A");
     expect(words).toContain("Exhibit B");
     expect(words).toContain("5 of 64 bits apart: the same picture.");
-    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
+    expect(words).toContain("A Chainlink workflow checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
     expect(words).toContain("Not for AI training");
     expect(html).toContain(COPY.image);
     expect(html.match(/class="fs-lit /g)?.length ?? 0).toBe(2 * 5);
@@ -269,7 +269,7 @@ describe("what the first screen shows of the finding", () => {
     expect(html).not.toMatch(/class="fs-lit /);
     expect(words).not.toContain("only made while");
     expect(words).toContain("Exhibit A");
-    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
+    expect(words).toContain("A Chainlink workflow checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
     expect(words).toContain("Not for AI training");
   });
 
@@ -278,7 +278,7 @@ describe("what the first screen shows of the finding", () => {
 
     expect(words).not.toContain("AI use");
     expect(words).not.toContain("did not answer");
-    expect(words).toContain("Chainlink re-checked the registered picture");
+    expect(words).toContain("A Chainlink workflow checked the registered picture");
   });
 
   it("shows the picture, its name and the statement when the registry would not answer", () => {
@@ -292,7 +292,7 @@ describe("what the first screen shows of the finding", () => {
     expect(html).toContain(`data-picture="${TITLE}"`);
     expect(words).toContain(TITLE);
     expect(words).toContain("Not for AI training");
-    expect(words).not.toContain("Chainlink re-checked");
+    expect(words).not.toContain("A Chainlink workflow checked");
     expect(words).not.toMatch(/\d+ of 64/);
     expect(words).not.toContain("Fingerprint");
   });

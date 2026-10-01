@@ -97,7 +97,7 @@ describe("the sentences those keys print", () => {
     );
     // The same advice the studio gives, so the reader always learns what would register.
     expect(en.passport.edit.failure.fingerprintUnstable).toBe(
-      "This edit changes too little from side to side for a fingerprint that survives copying, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned or sent. An edit with more detail across its width will register.",
+      "This edit changes too little from side to side for a fingerprint that survives copying, so Chainlink's check and any search for its copies would miss it. Nothing was pinned or sent. An edit with more detail across its width will register.",
     );
     expect(en.passport.edit.failure.thumbnailTooLarge).toMatch(/Nothing was pinned or sent\.$/);
   });

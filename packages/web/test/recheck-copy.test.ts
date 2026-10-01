@@ -67,7 +67,7 @@ describe("the re-check control's copy", () => {
     expect(note).toContain("free");
     expect(note).toContain("chainlink");
     expect(note).toContain("monad");
-    expect(String(at("en", "recheck.button"))).toBe("Request a re-check");
+    expect(String(at("en", "recheck.button"))).toBe("Ask Chainlink to check");
   });
 
   it("carries the long dash nobody here writes in no language at all", () => {

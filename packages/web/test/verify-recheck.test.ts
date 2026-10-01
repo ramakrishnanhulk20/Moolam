@@ -184,12 +184,12 @@ describe("the second opinion line, in all four of its states", () => {
   it("says who re-checked the picture, what they did and how far apart it came out", () => {
     const markup = render(createElement(SecondOpinion, { recheck: MATCHED, id: ID }));
 
-    expect(markup).toContain("The second opinion");
-    expect(markup).toContain("Re-checked by Chainlink (a CRE workflow)");
+    expect(markup).toContain("Chainlink&#x27;s check");
+    expect(markup).toContain("Checked by a Chainlink CRE workflow");
     expect(markup).toContain("fingerprinted it again and matched");
     expect(markup).toContain("1 of 64 bits apart");
     expect(markup).toContain("2026");
-    expect(markup).toContain("See the second opinion");
+    expect(markup).toContain("See Chainlink&#x27;s check");
     expect(markup).toContain(`/passport/${ID}`);
   });
 
@@ -212,8 +212,9 @@ describe("the second opinion line, in all four of its states", () => {
       createElement(SecondOpinion, { recheck: { source: "index", attestations: 0 }, id: ID }),
     );
 
-    expect(markup).toContain("Not re-checked yet.");
-    expect(line(markup)).not.toContain("Chainlink");
+    expect(markup).toContain("Not checked yet.");
+    // The section is named "Chainlink's check"; with nothing written, no line may claim a check happened.
+    expect(line(markup)).not.toContain("Checked by a Chainlink");
   });
 
   it("draws nothing at all when the service could not tell, and nothing when it never said", () => {
@@ -237,7 +238,7 @@ describe("the second opinion line, in all four of its states", () => {
     const stage: Stage = { kind: "answer", answer, passport: null };
 
     const markup = render(createElement(AnswerCard, { stage }));
-    expect(markup).toContain("Re-checked by Chainlink (a CRE workflow)");
+    expect(markup).toContain("Checked by a Chainlink CRE workflow");
     expect(markup.indexOf("data-consent-stamp")).toBeLessThan(markup.indexOf("data-second-opinion"));
   });
 

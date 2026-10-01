@@ -91,7 +91,7 @@ describe("03B: the film as a framed dark screen on the light page", () => {
     expect(text(markup.slice(title, markup.indexOf('class="story"')))).toContain(
       `${en.story.chapter.kicker} ${en.story.chapter.title}`,
     );
-    expect(markup).toMatch(/<h2[^>]*>How a passport works<\/h2>/);
+    expect(markup).toMatch(/<h2[^>]*>How a picture gets its passport<\/h2>/);
   });
 
   it("never hides the title behind an opacity only a script would lift", () => {

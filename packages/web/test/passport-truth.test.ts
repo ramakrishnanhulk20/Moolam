@@ -286,7 +286,7 @@ describe("a public re-check row", () => {
     expect(markup).toContain(words.gridNote);
     // A passport that already carries a verdict has no button, so no note for it.
     expect(markup).not.toContain(en.recheck.note.replace(/'/g, "&#x27;"));
-    expect(markup).toContain("Re-checked on");
+    expect(markup).toContain("Checked on");
     expect(markup).not.toContain(words.private.gridNote.replace(/'/g, "&#x27;"));
     expect(markup).not.toContain(words.sealedBody.replace(/'/g, "&#x27;"));
   });
@@ -300,7 +300,7 @@ describe("the private re-check line", () => {
     delivery.current = "simulation";
     const row = rowOf(await card({ rows: [privateRow], privateCopy: "kept" }));
 
-    expect(lead).toBe("Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.");
+    expect(lead).toBe("Checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.");
     expect(words.private.limit).toBe("It ran in Chainlink's simulator on one machine, not inside Chainlink's secure hardware.");
     expect(row.indexOf(lead)).toBeGreaterThan(-1);
     expect(row.indexOf(limit)).toBeGreaterThan(row.indexOf(lead));
@@ -344,10 +344,10 @@ describe("the re-check control's place once a request has finished", () => {
     const markup = await card({ rows: [older, publicRow], sealed: false });
 
     // 1_789_368_639 is 14 Sept 2026 in UTC; the older row is 9 Sept.
-    expect(markup).toContain("Re-checked on 14 Sept 2026");
-    expect(markup).not.toContain("Re-checked on 9 Sept 2026");
+    expect(markup).toContain("Checked on 14 Sept 2026");
+    expect(markup).not.toContain("Checked on 9 Sept 2026");
     expect(markup).not.toContain(STAMP_DONE);
-    expect(markup).not.toContain("Done: re-checked");
+    expect(markup).not.toContain("Done: checked");
     expect(markup).toContain('data-recheck-state="rechecked"');
     stub.state = { kind: "none" };
   });
@@ -358,7 +358,7 @@ describe("the re-check control's place once a request has finished", () => {
 
     // 1_790_000_300 is 21 September 2026, the date the chain confirmed, in the
     // client formatter's own English style.
-    expect(markup).toContain("Re-checked on Sep 21, 2026");
+    expect(markup).toContain("Checked on Sep 21, 2026");
     expect(markup).not.toContain(STAMP_DONE);
     expect(markup).not.toContain(BUTTON);
     expect(markup).toContain('data-recheck-state="rechecked"');
@@ -370,8 +370,8 @@ describe("the re-check control's place once a request has finished", () => {
     const markup = await card({ sealed: false });
 
     expect(markup).not.toContain(STAMP_DONE);
-    expect(markup).not.toContain("Done: re-checked");
-    expect(markup).not.toContain("Re-checked on");
+    expect(markup).not.toContain("Done: checked");
+    expect(markup).not.toContain("Checked on");
     expect(markup).toContain(BUTTON);
     expect(markup).toContain('data-recheck-state="none"');
     stub.state = { kind: "none" };
@@ -382,7 +382,7 @@ describe("the re-check control's place once a request has finished", () => {
     const markup = await card({ rows: [publicRow], sealed: false });
 
     expect(markup).toContain(en.recheck.running);
-    expect(markup).not.toContain("Re-checked on");
+    expect(markup).not.toContain("Checked on");
     stub.state = { kind: "none" };
   });
 

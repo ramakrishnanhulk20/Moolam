@@ -199,7 +199,7 @@ describe("the sentences those keys print", () => {
       "Nothing was published. A private copy of this same picture, kept for another passport, is in the way of its public copy. Try again later.",
     );
     expect(at(english, "passport.unseal.failure.fingerprintUnstable")).toBe(
-      "This picture changes too little from side to side for a fingerprint that survives copying, so its public copy could never pass the Chainlink re-check. Nothing was published.",
+      "This picture changes too little from side to side for a fingerprint that survives copying, so its public copy could never pass Chainlink's check. Nothing was published.",
     );
     expect(at(english, "studio.receipt.cameraKept")).toBe(
       "Your camera's own record is kept, with its location and serial number removed.",

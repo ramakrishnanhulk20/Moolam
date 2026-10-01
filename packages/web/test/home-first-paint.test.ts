@@ -130,7 +130,7 @@ describe("screen one, as the server sends it", () => {
 
   it("quotes the live finding in the reader's language, with every figure read", async () => {
     expect(text(await served("en"))).toContain(
-      "Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record.",
+      "A Chainlink workflow checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record.",
     );
     const tamil = text(await served("ta"));
     expect(tamil).toContain(ta.passport.consent.summary.closed);

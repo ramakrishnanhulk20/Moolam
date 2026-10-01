@@ -4,7 +4,7 @@
     "creator": "creator",
     "generatorAgent": "generator agent",
     "verify": "verify",
-    "attestation": "re-check written on chain by someone other than the creator",
+    "attestation": "check written on chain by someone other than the creator",
     "editChain": "edit chain",
     "dispute": "dispute",
     "passkey": "passkey",
@@ -63,19 +63,19 @@
         "title": "Check any picture",
         "line": "Drop in an image and Moolam says whether it holds a passport on Monad, and what its creator allowed.",
         "action": "Verify an image",
-        "elsewhere": "It is in the bar at the top on a laptop, and on the bar at the bottom of a phone."
+        "elsewhere": "On a laptop it is under For personal, in the menu at the top. On a phone it is on the bar at the bottom."
       },
       "make": {
         "title": "Make one and get its passport",
         "line": "Register an image in the studio. Two signatures, about a second, and it carries a record nobody can quietly edit.",
         "action": "Register an image",
-        "elsewhere": "It is in the bar at the top on a laptop, and the middle tab on a phone."
+        "elsewhere": "On a laptop it is under For personal, in the menu at the top. On a phone it is the middle tab."
       },
       "find": {
         "title": "Find yours",
         "line": "Every picture you registered, on any device you sign in from, each with its passport and its history.",
         "action": "My pictures",
-        "elsewhere": "It sits beside the others in the bar at the top, and on the last tab on a phone."
+        "elsewhere": "On a laptop it is My account, in the top right corner. On a phone it is the last tab."
       }
     }
   },
@@ -125,11 +125,11 @@
     "kicker": "Explore",
     "title": "The registry",
     "rail": "Every passport on Monad",
-    "lede": "Every picture registered on Monad, newest first, read from the index as this page loads. Open one for its fingerprint, Content Credentials and re-checks.",
+    "lede": "Every picture registered on Monad, newest first, read from the index as this page loads. Open one for its fingerprint, Content Credentials and checks.",
     "counts": {
       "total": "Passports",
       "generated": "Generated",
-      "rechecked": "Re-checked",
+      "rechecked": "Checked",
       "stated": "Carry a statement on AI use"
     },
     "countsError": "The counts could not be read: {reason}.",
@@ -149,9 +149,11 @@
       "generated": "Generated",
       "captured": "Captured",
       "edits": "Edits",
-      "rechecked": "Re-checked",
+      "rechecked": "Checked",
       "manifest": "With Content Credentials",
-      "disputed": "Dispute upheld"
+      "disputed": "Dispute upheld",
+      "lookalike": "Registered after a look-alike",
+      "later": "Has later look-alikes"
     },
     "ai": {
       "label": "AI use",
@@ -171,14 +173,14 @@
     "clearAgent": "Clear the agent filter",
     "marks": {
       "manifest": "Carries Content Credentials",
-      "rechecked": "Re-checked on chain",
-      "chainlink": "Re-checked by a Chainlink workflow",
+      "rechecked": "Checked on chain",
+      "chainlink": "Checked by a Chainlink workflow",
       "disputed": "Dispute upheld",
       "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "Carries Content Credentials",
-      "rechecked": "Re-checked on chain",
+      "rechecked": "Checked on chain",
       "disputed": "Dispute upheld, here or on the picture it was edited from",
       "consent": "Statement on AI use, four marks for the four uses",
       "platform": "Drawn on a platform Moolam lists"
@@ -213,7 +215,7 @@
     "kicker": "Agents",
     "title": "Agents",
     "lede": "Every generating agent the index has seen sign a passport, with everything it has counted for each one. The busiest first.",
-    "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's re-checks agreed with what this agent signed, with upheld disputes counted against it twice.",
+    "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's checks agreed with what this agent signed, with upheld disputes counted against it twice.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "How the score is worked out",
     "formulaDoc": "Where the index counts it",
@@ -223,13 +225,13 @@
     "since": "First seen {when}",
     "trustScore": "Trust score",
     "passports": "Passports",
-    "matched": "Re-checks matched",
-    "mismatched": "Re-checks missed",
+    "matched": "Checks matched",
+    "mismatched": "Checks missed",
     "upheld": "Disputes upheld",
     "seeWorks": "See its passports",
     "empty": "The index has not seen an agent sign a passport yet.",
     "error": "The index could not be read: {reason}.",
-    "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50.",
+    "formulaPlain": "Each check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50.",
     "strip": {
       "label": "Newest pictures this agent signed"
     }
@@ -261,11 +263,11 @@
       "verdictFigure": "{count} of 64",
       "verdictSame": "bits apart: the same picture.",
       "verdictMissed": "bits apart, and the verify service did not find it.",
-      "recheckOn": "Chainlink re-checked the registered picture itself on {date}:",
+      "recheckOn": "A Chainlink workflow checked the registered picture itself on {date}:",
       "recheckBits": "{count} of 64 bits apart from its record",
       "recheckMissed": "did not match, {bits}",
       "chainlink": "Chainlink:",
-      "recheckNone": "no re-check of the registered picture written yet",
+      "recheckNone": "no check of the registered picture written yet",
       "statedOn": "Its holder's word on AI use, {date}:",
       "aiUse": "AI use:",
       "openPassport": "Open the passport: {title}",
@@ -273,7 +275,7 @@
       "billing": {
         "monad": "On Monad mainnet",
         "privy": "Passkeys by Privy",
-        "chainlink": "Re-checked by Chainlink",
+        "chainlink": "Checked by Chainlink",
         "envio": "Indexed by Envio"
       },
       "unstarted": "The check did not start. Reload the page and press again."
@@ -283,7 +285,7 @@
     "title": "Moolam",
     "chapter": {
       "kicker": "The film",
-      "title": "How a passport works"
+      "title": "How a picture gets its passport"
     },
     "scrollCue": "Scroll",
     "noWebgl": "This browser cannot play the film in 3D, so the story is here as a page. Every figure on it is read live, the same as in the film.",
@@ -298,28 +300,29 @@
     },
     "sealed": {
       "kicker": "Signed",
-      "title": "The creator's passkey signed it.",
-      "body": "Monad recorded it in block {block}. Two signatures, one record, about a second.",
-      "bodyNoBlock": "Monad recorded it. Two signatures, one record, about a second.",
+      "title": "Their passkey signed it. Monad wrote it down.",
+      "body": "Block {block}. One record in about a second, and nobody can edit it.",
+      "bodyNoBlock": "One record in about a second, and nobody can edit it.",
       "readout": "Passport {passport}, registered {date}",
-      "unread": "This passport could not be read from the registry."
+      "unread": "This passport could not be read from the registry.",
+      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
     },
     "stated": {
-      "kicker": "Stated",
+      "kicker": "Terms",
       "title": "{summary}.",
-      "body": "Its maker's word on AI use went on Monad beside the passport, with the date. Ask the chain about any day since, and it answers for that day.",
-      "readout": "Statement written on Monad {written}, and in force ever since",
+      "body": "Their terms for AI went on Monad beside the passport, with the date. They can change them, and the history stays.",
+      "readout": "Terms written on Monad {written}, in force since.",
       "registered": "Registered {when}",
       "today": "Today"
     },
     "shared": {
       "kicker": "Shared",
-      "title": "Platforms strip the credential on upload.",
+      "title": "Platforms strip the label on upload.",
       "body": "The copies keep travelling anyway: recompressed, shrunk to a tenth, turned, mirrored, run through a social pipeline. Every one of them has lost the file that said where it came from."
     },
     "verified": {
-      "kicker": "Verified",
-      "title": "Every copy still finds its record.",
+      "kicker": "Found",
+      "title": "Every copy still finds its passport.",
       "match": "match",
       "copies": {
         "rotate-90": "a copy turned a quarter turn",
@@ -332,8 +335,8 @@
       "similarity": "{value} of 64 bits apart: {result}",
       "matched": "matched",
       "notMatched": "did not match",
-      "attestation": "A Chainlink CRE workflow re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
-      "noAttestation": "No re-check has been written for this passport yet.",
+      "attestation": "A Chainlink workflow checked it and wrote the answer on chain: {result}, {distance} bits apart.",
+      "noAttestation": "No check has been written for this passport yet.",
       "provenance": "Ladder figures measured by the Moolam verify service on another registered image, passport {passport}, {date}.",
       "provenanceSelf": "Figures measured by the Moolam verify service on this passport, {date}."
     },
@@ -343,9 +346,9 @@
       "agent": "Agent {agent}",
       "score": "Score {score}",
       "noScore": "No score yet",
-      "counts": "{rechecks, plural, =1 {# re-check} other {# re-checks}}, {passports, plural, =1 {# passport} other {# passports}}",
-      "body": "Every re-check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
-      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every Chainlink re-check of its pictures counts toward that agent's own score."
+      "counts": "{rechecks, plural, =1 {# check} other {# checks}}, {passports, plural, =1 {# passport} other {# passports}}",
+      "body": "Every check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
+      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every Chainlink check of its pictures counts toward that agent's own score."
     },
     "tryIt": {
       "kicker": "Try it",
@@ -364,24 +367,76 @@
       "noMatch": "Not registered",
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
       "noManifest": "No Content Credentials left in this file. The record found it anyway.",
-      "openPassport": "Open its passport"
+      "openPassport": "Open its passport",
+      "titleTouch": "Check any copy of any image"
     },
     "close": {
       "kicker": "Moolam",
       "title": "Register once. Recognised anywhere.",
-      "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by a Chainlink workflow, and findable from any copy that survives the internet.",
+      "body": "A passport for every picture, signed by the person who made it, written on Monad, and found again from any copy. Chainlink checks it.",
       "verify": "Verify an image",
       "proof": "See the proof",
       "passports": "Passports",
-      "attestations": "Re-checks on chain",
+      "attestations": "Chainlink checks on Monad",
       "chain": "on Monad, chain {chainId}",
       "unread": "unread",
-      "error": "The index could not be read just now. Reload the page in a moment."
+      "error": "The index could not be read just now. Reload the page in a moment.",
+      "checked": "Checked by Chainlink"
     },
     "skip": "Skip the film",
     "failed": {
       "line": "The film did not load.",
       "retry": "Try again"
+    },
+    "imagined": {
+      "kicker": "Imagined",
+      "title": "A person imagined this.",
+      "body": "Agent {agent} drew it. The credit goes to the person, never the tool.",
+      "bodyPlatform": "Drawn by {platform}'s agent. The credit goes to the person, never the tool.",
+      "tag": "Imagined by {creator}",
+      "titlePhoto": "A person took this.",
+      "bodyPhoto": "No agent touched it. They registered it themselves.",
+      "titleHeld": "Imagined on {platform}.",
+      "bodyHeld": "{platform} holds it until the person who imagined it claims it."
+    },
+    "asked": {
+      "kicker": "Asked",
+      "question": "May I train on this?",
+      "title": "Any AI can ask first.",
+      "body": "An AI agent asks Moolam's server and gets the holder's terms back, read from Monad. It cannot say it did not know.",
+      "readout": "Answered from the same register through Moolam's MCP server, get_ai_use_terms."
+    },
+    "checked": {
+      "kicker": "Checked",
+      "mark": "Checked by Chainlink",
+      "title": "Chainlink checks it. We do not.",
+      "body": "Chainlink's network fetches the picture, measures it again, and its nodes must agree. Only their verdict turns this mark on.",
+      "readout": "Checked by Chainlink on {date}: {result}, {distance} of 64 bits apart.",
+      "score": "Agent {agent}'s score: {score}",
+      "testTitle": "Chainlink measured it again.",
+      "testBody": "A Chainlink workflow fetched the picture, measured it and wrote the answer on Monad: {result}, {distance} bits apart. This run was a test on one machine."
+    },
+    "lookalike": {
+      "kicker": "Look-alike",
+      "title": "Register a copy, and you are second.",
+      "body": "If someone registers a copy of a picture already here, Chainlink finds the earlier passport and marks the new one as later. Anyone can challenge it.",
+      "readout": "{later} was registered {gap} after {earlier}. {bits} of 64 bits apart, found by Chainlink on {date}.",
+      "aside": "Two other passports, not the one this film follows."
+    },
+    "yourself": {
+      "kicker": "Sign it yourself",
+      "label": "Drawn on {platform}",
+      "tag": "Imagined by {person}",
+      "title": "Made on another AI site? Sign it yourself.",
+      "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
+      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+    },
+    "waiting": {
+      "kicker": "Waiting for you",
+      "tag": "Waiting for you",
+      "title": "No Moolam account yet? It waits for you.",
+      "body": "A site can leave your passports under the email it verified. Sign in with Google or an emailed code, press These are mine, then Confirm, and they are yours.",
+      "readout": "No figure here, on purpose: who a picture is waiting for is private."
     }
   },
   "verify": {
@@ -485,14 +540,14 @@
     "samples": "Or try one of these",
     "sampleFailed": "That picture would not come back from any gateway. Try again, or choose a file of your own.",
     "recheck": {
-      "label": "The second opinion",
+      "label": "Chainlink's check",
       "never": "not yet",
-      "count": "{count, plural, =1 {# re-check} other {# re-checks}}",
-      "none": "Not re-checked yet.",
+      "count": "{count, plural, =1 {# check} other {# checks}}",
+      "none": "Not checked yet.",
       "noneNote": "No independent workflow has fetched this picture and recomputed its fingerprint.",
-      "matched": "Re-checked by Chainlink (a CRE workflow) on {at}: it fetched the picture itself, fingerprinted it again and matched, {count} of 64 bits apart.",
-      "mismatched": "Re-checked by Chainlink (a CRE workflow) on {at}: it fetched the picture itself, fingerprinted it again and did not match, {count} of 64 bits apart.",
-      "link": "See the second opinion"
+      "matched": "Checked by a Chainlink CRE workflow on {at}: it fetched the picture itself, fingerprinted it again and matched, {count} of 64 bits apart.",
+      "mismatched": "Checked by a Chainlink CRE workflow on {at}: it fetched the picture itself, fingerprinted it again and did not match, {count} of 64 bits apart.",
+      "link": "See Chainlink's check"
     },
     "dispute": {
       "none": "No challenge is open against this passport.",
@@ -504,7 +559,7 @@
     "sealed": {
       "matched": "Matches a sealed passport. The registered picture is not published.",
       "label": "Sealed",
-      "recheck": "No public copy to re-check. A re-check needs the picture to be published."
+      "recheck": "No public copy, so the Chainlink network cannot check it. A check needs the picture to be published."
     },
     "unsealed": {
       "matched": "This passport was registered sealed and its holder published the picture on {date}."
@@ -535,6 +590,14 @@
       "registered": "The registered picture",
       "drag": "Drag to compare",
       "label": "Compare your copy with the registered picture"
+    },
+    "first": {
+      "heading": "Registered earlier",
+      "lead": "First registered as {title} on {date}.",
+      "closest": "The file you checked is closest to {title}, registered {days, plural, =0 {the same day} =1 {# day later} other {# days later}}.",
+      "held": "Held by {holder}",
+      "aiUse": "AI use: {terms}",
+      "open": "Open the first registration"
     }
   },
   "passport": {
@@ -556,16 +619,16 @@
     "disputed": "Disputed",
     "attestations": {
       "heading": "Checked again, by someone else",
-      "empty": "No re-check has been written for this passport yet. Chainlink's workflow writes one when it re-checks the picture.",
+      "empty": "No check has been written for this passport yet. Chainlink's workflow writes one when it checks the picture.",
       "matched": "matched",
       "notMatched": "did not match",
       "distance": "{distance} of 64 bits apart",
       "receiver": "Written on Monad by Moolam's Chainlink receiver",
       "at": "At",
-      "kicker": "The second opinion",
+      "kicker": "Chainlink's check",
       "body": "Anyone can say a picture is theirs. This part is different: Chainlink's CRE workflow downloaded the picture itself, took its fingerprint again and wrote the result on Monad.",
       "distanceLabel": "What Chainlink reported",
-      "byChainlink": "Checked again by a Chainlink CRE workflow",
+      "byChainlink": "Checked by a Chainlink CRE workflow",
       "delivery": {
         "simulation": "Chainlink's CRE simulator ran this check on one machine, not across Chainlink's network.",
         "network": "Several independent Chainlink machines ran this check and agreed on the answer."
@@ -576,11 +639,11 @@
       "recomputedGrid": "Chainlink's fingerprint",
       "verdict": "A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
       "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from the file it fetched itself. Every cell that disagrees is marked.",
-      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture.",
+      "whatIsRecheck": "A check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture.",
       "private": {
-        "badge": "Private re-check",
-        "lead": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.",
-        "leadEarlier": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam kept at the time.",
+        "badge": "Private check",
+        "lead": "Checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.",
+        "leadEarlier": "Checked privately by a Chainlink confidential workflow, from the small copy Moolam kept at the time.",
         "limit": "It ran in Chainlink's simulator on one machine, not inside Chainlink's secure hardware.",
         "verdict": "A Chainlink confidential workflow opened the small private copy Moolam kept of this picture and compared its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
         "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from Moolam's small private copy. Every cell that disagrees is marked."
@@ -673,9 +736,9 @@
         "offline": "The verify service did not answer, so nothing was sent.",
         "signedOut": "This session is signed out, so the service would not take the edit.",
         "tooLarge": "That file is over the 20 MB limit. Choose a smaller copy.",
-        "fingerprintUnstable": "This edit changes too little from side to side for a fingerprint that survives copying, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned or sent. An edit with more detail across its width will register.",
+        "fingerprintUnstable": "This edit changes too little from side to side for a fingerprint that survives copying, so Chainlink's check and any search for its copies would miss it. Nothing was pinned or sent. An edit with more detail across its width will register.",
         "signedFileTooLarge": "Adding the passport's signature would take this file past 20 MB, the most a check can read back. Export it smaller and try again. Nothing was pinned or sent.",
-        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so its passport could never be re-checked. Nothing was pinned or sent.",
+        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's check to fetch, so its passport could never be checked. Nothing was pinned or sent.",
         "notAnImage": "That is not an image file. Choose a JPEG, PNG or WebP.",
         "empty": "That file is empty. Choose the picture again.",
         "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
@@ -728,15 +791,15 @@
     "about": "About",
     "prompt": "Prompt",
     "fingerprints": "The fingerprints",
-    "fingerprintsBody": "Anyone can fetch the picture, fingerprint it again and compare it with these. Chainlink's re-check does exactly that. Nothing here depends on the file name or on anything the metadata claims.",
+    "fingerprintsBody": "Anyone can fetch the picture, fingerprint it again and compare it with these. Chainlink's check does exactly that. Nothing here depends on the file name or on anything the metadata claims.",
     "exactHash": "Exact file fingerprint (SHA-256)",
     "passportId": "Passport id",
     "tokenId": "This passport is also an NFT on Monad, with the same id",
     "standing": {
-      "verified": "Re-checked on chain, and it matched",
-      "mismatched": "A re-check did not match",
+      "verified": "Checked on chain, and it matched",
+      "mismatched": "A check did not match",
       "disputed": "Disputed",
-      "unverified": "Not re-checked yet"
+      "unverified": "Not checked yet"
     },
     "check": {
       "kicker": "Check a copy",
@@ -986,23 +1049,23 @@
     "sealed": {
       "label": "Sealed",
       "posterLine": "Registered on {date}. The picture is not published. Moolam keeps no copy.",
-      "posterLinePrivate": "Registered on {date}. The picture is not published. Moolam keeps only a small private copy, for the private re-check.",
+      "posterLinePrivate": "Registered on {date}. The picture is not published. Moolam keeps only a small private copy, for the private check.",
       "standing": "Sealed, so there is no public copy",
       "commitmentLabel": "The commitment",
       "commitmentAlgorithm": "Fingerprinted with {algorithm}, a standard file fingerprint",
       "commitmentLine": "Anyone holding the file can hash it and compare it with the passport id.",
-      "recheck": "No public copy to re-check. A re-check needs the picture to be published.",
+      "recheck": "No public copy, so the Chainlink network cannot check it. A check needs the picture to be published.",
       "privateCopy": {
-        "kept": "A private re-check can run on the small copy Moolam keeps.",
-        "gone": "Moolam's private copy was deleted, so no private re-check can run.",
+        "kept": "A private check can run on the small copy Moolam keeps.",
+        "gone": "Moolam's private copy was deleted, so no private check can run.",
         "unknown": "Moolam could not read the private copy's state just now."
       },
       "edit": "This passport is sealed, so it cannot be edited until the picture is published.",
       "about": {
         "noCopy": "Registered sealed: the picture was never published, and Moolam kept no copy of it. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "kept": "Registered sealed: the picture was never published. At its creator's request, Moolam keeps one small private copy, used only for a private re-check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "deleted": "Registered sealed: the picture was never published. Moolam kept one small private copy for a private re-check by a Chainlink workflow, and that copy has since been deleted. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "asked": "Registered sealed: the picture was never published. Its creator asked Moolam to keep one small private copy for a private re-check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "kept": "Registered sealed: the picture was never published. At its creator's request, Moolam keeps one small private copy, used only for a private check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "deleted": "Registered sealed: the picture was never published. Moolam kept one small private copy for a private check by a Chainlink workflow, and that copy has since been deleted. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "asked": "Registered sealed: the picture was never published. Its creator asked Moolam to keep one small private copy for a private check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
         "published": "Registered sealed, with no picture published, and published by its holder on {date}. The passport id is the SHA-256 of the file, so anyone can hash the published picture and compare."
       }
     },
@@ -1036,7 +1099,7 @@
         "noPassport": "The registry has no passport with this id.",
         "notSealed": "This passport's picture is already public, so there is nothing left to publish.",
         "alreadyUnsealed": "This passport has been published already. Open the page again to see the picture.",
-        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so publishing it would leave a passport nobody can ever re-check. Nothing was pinned.",
+        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's check to fetch, so publishing it would leave a passport nobody can ever check. Nothing was pinned.",
         "quota": "That is {used} of {limit} for today. The allowance comes back at {at}.",
         "todayFull": "Everyone's budget for publishing today is spent. Nothing was pinned and nothing was spent. Try again tomorrow.",
         "pinFailed": "The picture could not be pinned to IPFS, so nothing was published.",
@@ -1058,7 +1121,7 @@
         "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute.",
         "unsealInProgress": "This picture is already being published from another tab or device. Give it a moment, then reload the passport.",
         "thumbnailHeldPrivately": "Nothing was published. A private copy of this same picture, kept for another passport, is in the way of its public copy. Try again later.",
-        "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying, so its public copy could never pass the Chainlink re-check. Nothing was published."
+        "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying, so its public copy could never pass Chainlink's check. Nothing was published."
       },
       "actions": {
         "again": "Try again",
@@ -1071,9 +1134,9 @@
     "privateCopy": {
       "kicker": "Yours to delete",
       "heading": "Moolam's private copy",
-      "body": "Moolam keeps one small copy of this picture, 512 pixels on its longest side, so a Chainlink confidential workflow can re-check it. Only you can delete it.",
+      "body": "Moolam keeps one small copy of this picture, 512 pixels on its longest side, so a Chainlink confidential workflow can check it privately. Only you can delete it.",
       "delete": "Delete Moolam's private copy",
-      "confirm": "This cannot be undone. Without the copy no private re-check can run again, and the passport stays sealed.",
+      "confirm": "This cannot be undone. Without the copy no private check can run again, and the passport stays sealed.",
       "confirmDelete": "Delete",
       "keep": "Keep it",
       "sending": "Deleting the private copy",
@@ -1104,7 +1167,7 @@
       "madeBy": "Made by",
       "drawnBy": "Drawn by",
       "aiUse": "AI use",
-      "rechecked": "Re-checked",
+      "rechecked": "Checked",
       "nothingStated": "Nothing stated",
       "notYet": "Not yet",
       "unread": "Could not be read",
@@ -1136,9 +1199,9 @@
       "heading": "Feedback on the public agent review board (ERC-8004)",
       "empty": "No feedback recorded for this agent yet. Moolam posts feedback here by hand, not after every check.",
       "error": "The reputation registry could not be read: {reason}.",
-      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), where Moolam posts it by hand. This page reads its summary. The trust score beside it counts the Chainlink re-checks, so the two are never added together.",
+      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), where Moolam posts it by hand. This page reads its summary. The trust score beside it counts the Chainlink checks, so the two are never added together.",
       "registry": "Registry {address}",
-      "secondary": "Feedback posted on chain by hand, apart from the re-check score",
+      "secondary": "Feedback posted on chain by hand, apart from the check score",
       "entries": "{count, plural, =1 {# entry} other {# entries}}",
       "latest": "Latest value"
     },
@@ -1148,17 +1211,17 @@
     "index": {
       "heading": "What the index has counted",
       "trustScore": "Trust score",
-      "trustScoreBody": "Out of 100, from re-checks that matched, re-checks that did not, and any upheld dispute. Smoothed, so one lucky check cannot make it 100.",
+      "trustScoreBody": "Out of 100, from checks that matched, checks that did not, and any upheld dispute. Smoothed, so one lucky check cannot make it 100.",
       "passportCount": "Passports",
-      "matchedCount": "Re-checks matched",
-      "mismatchedCount": "Re-checks missed",
+      "matchedCount": "Checks matched",
+      "mismatchedCount": "Checks missed",
       "disputesUpheld": "Disputes upheld",
       "since": "First seen {when}",
       "empty": "The index has not seen this agent sign a passport yet.",
       "error": "The index could not be read: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "How the score is worked out",
-      "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
+      "formulaPlain": "Each check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
     },
     "signs": {
       "heading": "How this agent signs",
@@ -1460,8 +1523,8 @@
         "leftOut": "Left out",
         "promptLabel": "Include the prompt",
         "promptNote": "The prompt stays private unless you include it.",
-        "privateLabel": "Let Chainlink re-check this privately",
-        "privateNote": "Moolam keeps one small copy, 512 pixels on its longest side, on private storage. A Chainlink confidential workflow opens it to re-check the fingerprint and writes only the verdict to Monad.",
+        "privateLabel": "Let Chainlink check this privately",
+        "privateNote": "Moolam keeps one small copy, 512 pixels on its longest side, on private storage. A Chainlink confidential workflow opens it to check the fingerprint and writes only the verdict to Monad.",
         "privateWho": "Nobody can open it from the web. Moolam's operator and the storage provider can. Today the workflow runs in Chainlink's simulator, not inside Chainlink's secure hardware. You can delete the copy from the passport page at any time."
       },
       "fields": {
@@ -1510,8 +1573,16 @@
           "line": "Words that describe the picture, so it stays out of the file unless you put it in."
         },
         "privateRecheck": {
-          "label": "That you asked for a private re-check",
+          "label": "That you asked for a private check",
           "line": "One word in the pinned file, so a passport page can say it. The copy's address is never in it."
+        },
+        "sworn": {
+          "label": "The line you sign under",
+          "line": "The sentence beside the sign button, word for word. It is your own statement, signed with the rest."
+        },
+        "seenEarlier": {
+          "label": "The earlier passport you were shown",
+          "line": "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it."
         }
       },
       "plate": {
@@ -1542,9 +1613,9 @@
         "detailPrivate": "The picture is not published. Moolam keeps only the small private copy you asked for.",
         "fingerprintDetail": "Taken from the signed file, which never left this browser. Content Credentials (C2PA) added: {manifest}.",
         "privateLabel": "Private copy kept",
-        "privateDetail": "For Chainlink's private re-check. <page>Delete it from the passport page whenever you like.</page>",
+        "privateDetail": "For Chainlink's private check. <page>Delete it from the passport page whenever you like.</page>",
         "noPrivateLabel": "No private copy",
-        "noPrivateDetail": "You asked for a private re-check and the service kept no copy, so this passport has none. It is sealed and nothing of it was kept."
+        "noPrivateDetail": "You asked for a private check and the service kept no copy, so this passport has none. It is sealed and nothing of it was kept."
       }
     },
     "receipt": {
@@ -1644,10 +1715,10 @@
       "sealedRecordRefused": "The verify service refused to publish this sealed record, so nothing was pinned and nothing was registered. Try again.",
       "sealedFileRefused": "The verify service could not hand back a file matching this passport, so nothing was pinned and nothing was registered. Try again.",
       "privateRecheckNeedsSealed": "The verify service will not keep a private copy of a picture that is not sealed, so nothing was pinned and nothing was registered. Reload the studio and try again.",
-      "privateCopyNotPrivate": "The storage provider did not keep the small copy private, so Moolam stopped and nothing was pinned or registered. Turn the private re-check off to register this picture sealed without it.",
+      "privateCopyNotPrivate": "The storage provider did not keep the small copy private, so Moolam stopped and nothing was pinned or registered. Turn the private check off to register this picture sealed without it.",
       "privateChainUnreachable": "Moolam could not reach Monad to check this picture is new, so it kept no private copy and registered nothing. Try again in a moment.",
-      "privateThumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so its passport could never be re-checked, and a sealed one could never be published later. Nothing was pinned.",
-      "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register.",
+      "privateThumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's check to fetch, so its passport could never be checked, and a sealed one could never be published later. Nothing was pinned.",
+      "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so Chainlink's check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register.",
       "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
     },
     "actions": {
@@ -1662,7 +1733,32 @@
       "generateAgain": "Make it again"
     },
     "showcaseCaption": "A real passport on Monad. This is what you get.",
-    "titleNeeded": "Give the picture a title."
+    "titleNeeded": "Give the picture a title.",
+    "lookalike": {
+      "kicker": "Before you sign",
+      "found": {
+        "heading": "A picture like this is already registered",
+        "line": "{title} was registered by someone else on {date}. If it is yours too, carry on. If it is not, stop here: your passport would show it came later, and anyone can challenge it.",
+        "note": "If you go ahead, your passport records that you were shown this one."
+      },
+      "yours": {
+        "heading": "You registered a picture like this before",
+        "line": "If this is a new version, register it as an edit of that passport, so the two stay linked."
+      },
+      "none": "Moolam's search found no earlier passport like this one, as of {time}.",
+      "unchecked": "Moolam could not search for earlier passports just now, so this picture was not compared with them. You can still register it.",
+      "open": "Open that passport",
+      "untitled": "An untitled passport"
+    },
+    "webCheck": {
+      "notice": "A public photo is checked against the web. Moolam sends its small public copy to Google, which looks for the same picture on web pages. Sealed pictures and pictures the agent draws are never sent.",
+      "found": {
+        "heading": "Already on the web",
+        "line": "Google found this picture on {count, plural, =1 {# web page} other {# web pages}} when Moolam looked. If you go ahead, your passport lists them.",
+        "more": "{count, plural, =1 {# more page} other {# more pages}} counted, not listed."
+      },
+      "passport": "Already on the web: the registrant's web check found this picture on {count, plural, =1 {# page} other {# pages}} before it was registered."
+    }
   },
   "docs": {
     "home": "Documentation",
@@ -1763,7 +1859,7 @@
     "stopped": "Still unreachable. The registry itself is on Monad and the passport pages read it directly."
   },
   "recheck": {
-    "button": "Request a re-check",
+    "button": "Ask Chainlink to check",
     "again": "Try again",
     "checkNow": "Check again",
     "note": "Free. Chainlink's workflow re-fetches the picture and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
@@ -1773,8 +1869,8 @@
     "already": "Already requested {at}. Position {position} in the queue.",
     "alreadyWaiting": "Already requested {at}. Waiting in the queue.",
     "running": "Running now: the workflow is fetching the picture and hashing it again.",
-    "done": "Done: re-checked {at}.",
-    "doneNoTime": "Done: this picture has been re-checked.",
+    "done": "Done: checked {at}.",
+    "doneNoTime": "Done: this picture has been checked.",
     "failed": "Could not run: {reason}",
     "failedNoReason": "Could not run. The runner did not say why.",
     "stopped": "This page stopped checking after half an hour. Press to look again.",
@@ -1787,7 +1883,7 @@
       "pending": "Pending"
     },
     "failure": {
-      "noPassport": "The verify service does not know this passport, so there is nothing for it to re-check.",
+      "noPassport": "The verify service does not know this passport, so there is nothing for it to check.",
       "sealed": "This passport's picture was never published, so the workflow has nothing to fetch.",
       "queueFull": "The queue is full of requests nobody has run yet. Try again later.",
       "rateLimited": "Too many requests from here, wait a minute.",
@@ -1796,7 +1892,7 @@
     },
     "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
     "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
-    "recheckedOn": "Re-checked on {date}",
+    "recheckedOn": "Checked on {date}",
     "confirming": "The queue says this run finished. It shows as done once its verdict can be read on Monad."
   },
   "mine": {
@@ -2483,5 +2579,141 @@
     "escape": "Esc closes",
     "close": "Close the menu",
     "account": "My account"
+  },
+  "mark": {
+    "label": "Trust mark",
+    "states": {
+      "upheld": {
+        "word": "Challenge upheld",
+        "line": "Moolam upheld a challenge against this record. Treat it, and its AI-use terms, as wrong."
+      },
+      "mismatch": {
+        "word": "Does not match",
+        "line": "Chainlink's network fetched the picture this passport points to, and it is not the picture that was registered."
+      },
+      "lookalike": {
+        "word": "Registered after a look-alike",
+        "line": "An earlier passport, {title}, looks like the same picture. It was registered on {date}, before this one."
+      },
+      "challenged": {
+        "word": "Challenged",
+        "line": "Someone put {bond} MON behind a claim that this record is wrong. The holder can answer until {date}."
+      },
+      "waiting": {
+        "word": "Waiting for Chainlink",
+        "line": "Registered {when}. Chainlink's network checks every new public passport, and has not checked this one yet."
+      },
+      "checked": {
+        "word": "Checked by Chainlink",
+        "line": "Chainlink's network fetched this picture itself, measured it again, and it matches its passport: {bits} of 64 bits apart. Written on Monad on {date}."
+      },
+      "sealed": {
+        "word": "Sealed",
+        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+      },
+      "nothing": {
+        "word": "Nothing to check",
+        "line": "This passport names no picture, so Chainlink has nothing to fetch."
+      }
+    },
+    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not: {bits} of 256 bits apart. Both have to match, so this passport does not pass.",
+    "simulator": {
+      "word": "Test run",
+      "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
+    },
+    "unread": "The mark could not be read just now, so none is shown. Try again in a moment.",
+    "readDecision": "Read the decision",
+    "openEarlier": "Open the earlier passport"
+  },
+  "claim": {
+    "label": "Where the claim comes from",
+    "studio": "Made in Moolam's studio. The agent signed the picture the moment it was drawn.",
+    "platform": "Drawn on {platform}. Its agent signed the picture the moment it was made.",
+    "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
+    "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
+    "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
+    "outside": "Registered outside Moolam's studio: no sworn statement, no web check."
+  },
+  "lookalike": {
+    "found": {
+      "heading": "Earlier passport found",
+      "line": "Chainlink's network measured this picture itself and found {title}, registered on {date}, {bits} of 64 bits apart. Written on Monad on {at}."
+    },
+    "searching": {
+      "heading": "Earlier passport, not confirmed yet",
+      "line": "Moolam's search found an earlier passport like this: {title}, registered on {date}. Chainlink has not confirmed it yet."
+    },
+    "order": "Registered first is not the same as made first. Anyone can challenge either passport with evidence.",
+    "later": {
+      "line": "A later passport looks the same: {title}, registered on {date}.",
+      "count": "{count, plural, =1 {# later passport looks} other {# later passports look}} the same."
+    },
+    "none": "Chainlink found no earlier look-alike among the candidates Moolam's search proposed.",
+    "sealed": "An earlier sealed passport carries a fingerprint like this picture's. Its picture was never shown, so nobody can compare the two."
+  },
+  "sworn": {
+    "label": "By signing, you state",
+    "line": "I made this picture, or I hold the rights to register it.",
+    "note": "This line goes into the passport you sign, for anyone to read."
+  },
+  "challenge": {
+    "rules": {
+      "heading": "What a challenge needs",
+      "earlier": "The earlier work: the picture you say this passport copies.",
+      "proof": "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier passport.",
+      "verify": "A Verify answer that shows it is the same picture.",
+      "licensed": "That it is not a copy you licensed to them.",
+      "burden": "The challenger carries the burden. Without this evidence, the record stands."
+    },
+    "decider": {
+      "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
+      "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
+      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way."
+    },
+    "answer": {
+      "heading": "Answer this challenge",
+      "prompt": "Someone has challenged your passport. You have until {date} to answer before Moolam decides. Say why the record is right, and how someone else could check it.",
+      "placeholder": "What you know, and how someone else could check it.",
+      "left": "{left} left",
+      "hint": "Up to 4,000 bytes. Your wallet signs it, and it is pinned for good where anyone can read it.",
+      "button": "Sign and send my answer",
+      "states": {
+        "signing": "Waiting for your wallet to sign",
+        "sending": "Sending your answer",
+        "done": "Your answer is pinned and shown on this passport."
+      },
+      "shown": {
+        "label": "The holder's answer",
+        "by": "Signed by {holder}",
+        "none": "The holder has not answered yet. They have until {date}.",
+        "missed": "The holder did not answer within the 14 days."
+      },
+      "refusals": {
+        "noOpenDispute": "There is no open challenge on this passport to answer.",
+        "windowClosed": "The 14 days to answer this challenge have passed.",
+        "expired": "Your signature ran out before it arrived. Sign again.",
+        "noHolder": "Monad shows no holder for this passport, so nobody can answer for it.",
+        "notHolder": "This wallet does not hold this passport, so it cannot answer for it.",
+        "signatureUsed": "That signature was already used. Sign again.",
+        "alreadyAnswered": "This challenge already has its answer. Each challenge takes one.",
+        "answering": "An answer to this challenge is being sent from another window. Look again in a moment.",
+        "unavailable": "Moolam cannot take answers right now. Nothing was sent. Try again later.",
+        "chainUnreachable": "Moolam could not read Monad just now. Nothing was sent. Try again in a moment.",
+        "pinFailed": "Your answer could not be pinned, so nothing was saved. Try again.",
+        "busy": "Too many answers are arriving right now. Wait a minute and try again.",
+        "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
+        "empty": "Write your answer first.",
+        "notPrintable": "Line breaks and hidden characters cannot be sent. Take them out and sign again.",
+        "declined": "You closed the wallet prompt, so nothing was signed.",
+        "unknown": "The answer did not go through."
+      }
+    },
+    "decision": {
+      "heading": "The decision",
+      "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
+      "rejected": "Rejected on {date}. The record stands.",
+      "reasons": "Read the reasons",
+      "noReasons": "No reasons were published with this decision."
+    }
   }
 }

@@ -165,7 +165,9 @@
       "edits": "編集",
       "rechecked": "再確認済み",
       "manifest": "Content Credentials 付き",
-      "disputed": "異議が認められた"
+      "disputed": "異議が認められた",
+      "lookalike": "Registered after a look-alike",
+      "later": "Has later look-alikes"
     },
     "ai": {
       "label": "AI 利用",
@@ -316,7 +318,8 @@
       "body": "Monad がブロック {block} に記録しました。署名は二つ、記録は一つ、およそ一秒です。",
       "bodyNoBlock": "Monad が記録しました。署名は二つ、記録は一つ、およそ一秒です。",
       "readout": "パスポート {passport}、{date} 登録",
-      "unread": "このパスポートはレジストリから読み取れませんでした。"
+      "unread": "このパスポートはレジストリから読み取れませんでした。",
+      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
     },
     "stated": {
       "kicker": "表明",
@@ -378,7 +381,8 @@
       "noMatch": "未登録",
       "noMatchBody": "レジストリのどのパスポートもこの画像と一致しません。生成器から出たまま一度も登録されていないファイルは、ちょうどこう見えます。",
       "noManifest": "このファイルに Content Credentials は残っていません。それでも記録は見つかりました。",
-      "openPassport": "このパスポートを開く"
+      "openPassport": "このパスポートを開く",
+      "titleTouch": "Check any copy of any image"
     },
     "close": {
       "kicker": "Moolam",
@@ -390,12 +394,63 @@
       "attestations": "チェーン上の再確認",
       "chain": "Monad 上、チェーン {chainId}",
       "unread": "読み取れず",
-      "error": "いまインデックスを読めませんでした。少ししてからページを再読み込みしてください。"
+      "error": "いまインデックスを読めませんでした。少ししてからページを再読み込みしてください。",
+      "checked": "Checked by Chainlink"
     },
     "skip": "映像をとばす",
     "failed": {
       "line": "映像を読み込めませんでした。",
       "retry": "もう一度試す"
+    },
+    "imagined": {
+      "kicker": "Imagined",
+      "title": "A person imagined this.",
+      "body": "Agent {agent} drew it. The credit goes to the person, never the tool.",
+      "bodyPlatform": "Drawn by {platform}'s agent. The credit goes to the person, never the tool.",
+      "tag": "Imagined by {creator}",
+      "titlePhoto": "A person took this.",
+      "bodyPhoto": "No agent touched it. They registered it themselves.",
+      "titleHeld": "Imagined on {platform}.",
+      "bodyHeld": "{platform} holds it until the person who imagined it claims it."
+    },
+    "asked": {
+      "kicker": "Asked",
+      "question": "May I train on this?",
+      "title": "Any AI can ask first.",
+      "body": "An AI agent asks Moolam's server and gets the holder's terms back, read from Monad. It cannot say it did not know.",
+      "readout": "Answered from the same register through Moolam's MCP server, get_ai_use_terms."
+    },
+    "checked": {
+      "kicker": "Checked",
+      "mark": "Checked by Chainlink",
+      "title": "Chainlink checks it. We do not.",
+      "body": "Chainlink's network fetches the picture, measures it again, and its nodes must agree. Only their verdict turns this mark on.",
+      "readout": "Checked by Chainlink on {date}: {result}, {distance} of 64 bits apart.",
+      "score": "Agent {agent}'s score: {score}",
+      "testTitle": "Chainlink measured it again.",
+      "testBody": "A Chainlink workflow fetched the picture, measured it and wrote the answer on Monad: {result}, {distance} bits apart. This run was a test on one machine."
+    },
+    "lookalike": {
+      "kicker": "Look-alike",
+      "title": "Register a copy, and you are second.",
+      "body": "If someone registers a copy of a picture already here, Chainlink finds the earlier passport and marks the new one as later. Anyone can challenge it.",
+      "readout": "{later} was registered {gap} after {earlier}. {bits} of 64 bits apart, found by Chainlink on {date}.",
+      "aside": "Two other passports, not the one this film follows."
+    },
+    "yourself": {
+      "kicker": "Sign it yourself",
+      "label": "Drawn on {platform}",
+      "tag": "Imagined by {person}",
+      "title": "Made on another AI site? Sign it yourself.",
+      "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
+      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+    },
+    "waiting": {
+      "kicker": "Waiting for you",
+      "tag": "Waiting for you",
+      "title": "No Moolam account yet? It waits for you.",
+      "body": "A site can leave your passports under the email it verified. Sign in with Google or an emailed code, press These are mine, then Confirm, and they are yours.",
+      "readout": "No figure here, on purpose: who a picture is waiting for is private."
     }
   },
   "verify": {
@@ -549,6 +604,14 @@
       "registered": "登録された画像",
       "drag": "ドラッグして比較",
       "label": "あなたのコピーと登録された画像の比較"
+    },
+    "first": {
+      "heading": "Registered earlier",
+      "lead": "First registered as {title} on {date}.",
+      "closest": "The file you checked is closest to {title}, registered {days, plural, =0 {the same day} =1 {# day later} other {# days later}}.",
+      "held": "Held by {holder}",
+      "aiUse": "AI use: {terms}",
+      "open": "Open the first registration"
     }
   },
   "passport": {
@@ -1526,6 +1589,14 @@
         "privateRecheck": {
           "label": "非公開の再確認を求めたこと",
           "line": "ピン留めされるファイルに一語だけ入り、パスポートのページがそれを示せます。コピーの場所は決して入りません。"
+        },
+        "sworn": {
+          "label": "The line you sign under",
+          "line": "The sentence beside the sign button, word for word. It is your own statement, signed with the rest."
+        },
+        "seenEarlier": {
+          "label": "The earlier passport you were shown",
+          "line": "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it."
         }
       },
       "plate": {
@@ -1676,7 +1747,32 @@
       "generateAgain": "もう一度作る"
     },
     "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。",
-    "titleNeeded": "画像にタイトルを付けてください。"
+    "titleNeeded": "画像にタイトルを付けてください。",
+    "lookalike": {
+      "kicker": "Before you sign",
+      "found": {
+        "heading": "A picture like this is already registered",
+        "line": "{title} was registered by someone else on {date}. If it is yours too, carry on. If it is not, stop here: your passport would show it came later, and anyone can challenge it.",
+        "note": "If you go ahead, your passport records that you were shown this one."
+      },
+      "yours": {
+        "heading": "You registered a picture like this before",
+        "line": "If this is a new version, register it as an edit of that passport, so the two stay linked."
+      },
+      "none": "Moolam's search found no earlier passport like this one, as of {time}.",
+      "unchecked": "Moolam could not search for earlier passports just now, so this picture was not compared with them. You can still register it.",
+      "open": "Open that passport",
+      "untitled": "An untitled passport"
+    },
+    "webCheck": {
+      "notice": "A public photo is checked against the web. Moolam sends its small public copy to Google, which looks for the same picture on web pages. Sealed pictures and pictures the agent draws are never sent.",
+      "found": {
+        "heading": "Already on the web",
+        "line": "Google found this picture on {count, plural, =1 {# web page} other {# web pages}} when Moolam looked. If you go ahead, your passport lists them.",
+        "more": "{count, plural, =1 {# more page} other {# more pages}} counted, not listed."
+      },
+      "passport": "Already on the web: the registrant's web check found this picture on {count, plural, =1 {# page} other {# pages}} before it was registered."
+    }
   },
   "docs": {
     "home": "ドキュメント",
@@ -2497,5 +2593,141 @@
     "escape": "Esc closes",
     "close": "Close the menu",
     "account": "My account"
+  },
+  "mark": {
+    "label": "Trust mark",
+    "states": {
+      "upheld": {
+        "word": "Challenge upheld",
+        "line": "Moolam upheld a challenge against this record. Treat it, and its AI-use terms, as wrong."
+      },
+      "mismatch": {
+        "word": "Does not match",
+        "line": "Chainlink's network fetched the picture this passport points to, and it is not the picture that was registered."
+      },
+      "lookalike": {
+        "word": "Registered after a look-alike",
+        "line": "An earlier passport, {title}, looks like the same picture. It was registered on {date}, before this one."
+      },
+      "challenged": {
+        "word": "Challenged",
+        "line": "Someone put {bond} MON behind a claim that this record is wrong. The holder can answer until {date}."
+      },
+      "waiting": {
+        "word": "Waiting for Chainlink",
+        "line": "Registered {when}. Chainlink's network checks every new public passport, and has not checked this one yet."
+      },
+      "checked": {
+        "word": "Checked by Chainlink",
+        "line": "Chainlink's network fetched this picture itself, measured it again, and it matches its passport: {bits} of 64 bits apart. Written on Monad on {date}."
+      },
+      "sealed": {
+        "word": "Sealed",
+        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+      },
+      "nothing": {
+        "word": "Nothing to check",
+        "line": "This passport names no picture, so Chainlink has nothing to fetch."
+      }
+    },
+    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not: {bits} of 256 bits apart. Both have to match, so this passport does not pass.",
+    "simulator": {
+      "word": "Test run",
+      "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
+    },
+    "unread": "The mark could not be read just now, so none is shown. Try again in a moment.",
+    "readDecision": "Read the decision",
+    "openEarlier": "Open the earlier passport"
+  },
+  "claim": {
+    "label": "Where the claim comes from",
+    "studio": "Made in Moolam's studio. The agent signed the picture the moment it was drawn.",
+    "platform": "Drawn on {platform}. Its agent signed the picture the moment it was made.",
+    "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
+    "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
+    "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
+    "outside": "Registered outside Moolam's studio: no sworn statement, no web check."
+  },
+  "lookalike": {
+    "found": {
+      "heading": "Earlier passport found",
+      "line": "Chainlink's network measured this picture itself and found {title}, registered on {date}, {bits} of 64 bits apart. Written on Monad on {at}."
+    },
+    "searching": {
+      "heading": "Earlier passport, not confirmed yet",
+      "line": "Moolam's search found an earlier passport like this: {title}, registered on {date}. Chainlink has not confirmed it yet."
+    },
+    "order": "Registered first is not the same as made first. Anyone can challenge either passport with evidence.",
+    "later": {
+      "line": "A later passport looks the same: {title}, registered on {date}.",
+      "count": "{count, plural, =1 {# later passport looks} other {# later passports look}} the same."
+    },
+    "none": "Chainlink found no earlier look-alike among the candidates Moolam's search proposed.",
+    "sealed": "An earlier sealed passport carries a fingerprint like this picture's. Its picture was never shown, so nobody can compare the two."
+  },
+  "sworn": {
+    "label": "By signing, you state",
+    "line": "I made this picture, or I hold the rights to register it.",
+    "note": "This line goes into the passport you sign, for anyone to read."
+  },
+  "challenge": {
+    "rules": {
+      "heading": "What a challenge needs",
+      "earlier": "The earlier work: the picture you say this passport copies.",
+      "proof": "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier passport.",
+      "verify": "A Verify answer that shows it is the same picture.",
+      "licensed": "That it is not a copy you licensed to them.",
+      "burden": "The challenger carries the burden. Without this evidence, the record stands."
+    },
+    "decider": {
+      "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
+      "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
+      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way."
+    },
+    "answer": {
+      "heading": "Answer this challenge",
+      "prompt": "Someone has challenged your passport. You have until {date} to answer before Moolam decides. Say why the record is right, and how someone else could check it.",
+      "placeholder": "What you know, and how someone else could check it.",
+      "left": "{left} left",
+      "hint": "Up to 4,000 bytes. Your wallet signs it, and it is pinned for good where anyone can read it.",
+      "button": "Sign and send my answer",
+      "states": {
+        "signing": "Waiting for your wallet to sign",
+        "sending": "Sending your answer",
+        "done": "Your answer is pinned and shown on this passport."
+      },
+      "shown": {
+        "label": "The holder's answer",
+        "by": "Signed by {holder}",
+        "none": "The holder has not answered yet. They have until {date}.",
+        "missed": "The holder did not answer within the 14 days."
+      },
+      "refusals": {
+        "noOpenDispute": "There is no open challenge on this passport to answer.",
+        "windowClosed": "The 14 days to answer this challenge have passed.",
+        "expired": "Your signature ran out before it arrived. Sign again.",
+        "noHolder": "Monad shows no holder for this passport, so nobody can answer for it.",
+        "notHolder": "This wallet does not hold this passport, so it cannot answer for it.",
+        "signatureUsed": "That signature was already used. Sign again.",
+        "alreadyAnswered": "This challenge already has its answer. Each challenge takes one.",
+        "answering": "An answer to this challenge is being sent from another window. Look again in a moment.",
+        "unavailable": "Moolam cannot take answers right now. Nothing was sent. Try again later.",
+        "chainUnreachable": "Moolam could not read Monad just now. Nothing was sent. Try again in a moment.",
+        "pinFailed": "Your answer could not be pinned, so nothing was saved. Try again.",
+        "busy": "Too many answers are arriving right now. Wait a minute and try again.",
+        "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
+        "empty": "Write your answer first.",
+        "notPrintable": "Line breaks and hidden characters cannot be sent. Take them out and sign again.",
+        "declined": "You closed the wallet prompt, so nothing was signed.",
+        "unknown": "The answer did not go through."
+      }
+    },
+    "decision": {
+      "heading": "The decision",
+      "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
+      "rejected": "Rejected on {date}. The record stands.",
+      "reasons": "Read the reasons",
+      "noReasons": "No reasons were published with this decision."
+    }
   }
 }

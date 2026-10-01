@@ -230,7 +230,7 @@ describe("a request the runner answered from its memory (F1)", () => {
     const control = await mount(null);
 
     expect(control.getAttribute("data-recheck-state")).toBe("rechecked");
-    expect(control.textContent).toContain(`Re-checked on ${day(REPORT_AT)}`);
+    expect(control.textContent).toContain(`Checked on ${day(REPORT_AT)}`);
     expect(control.textContent).not.toContain(en.recheck.stamp.pending);
     expect(control.textContent).not.toContain(en.recheck.button);
   });
@@ -329,7 +329,7 @@ describe("a request with no report transaction keeps the time rule", () => {
     const control = await mount(null);
 
     expect(control.getAttribute("data-recheck-state")).toBe("rechecked");
-    expect(control.textContent).toContain(`Re-checked on ${day(REPORT_AT + 600)}`);
+    expect(control.textContent).toContain(`Checked on ${day(REPORT_AT + 600)}`);
     expect(rpc.receipts).toBe(0);
   });
 });
@@ -362,6 +362,6 @@ describe("a stranger calling the two reads in a loop (C1)", () => {
     const control = await mount(null);
 
     expect(control.getAttribute("data-recheck-state")).toBe("confirming");
-    expect(control.textContent).not.toContain("Re-checked on");
+    expect(control.textContent).not.toContain("Checked on");
   });
 });

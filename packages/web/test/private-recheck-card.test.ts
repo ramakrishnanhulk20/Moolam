@@ -169,7 +169,7 @@ describe("the same passport once a verdict is on chain", () => {
     // The runner closes any request for a passport that already carries a verdict.
     const markup = await card({ rows: [privateRow], privateCopy: "kept" });
     expect(markup).not.toContain(BUTTON);
-    expect(markup).toContain("Re-checked on");
+    expect(markup).toContain("Checked on");
   });
 
   it("says why there is no button in the button's place once the copy is gone", async () => {
@@ -218,7 +218,7 @@ describe("the poster line", () => {
     const markup = render(await Poster({ passport, art: { ...sealedArt, privateRecheck: true }, locale: "en" }));
 
     expect(markup).toContain(
-      "The picture is not published. Moolam keeps only a small private copy, for the private re-check.",
+      "The picture is not published. Moolam keeps only a small private copy, for the private check.",
     );
     expect(markup).not.toContain("Moolam keeps no copy");
   });

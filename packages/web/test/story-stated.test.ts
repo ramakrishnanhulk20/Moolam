@@ -351,7 +351,7 @@ describe("the chapter a server renders", () => {
     const markup = film();
     expect(markup).toContain(`${en.passport.consent.summary.closed}.`);
     expect(markup).toContain(en.story.stated.kicker);
-    expect(markup).toContain("Statement written on Monad");
+    expect(markup).toContain("Terms written on Monad");
   });
 
   it("draws the rule and the four marks with it", () => {

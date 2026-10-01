@@ -121,20 +121,20 @@ describe("the two distances say what they compare", () => {
 
   it("says Chainlink re-checked the registered picture, with the distance from its record", () => {
     expect(text(board())).toContain(
-      "Chainlink re-checked the registered picture itself on Sep 14, 2026: 3 of 64 bits apart from its record.",
+      "A Chainlink workflow checked the registered picture itself on Sep 14, 2026: 3 of 64 bits apart from its record.",
     );
   });
 
   it("says the same kind of thing when the re-check missed", () => {
     const missed = { ...FINDING, recheck: { matched: false, distance: 21, at: 1_789_380_000 } };
     expect(text(board({ finding: { read: missed } }))).toContain(
-      "Chainlink re-checked the registered picture itself on Sep 14, 2026: did not match, 21 of 64 bits apart from its record.",
+      "A Chainlink workflow checked the registered picture itself on Sep 14, 2026: did not match, 21 of 64 bits apart from its record.",
     );
   });
 
   it("names the registered picture when there is no re-check yet", () => {
     expect(text(board({ finding: { read: { ...FINDING, recheck: null } } }))).toContain(
-      "Chainlink: no re-check of the registered picture written yet.",
+      "Chainlink: no check of the registered picture written yet.",
     );
   });
 
