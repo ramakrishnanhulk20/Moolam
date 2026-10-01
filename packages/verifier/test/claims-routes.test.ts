@@ -454,13 +454,15 @@ describe("the claim routes", () => {
       asPerson("did:privy:ram", "POST", "/claims/accept", { ticketIds: [ticketId], terms, sendFuture: false }),
       asPerson("did:privy:ram", "POST", "/claims/refuse", { ticketIds: [ticketId] }),
     ]);
-    expect([accept.statusCode, refuse.statusCode].sort()).toEqual([200, 409]);
-    const loser = accept.statusCode === 409 ? accept : refuse;
-    expect(loser.json()).toEqual({ error: "not-open" });
-    const claims = (await asPerson("did:privy:ram", "GET", "/claims")).json();
-    const waitingIds = claims.waiting.map((one: { ticketId: string }) => one.ticketId);
-    expect(waitingIds.includes(ticketId)).toBe(accept.statusCode === 200);
-    if (refuse.statusCode === 200) {
+    try {
+      expect([accept.statusCode, refuse.statusCode].sort()).toEqual([200, 409]);
+      const loser = accept.statusCode === 409 ? accept : refuse;
+      expect(loser.json()).toEqual({ error: "not-open" });
+      const claims = (await asPerson("did:privy:ram", "GET", "/claims")).json();
+      const waitingIds = claims.waiting.map((one: { ticketId: string }) => one.ticketId);
+      expect(waitingIds.includes(ticketId)).toBe(accept.statusCode === 200);
+    } finally {
+      // Whichever request won, the tests after this one start with the platform unmuted.
       await asPerson("did:privy:ram", "POST", "/claims/unmute", { platformKeyHash: KEY_HASH });
     }
   });
@@ -487,7 +489,8 @@ describe("the claim routes", () => {
     const refused = await asPerson("did:privy:ram", "POST", "/claims/refuse", { ticketIds: [first.ticketId] });
     expect(refused.json()).toEqual({ refused: [first.ticketId] });
     const again = await asPerson("did:privy:ram", "POST", "/claims/accept", { ticketIds: [first.ticketId], terms, sendFuture: false });
-    expect(again.statusCode).toBe(404);
+    expect(again.statusCode).toBe(409);
+    expect(again.json()).toEqual({ error: "not-open" });
 
     const later = await openTicket("ram@example.com");
     const muted = (await asPerson("did:privy:ram", "GET", "/claims")).json();

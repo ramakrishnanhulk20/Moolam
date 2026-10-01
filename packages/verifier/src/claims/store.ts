@@ -557,15 +557,21 @@ export function isMuted(state: ClaimState, emailHash: string, keyHash: string): 
 
 /**
  * The tickets named, each one checked to belong to the caller (P32): the id exists, its email hash
- * is one of the caller's, and its platform is not muted for that address, which is the set the
- * caller was shown. Any id outside that set refuses the whole request as "not-found", one word for
- * an unknown id and for someone else's, so the answer says nothing about ids the caller does not own.
+ * is one of the caller's, and an open one's platform is not muted for that address, which is the
+ * set the caller was shown. Any id outside that set refuses the whole request as "not-found", one
+ * word for an unknown id and for someone else's, so the answer says nothing about ids the caller
+ * does not own.
+ *
+ * The mute hides only open tickets. A caller's own ticket that has already moved is theirs either
+ * way, and the step that follows refuses it as "not-open": otherwise a refusal that won a race would
+ * mute the platform and turn the losing accept's "not-open" into "not-found", so the loser's answer
+ * would depend on which request came first (P33).
  */
 function ownTickets(state: ClaimState, ticketIds: readonly string[], emailHashes: ReadonlySet<string>): Outcome<Ticket[]> {
   const found: Ticket[] = [];
   for (const id of ticketIds) {
     const ticket = state.tickets.find((one) => one.ticketId === id);
-    if (ticket === undefined || !emailHashes.has(ticket.emailHash) || isMuted(state, ticket.emailHash, ticket.keyHash)) {
+    if (ticket === undefined || !emailHashes.has(ticket.emailHash) || (ticket.state === "open" && isMuted(state, ticket.emailHash, ticket.keyHash))) {
       return { ok: false, reason: "not-found" };
     }
     found.push(ticket);

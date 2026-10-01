@@ -167,6 +167,20 @@ describe("the ticket store (P32, P33)", () => {
     expect(store.read().muted).toEqual([]);
   });
 
+  it("answers the losing accept not-open when the refuse came first and muted the platform", async () => {
+    const ticket = await openTicket("ram@example.com");
+    const mine = new Set([hashOf("ram@example.com")]);
+    expect(refuseTickets(store, { ticketIds: [ticket.ticketId], emailHashes: mine, now: NOW }, DEFAULT_CLAIM_CAPS).ok).toBe(true);
+    expect(store.read().muted).toHaveLength(1);
+    const late = acceptTickets(store, { ticketIds: [ticket.ticketId], emailHashes: mine, destination: PERSON, terms, sendFuture: false, now: NOW, allowed: () => true }, DEFAULT_CLAIM_CAPS);
+    expect(late).toEqual({ ok: false, reason: "not-open" });
+    const stranger = acceptTickets(store, { ticketIds: [ticket.ticketId], emailHashes: new Set([hashOf("other@example.com")]), destination: PERSON, terms, sendFuture: false, now: NOW, allowed: () => true }, DEFAULT_CLAIM_CAPS);
+    expect(stranger).toEqual({ ok: false, reason: "not-found" });
+    const hidden = await openTicket("ram@example.com");
+    const muted = acceptTickets(store, { ticketIds: [hidden.ticketId], emailHashes: mine, destination: PERSON, terms, sendFuture: false, now: NOW, allowed: () => true }, DEFAULT_CLAIM_CAPS);
+    expect(muted).toEqual({ ok: false, reason: "not-found" });
+  });
+
   it("refuses a step that skips a state or rewrites a fixed field, and writes nothing", () => {
     const ticket = write("ram@example.com");
     const skipped = store.change((state) => {
