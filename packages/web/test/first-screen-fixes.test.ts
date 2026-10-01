@@ -227,11 +227,13 @@ describe("sample names", () => {
 describe("the header's way home", () => {
   const layout = readFileSync("app/[locale]/layout.tsx", "utf8");
 
-  it("has no Home link in the laptop nav, where the logo is home", () => {
-    const nav = layout.slice(layout.indexOf("const nav = ["), layout.indexOf("] as const;"));
-    expect(nav).not.toContain('href: "/",');
-    expect(nav).not.toContain("nav.home");
-    expect(nav).toContain('href: "/explore"');
+  it("has no Home item in the laptop menu, where the logo is home", () => {
+    const menu = readFileSync("components/menu/menu.ts", "utf8");
+    const table = menu.slice(menu.indexOf("export const MENU"), menu.indexOf("};", menu.indexOf("export const MENU")));
+    expect(table).not.toContain('href: "/",');
+    expect(table).toContain('href: "/explore"');
+    const header = layout.slice(layout.indexOf("<MenuBar"), layout.indexOf("</header>"));
+    expect(header).toMatch(/<Link\s+href="\/"/);
   });
 
   it("keeps the Home tab in the phone's bar", () => {

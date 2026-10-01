@@ -141,28 +141,23 @@ describe("the phone bar in view", () => {
   });
 });
 
-describe("the header's links", () => {
-  const layout = readFileSync("app/[locale]/layout.tsx", "utf8");
+describe("the menu's links", () => {
+  const menu = readFileSync("components/menu/menu.ts", "utf8");
+  const flag = (key: string) => menu.split("\n").find((one) => one.includes(`{ key: "${key}",`))?.match(/prefetch: ([^,]+),/)?.[1];
 
-  it("marks Verify and Explore for intent and leaves Agents and Docs as they were", () => {
-    const flag = (href: string) => {
-      const line = layout.split("\n").find((one) => one.includes(`{ href: "${href}", label:`));
-      return line?.match(/prefetch: ([^,]+),/)?.[1];
-    };
-    expect(flag("/verify")).toBe('"intent"');
-    expect(flag("/explore")).toBe('"intent"');
-    expect(flag("/agents")).toBe("undefined");
-    expect(flag("/docs")).toBe("undefined");
-    expect(flag("/studio")).toBe("false");
+  it("marks Verify and Explore for intent and never fetches the two wallet pages on sight", () => {
+    expect(flag("verify")).toBe('"intent"');
+    expect(flag("explore")).toBe('"intent"');
+    expect(flag("studio")).toBe("false");
+    expect(flag("mine")).toBe("false");
   });
 
   it("draws an intent link as IntentLink, which holds the fetch until a pointer, focus or touch", async () => {
-    // The layout hands its table to HeaderNav, which draws the links.
-    expect(layout).toContain("<HeaderNav links={nav}");
-    const nav = readFileSync("components/shell/HeaderNav.tsx", "utf8");
-    expect(nav).toContain('link.prefetch === "intent" ? (');
-    expect(nav).toMatch(/<IntentLink\s+key=\{link\.href\}\s+\{\.\.\.props\}>/);
-    expect(nav).toContain("href: link.href,");
+    // The menu's tiles all go through MenuLink, which picks the link by the flag.
+    const tiles = readFileSync("components/menu/Tiles.tsx", "utf8");
+    expect(tiles).toContain('if (item.prefetch === "intent") {');
+    expect(tiles).toMatch(/<IntentLink href=\{item\.href\} \{\.\.\.shared\}>/);
+    expect(tiles).toMatch(/<Link href=\{item\.href\} prefetch=\{false\} \{\.\.\.shared\}>/);
 
     for (const reach of [pointAt, focus, touch]) {
       const host = await mount(createElement(IntentLink, { href: "/verify", className: "tap" }, "Verify"));

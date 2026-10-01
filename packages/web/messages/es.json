@@ -2440,5 +2440,68 @@
       "primary": "How to join the list",
       "secondary": "See it live on Dreamloom"
     }
+  },
+  "menu": {
+    "label": "Menu",
+    "sides": {
+      "personal": "For personal",
+      "business": "For business"
+    },
+    "items": {
+      "verify": {
+        "name": "Verify an image",
+        "line": "Drop in any picture and see who made it."
+      },
+      "studio": {
+        "name": "Register an image",
+        "line": "Make a picture and give it a passport on Monad."
+      },
+      "mine": {
+        "name": "My pictures",
+        "line": "Every passport you hold, and what you allow."
+      },
+      "explore": {
+        "name": "Explore",
+        "line": "Every passport ever registered, newest first."
+      },
+      "how": {
+        "name": "How it works",
+        "line": "One passport, from first pixel to proof."
+      },
+      "business": {
+        "name": "Moolam for business",
+        "line": "Credit the person behind every picture your site makes."
+      },
+      "kit": {
+        "name": "Platform kit",
+        "line": "One package and four routes on your server."
+      },
+      "mcp": {
+        "name": "AI agents and MCP",
+        "line": "Let Claude or any agent read a passport."
+      },
+      "agents": {
+        "name": "Agents board",
+        "line": "Every image agent, ranked by its record."
+      },
+      "pricing": {
+        "name": "Pricing",
+        "line": "What a passport costs you on Monad mainnet."
+      },
+      "dreamloom": {
+        "name": "Live demo: Dreamloom",
+        "line": "A real picture site running the kit today."
+      },
+      "security": {
+        "name": "Security and proof",
+        "line": "What the code defends, and the attacks we ran."
+      }
+    },
+    "here": "You are here",
+    "open": "Open",
+    "arrows": "Arrows move",
+    "escape": "Esc closes",
+    "close": "Close the menu",
+    "account": "My account"
   }
 }

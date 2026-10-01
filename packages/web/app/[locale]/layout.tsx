@@ -9,7 +9,9 @@ import { ScriptFace } from "@/components/ScriptFace";
 import { ShowGuideAgain } from "@/components/guide/ShowGuideAgain";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BottomBar } from "@/components/shell/BottomBar";
-import { HeaderNav } from "@/components/shell/HeaderNav";
+import { MenuBar } from "@/components/menu/MenuBar";
+import { ItemMark } from "@/components/menu/marks";
+import { PhoneMenu } from "@/components/menu/PhoneMenu";
 import { LateInsights } from "@/components/shell/LateInsights";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { ThemeColor } from "@/components/shell/ThemeColor";
@@ -115,7 +117,7 @@ export default async function LocaleLayout({
   const t = await getTranslations({ locale, namespace: "header" });
   const f = await getTranslations({ locale, namespace: "footer" });
   const m = await getTranslations({ locale, namespace: "meta" });
-  const mine = await getTranslations({ locale, namespace: "mine" });
+  const menu = await getTranslations({ locale, namespace: "menu" });
   const bar = await getTranslations({ locale, namespace: "shell" });
   const g = await getTranslations({ locale, namespace: "guide" });
   const source = activeSource();
@@ -126,36 +128,6 @@ export default async function LocaleLayout({
   // conditions are one line. Neither package sets a cookie and neither is
   // given one.
   const counted = process.env.VERCEL === "1" && !labPagesOn();
-
-  // The studio and My pictures carry the wallet. Left to prefetch, a reader of
-  // any other page quietly pulls half a megabyte of a screen they may never
-  // open, so those two are fetched when they are clicked.
-  //
-  // Verify and Explore are fetched on intent, the way the phone's tabs are
-  // (see IntentLink): Verify's page carries the whole check, and both landed
-  // inside the first seconds of the home page when fetched on sight. Agents and
-  // Docs stay as they were: neither was fetched in the home page's first five
-  // seconds on a phone.
-  //
-  // The last three carry the name the first visit guide points at, the same names
-  // the phone's tabs carry below. Only one of each pair is ever on the screen,
-  // so the guide can look for the name and take whichever answers.
-  //
-  // There is no Home link: the logo is the way home on a laptop. The phone's
-  // bar keeps its Home tab, because it has no logo under the thumb.
-  //
-  // My pictures is last and shown to everyone, signed in or not: a first
-  // visitor should see that the page exists, and pressing it signed out lands
-  // on the card that offers the sign in. Not prefetched, because that page
-  // carries the wallet.
-  const nav = [
-    { href: "/explore", label: t("nav.explore"), prefetch: "intent", anchor: undefined },
-    { href: "/agents", label: t("nav.agents"), prefetch: undefined, anchor: undefined },
-    { href: "/docs", label: t("nav.docs"), prefetch: undefined, anchor: undefined },
-    { href: "/verify", label: t("nav.verify"), prefetch: "intent", anchor: "verify" },
-    { href: "/studio", label: t("nav.studio"), prefetch: false, anchor: "studio" },
-    { href: "/mine", label: mine("entry"), prefetch: false, anchor: "mine" },
-  ] as const;
 
   // The phone's whole navigation, in the order a thumb reads it: the raised
   // Make sits in the middle.
@@ -197,81 +169,75 @@ export default async function LocaleLayout({
                 <PhoneHeader brand={t("brand")} className="app-header md:hidden" />
 
                 <header className="app-header sticky top-0 z-40 hidden border-b border-line bg-bg/85 backdrop-blur-md md:block">
-                  <div className="mx-auto flex h-[55px] w-full max-w-[1400px] items-center gap-x-6 px-5 sm:px-8 md:h-auto md:flex-wrap md:gap-x-4 md:gap-y-5 md:py-3 lg:gap-y-3 lg:py-4 xl:gap-x-6">
-                    {/* The lockup files carry clear space on every side, so the box is 63 px
-                        tall for 24 px of cap height and the negative margin keeps the bar the
-                        height the ink asks for. The theme class picks the variant, and the
-                        story pages force the dark one because that bar floats on a dark film.
-                        Under the light theme the story bar is the page's own cream, so the two
-                        rules in globals.css that watch data-lockup hand the light one back. */}
-                    <Link
-                      href="/"
-                      className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
-                    >
-                      <Image
-                        src="/brand/kolam/lockup-horizontal-dark.svg"
-                        alt={t("brand")}
-                        width={160}
-                        height={63}
-                        unoptimized
-                        loading="eager"
-                        data-lockup="dark"
-                        className="hidden dark:block [body:has([data-story])_&]:block"
-                      />
-                      {/* Only one of the two lockups is ever painted, and the
-                          server cannot know which: the theme is a class the
-                          browser puts on. So the high priority goes to the
-                          light one, which every first visit is shown, story
-                          pages included. The dark one still loads with the
-                          document, it just does not compete with the
-                          picture the first screen is actually waiting on. */}
-                      <Image
-                        src="/brand/kolam/lockup-horizontal-light.svg"
-                        alt={t("brand")}
-                        width={160}
-                        height={63}
-                        unoptimized
-                        loading="eager"
-                        fetchPriority="high"
-                        data-lockup="light"
-                        className="block dark:hidden [body:has([data-story])_&]:hidden"
-                      />
-                    </Link>
-                    {/* The tagline takes only the room the links leave, and
-                        steps out of the way when that is too little, rather
-                        than pushing the links and chips to a second row. In
-                        French, Spanish, Portuguese and Tamil the second row
-                        made the bar 102 px at 1440, which pushed the home
-                        page's Make one and its sponsor line below the fold.
-                        The empty first item is what lets it drop: a tagline
-                        wider than its box wraps to the second line of this
-                        one-line box, which is clipped. */}
-                    <span className="hidden h-[1lh] min-w-0 grow basis-0 flex-wrap overflow-hidden text-xs uppercase tracking-[0.24em] text-text-faint lg:flex">
-                      <span aria-hidden className="h-[1lh] w-0" />
-                      <span className="whitespace-nowrap">{t("tagline")}</span>
-                    </span>
-                    {/* The page being read is lit the way the phone bar lights
-                        its tab. The words come from here, so the client part
-                        carries no messages of its own.
-
-                        Between md and lg the bar is two rows by design: the
-                        wordmark and the two chips on top, the links on a row
-                        of their own under them. Left to wrap where they fell,
-                        the links, the chips and the tagline took three rows
-                        and 130 px at 768, and German took three at every
-                        width below a laptop. The tagline waits for lg. The 20
-                        px between the rows keeps the chips' 44 px tap pads
-                        off the links below them. Up to xl the gaps stay
-                        tight, so English holds one row at 1024 with a
-                        scrollbar taking 15 px of it. */}
-                    <HeaderNav links={nav} label={bar("label")} />
-                    {/* tap-row grows both chips to a 44 px target the same way
-                        the phone menu grows them, without moving anything. */}
-                    <div className="tap-row ml-auto hidden items-center gap-2 md:flex lg:ml-0">
-                      <LocaleSwitch />
-                      <ThemeToggle />
-                    </div>
-                  </div>
+                  {/* Two sides, For personal and For business, each opening a
+                      panel of its pages under the bar. The wordmark is the way
+                      home on a laptop; the phone keeps a Home tab instead. */}
+                  <MenuBar
+                    tagline={t("tagline")}
+                    home={
+                      <>
+                        {/* The lockup files carry clear space on every side, so the box is 63 px
+                            tall for 24 px of cap height and the negative margin keeps the bar the
+                            height the ink asks for. The theme class picks the variant, and the
+                            story pages force the dark one because that bar floats on a dark film.
+                            Under the light theme the story bar is the page's own cream, so the two
+                            rules in globals.css that watch data-lockup hand the light one back. */}
+                        <Link
+                          href="/"
+                          className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
+                        >
+                          <Image
+                            src="/brand/kolam/lockup-horizontal-dark.svg"
+                            alt={t("brand")}
+                            width={160}
+                            height={63}
+                            unoptimized
+                            loading="eager"
+                            data-lockup="dark"
+                            className="hidden dark:block [body:has([data-story])_&]:block"
+                          />
+                          {/* Only one of the two lockups is ever painted, and the
+                              server cannot know which: the theme is a class the
+                              browser puts on. So the high priority goes to the
+                              light one, which every first visit is shown, story
+                              pages included. The dark one still loads with the
+                              document, it just does not compete with the
+                              picture the first screen is actually waiting on. */}
+                          <Image
+                            src="/brand/kolam/lockup-horizontal-light.svg"
+                            alt={t("brand")}
+                            width={160}
+                            height={63}
+                            unoptimized
+                            loading="eager"
+                            fetchPriority="high"
+                            data-lockup="light"
+                            className="block dark:hidden [body:has([data-story])_&]:hidden"
+                          />
+                        </Link>
+                      </>
+                    }
+                    right={
+                      // tap-row grows the account and both chips to a 44 px
+                      // target without moving anything. My pictures is shown
+                      // to everyone, signed in or not: pressed signed out it
+                      // lands on the card that offers the sign in. Never
+                      // prefetched, because that page carries the wallet.
+                      <div className="tap-row flex items-center gap-2">
+                        <Link
+                          href="/mine"
+                          prefetch={false}
+                          data-guide-anchor="mine"
+                          className="flex items-center gap-2 whitespace-nowrap rounded-[8px] border border-line px-3 py-1.5 text-xs tracking-[0.06em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                        >
+                          <ItemMark name="mine" size={14} />
+                          <span className="max-lg:sr-only">{menu("account")}</span>
+                        </Link>
+                        <LocaleSwitch />
+                        <ThemeToggle />
+                      </div>
+                    }
+                  />
                 </header>
 
                 <main className="flex-1">{children}</main>
@@ -376,6 +342,7 @@ export default async function LocaleLayout({
                     are one tap away at every scroll position. */}
                 <div className="md:hidden">
                   <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
+                  <PhoneMenu />
                 </div>
               </div>
             </LenisProvider>

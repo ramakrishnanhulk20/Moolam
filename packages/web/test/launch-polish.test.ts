@@ -310,16 +310,19 @@ describe("the controls a screen reader and a voice can reach", () => {
     expect(source("components/ThemeToggle.tsx")).toContain('aria-label={t("themeDarkAction")}');
   });
 
-  it("hangs the 44 px pad on the header nav and the two chips", () => {
-    // The links are drawn by HeaderNav, where every one of them shares one class list.
-    const nav = source("components/shell/HeaderNav.tsx");
-    expect(nav).toContain("className: `tap whitespace-nowrap");
-    expect(nav.match(/className: `tap /g)).toHaveLength(1);
+  it("hangs the 44 px pad on the menu's two sides, the account and the two chips", () => {
+    // Both sides are drawn by one button in MenuBar, which carries the pad.
+    const bar = source("components/menu/MenuBar.tsx");
+    expect(bar).toContain("className={`tap relative flex items-center");
+    expect(bar.match(/<button\b/g)).toHaveLength(1);
     const layout = source("app/[locale]/layout.tsx");
-    expect(layout).toMatch(/className="tap-row [^"]*md:flex[^"]*"/);
-    const chips = layout.slice(layout.indexOf('className="tap-row '), layout.indexOf("</div>", layout.indexOf('className="tap-row ')));
-    expect(chips).toContain("<LocaleSwitch />");
-    expect(chips).toContain("<ThemeToggle />");
+    const at = layout.indexOf('className="tap-row ');
+    expect(at).toBeGreaterThan(layout.indexOf("<MenuBar"));
+    expect(at).toBeLessThan(layout.indexOf("</header>"));
+    const corner = layout.slice(at, layout.indexOf("</div>", at));
+    expect(corner).toContain('href="/mine"');
+    expect(corner).toContain("<LocaleSwitch />");
+    expect(corner).toContain("<ThemeToggle />");
   });
 
   it("takes the film's canvas out of the way and leaves its words in the page", () => {

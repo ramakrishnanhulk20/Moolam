@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
 import { addresses, shortHex } from "@/lib/chain/client";
+import en from "@/messages/en.json";
 
 /**
- * The frame every page shares: which header link says "you are here", how the
+ * The frame every page shares: which side of the menu says "you are here", how the
  * footer writes the registry, the colour of the browser's own bar, and the
  * guide's light finding the tab a phone can actually see.
  */
@@ -20,70 +22,80 @@ vi.mock("@/lib/i18n/routing", () => ({
   usePathname: () => here.path,
 }));
 
-const { HeaderNav, currentHeaderLink } = await import("@/components/shell/HeaderNav");
+const { MenuBar } = await import("@/components/menu/MenuBar");
+const { currentItem } = await import("@/components/menu/menu");
 const { anchorOnScreen, everyFrame, spotFor } = await import("@/components/guide/GuideWalk");
 const { THEME_BAR, themeBarColour } = await import("@/components/shell/ThemeColor");
 
-const LINKS = [
-  { href: "/explore", label: "Explore", prefetch: "intent", anchor: undefined },
-  { href: "/agents", label: "Agents", prefetch: undefined, anchor: undefined },
-  { href: "/docs", label: "Docs", prefetch: undefined, anchor: undefined },
-  { href: "/verify", label: "Verify an image", prefetch: "intent", anchor: "verify" },
-  { href: "/studio", label: "Register an image", prefetch: false, anchor: "studio" },
-  { href: "/mine", label: "My pictures", prefetch: false, anchor: "mine" },
-] as const;
-
-/** The hrefs of the links drawn as the current page. */
-function lit(path: string): string[] {
+/** The laptop bar on a route, closed or with one side open. */
+function bar(path: string, open?: "personal" | "business"): string {
   here.path = path;
-  const html = renderToStaticMarkup(createElement(HeaderNav, { links: LINKS, label: "Sections" }));
-  return [...html.matchAll(/<a[^>]*>/g)]
-    .map((found) => found[0])
-    .filter((tag) => tag.includes('aria-current="page"'))
-    .map((tag) => tag.match(/href="([^"]+)"/)?.[1] ?? "");
+  return renderToStaticMarkup(
+    createElement(
+      NextIntlClientProvider,
+      { locale: "en", timeZone: "UTC", messages: en },
+      createElement(MenuBar, {
+        home: null,
+        tagline: "",
+        right: null,
+        initial: open === undefined ? undefined : { open, by: "press" as const },
+      }),
+    ),
+  );
 }
 
-describe("the laptop header marks the page being read", () => {
+/** The side whose button holds the page being read, and the tiles drawn as the current page. */
+function lit(path: string, open: "personal" | "business"): { side: string | null; tiles: string[] } {
+  const html = bar(path, open);
+  return {
+    side: html.match(/data-menu-trigger="(\w+)" [^>]*data-holds-current="true"/)?.[1] ?? null,
+    tiles: [...html.matchAll(/<a [^>]*>/g)]
+      .map((found) => found[0])
+      .filter((tag) => tag.includes('aria-current="page"'))
+      .map((tag) => tag.match(/href="([^"]+)"/)?.[1] ?? ""),
+  };
+}
+
+describe("the laptop menu marks the page being read", () => {
   // next-intl's usePathname hands back the route with the locale taken off, so
-  // the address in the left column arrives as the path in the right one.
+  // the address in the left column arrives as the path in the right one. A
+  // passport lights Explore, as the phone bar's Explore tab does.
   it.each([
-    ["/en/verify", "/verify", ["/verify"]],
-    ["/en/explore/view?view=all", "/explore/view?view=all", ["/explore"]],
-    ["/en/passport/0x1", "/passport/0x1", []],
-    ["/en/docs/proof", "/docs/proof", ["/docs"]],
-  ])("%s lights %j", (_address, path, expected) => {
-    expect(lit(path)).toEqual(expected);
+    ["/en/verify", "/verify", "personal", ["/verify"]],
+    ["/en/explore/view?view=all", "/explore/view?view=all", "personal", ["/explore"]],
+    ["/en/passport/0x1", "/passport/0x1", "personal", ["/explore"]],
+    ["/en/docs/proof", "/docs/proof", "business", ["/docs/security/overview"]],
+  ] as const)("%s lights %s / %j", (_address, path, side, expected) => {
+    expect(lit(path, side)).toEqual({ side, tiles: expected });
   });
 
-  it("gives the current link the accent and the short rule, and the rest neither", () => {
-    here.path = "/verify";
-    const html = renderToStaticMarkup(createElement(HeaderNav, { links: LINKS, label: "Sections" }));
-    const verify = html.slice(html.indexOf('href="/verify"'), html.indexOf("</a>", html.indexOf('href="/verify"')));
-    expect(verify).toContain("text-accent");
-    expect(verify).toMatch(/h-\[2px\] w-4 bg-accent/);
-    const explore = html.slice(html.indexOf('href="/explore"'), html.indexOf("</a>", html.indexOf('href="/explore"')));
-    expect(explore).toContain("text-text-muted");
-    expect(explore).not.toContain("bg-accent");
+  it("gives the side that holds the page the accent and the short rule, and the other neither", () => {
+    const html = bar("/verify");
+    const button = (side: string) => {
+      const at = html.indexOf(`data-menu-trigger="${side}"`);
+      return html.slice(html.lastIndexOf("<button", at), html.indexOf("</button>", at));
+    };
+    expect(button("personal")).toContain("text-accent");
+    expect(button("personal")).toMatch(/h-\[2px\] w-4 bg-accent/);
+    expect(button("business")).toContain("text-text-muted");
+    expect(button("business")).not.toContain("bg-accent");
   });
 
-  it("keeps the names the guide lights and the fetch rule each link had", () => {
-    here.path = "/";
-    const html = renderToStaticMarkup(createElement(HeaderNav, { links: LINKS, label: "Sections" }));
-    for (const name of ["verify", "studio", "mine"]) {
-      expect(html).toContain(`data-guide-anchor="${name}"`);
-    }
-    expect(lit("/")).toEqual([]);
+  it("keeps the names the guide lights", () => {
+    const html = bar("/");
+    expect(html).toContain('data-guide-anchor="verify"');
+    expect(html).toContain('data-guide-anchor="studio"');
+    expect(html).not.toContain('data-holds-current="true"');
     const layout = readFileSync("app/[locale]/layout.tsx", "utf8");
-    expect(layout).toContain('{ href: "/mine", label: mine("entry"), prefetch: false, anchor: "mine" }');
-    expect(layout).toContain("<HeaderNav links={nav}");
+    expect(layout).toContain('data-guide-anchor="mine"');
+    expect(layout).toContain("<MenuBar");
   });
 
-  it("counts an agent's page and a challenge under the links they belong to", () => {
-    const hrefs = LINKS.map((link) => link.href);
-    expect(currentHeaderLink("/agent/10249", hrefs)).toBe("/agents");
-    expect(currentHeaderLink("/resolve/0xfeed", hrefs)).toBe("/verify");
-    expect(currentHeaderLink("/docs/", hrefs)).toBe("/docs");
-    expect(currentHeaderLink("/verifying", hrefs)).toBeNull();
+  it("counts an agent's page and a challenge under the items they belong to", () => {
+    expect(currentItem("/agent/10249")).toEqual({ side: "business", key: "agents" });
+    expect(currentItem("/resolve/0xfeed")).toEqual({ side: "personal", key: "verify" });
+    expect(currentItem("/docs/")).toEqual({ side: "personal", key: "how" });
+    expect(currentItem("/verifying")).toBeNull();
   });
 });
 

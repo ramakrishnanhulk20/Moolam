@@ -18,27 +18,20 @@ function read(path: string): string {
 describe("the entry in the header", () => {
   const layout = read("app/[locale]/layout.tsx");
 
-  it("stands in the desktop bar, last, pointing at the page", () => {
-    // The layout's nav table holds the words and the fetch rule; HeaderNav
-    // draws every row of it, in order, inside one nav.
-    const table = layout.slice(layout.indexOf("const nav = ["), layout.indexOf("] as const;"));
-    const rows = [...table.matchAll(/\{ href: "([^"]+)"/g)].map((found) => found[1]);
-    expect(rows.at(-1)).toBe("/mine");
-    expect(table).toContain('{ href: "/mine", label: mine("entry"), prefetch: false, anchor: "mine" }');
-    expect(layout).toContain("<HeaderNav links={nav}");
-    const nav = read("components/shell/HeaderNav.tsx");
-    const drawn = nav.indexOf("{links.map(");
-    expect(nav.indexOf("<nav")).toBeLessThan(drawn);
-    expect(nav.indexOf("</nav>")).toBeGreaterThan(drawn);
-    expect(nav).toContain("prefetch={link.prefetch}");
+  it("stands in the laptop bar's right-hand corner, pointing at the page, never prefetched", () => {
+    // The corner beside the language and theme chips, which the layout draws
+    // and hands the menu bar, so the account is one press away on every page.
+    const at = layout.indexOf('className="tap-row ');
+    expect(at).toBeGreaterThan(layout.indexOf("<MenuBar"));
+    const corner = layout.slice(at, layout.indexOf("<LocaleSwitch />", at));
+    expect(corner).toMatch(/<Link\s+href="\/mine"\s+prefetch=\{false\}\s+data-guide-anchor="mine"/);
+    expect(corner).toContain('{menu("account")}');
   });
 
-  it("wears the same clothes as the six links beside it", () => {
-    // One class list for every link, so My pictures cannot drift from the rest.
-    const nav = read("components/shell/HeaderNav.tsx");
-    expect(nav.match(/className: `tap /g)).toHaveLength(1);
-    expect(nav).toContain("className: `tap whitespace-nowrap transition-colors duration-200 hover:text-accent ${");
-    expect(nav).toContain('on ? "text-accent" : "text-text-muted"');
+  it("is on the personal side of the menu as well, and never prefetched there either", () => {
+    const menu = read("components/menu/menu.ts");
+    expect(menu).toContain('{ key: "mine", href: "/mine", mark: "mine", prefetch: false, tab: "mine" }');
+    expect(menu).not.toContain('prefetch: "intent", tab: "mine"');
   });
 
   it("holds no room for anything conditional, because nothing here is", () => {
