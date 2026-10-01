@@ -8,6 +8,11 @@ import multipart, { type Multipart } from "@fastify/multipart";
 import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from "fastify";
 import type { PrivyKeys } from "./auth/privy.js";
+import type { ClaimChain } from "./claims/chain.js";
+import { pepperFromEnv, type Pepper } from "./claims/email.js";
+import type { PreviewReader } from "./claims/preview.js";
+import { claimSetup, type ClaimLimits, type ClaimSetup } from "./claims/service.js";
+import type { SweepCounts } from "./claims/sweep.js";
 import { rateLimitKey } from "./limits/addressKey.js";
 import { REGISTRY_RETRY_MS, checkRegistry, watchRegistry, type GeneratorCheck } from "./boot/registryChecks.js";
 import { ensureSigner } from "./c2pa.js";
@@ -30,6 +35,7 @@ import type { PlatformLimits } from "./platform/stores.js";
 import { loadPlatforms } from "./platforms/platforms.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
+import { claimRoutes } from "./routes/claims.js";
 import { healthRoutes } from "./routes/health.js";
 import { mcpRoutes, type McpRouteOptions } from "./routes/mcp.js";
 import { platformRoutes } from "./routes/platform.js";
@@ -449,6 +455,8 @@ declare module "fastify" {
     recheck: RecheckQueue;
     /** The hourly sweep of private copies whose passport never registered, for /health to report. */
     privateSweep: PrivateSweep;
+    /** One pass of the claim sweep, run on every index refresh tick; undefined while the claim routes are closed. */
+    claimSweep: () => Promise<SweepCounts | undefined>;
   }
 }
 
@@ -551,6 +559,11 @@ export async function buildServer(
      * one (it is loaded and checked the same way), this folder for their state and these limits.
      */
     platform?: { keys?: PrivyKeys; list?: unknown; dir?: string; limits?: Partial<PlatformLimits> };
+    /**
+     * Replaces the claim routes' pepper (null closes them as a host without one is closed), their
+     * chain, their preview reader and their limits, for tests. Their files live in the platform dir.
+     */
+    claims?: { pepper?: Pepper | null; chain?: ClaimChain; preview?: PreviewReader; limits?: Partial<ClaimLimits> };
     /** Replaces the sweep's mode or its Pinata, chain and clock, for tests. Given, it is scheduled even under a test runner. */
     sweep?: { mode?: PrivateSweepMode; deps?: Partial<SweepDeps> };
     consent?: ConsentReader;
@@ -819,6 +832,8 @@ export async function buildServer(
   const generatorClosed = (): string | undefined => generator?.closed();
   // Set once the platform routes are registered below, which the route list reads on every call.
   let platformMounted = false;
+  // Set with them: the claim service the prepare's deliverTo, the deliveries and the person routes share.
+  let claims: ClaimSetup | undefined;
 
   // One counter per server, not per module, so two servers in one test file never share a budget.
   // Under a test runner its store is memory; on a host it is the ceiling file in the data folder.
@@ -895,6 +910,7 @@ export async function buildServer(
         ...(canUnseal && canReadHolders ? ["unseal"] : []),
         ...(canUnseal ? ["sealed"] : []),
         ...(platformMounted ? ["platform/prepare", "platform/record", "platform/sign", "platform/status"] : []),
+        ...(platformMounted && claims?.open === true ? ["platform/deliveries", "claims"] : []),
         "health",
       ];
     },
@@ -913,7 +929,8 @@ export async function buildServer(
   // back, which the browser turns into a refusal on its side.
   await app.register(cors, {
     origin: env.CORS_ORIGINS.length === 0 ? false : env.CORS_ORIGINS,
-    methods: ["GET", "POST"],
+    // DELETE is for the one person route that clears a standing destination.
+    methods: ["GET", "POST", "DELETE"],
     allowedHeaders: ["Authorization", "Content-Type"],
   });
 
@@ -1029,13 +1046,34 @@ export async function buildServer(
     } else if (!signs) {
       app.log.warn(`platform routes off: ${SIGNER_OFF_REASON}`);
     } else {
+      const pepper = options.claims?.pepper === null ? undefined : (options.claims?.pepper ?? pepperFromEnv());
+      claims = claimSetup({
+        dir: options.platform?.dir,
+        platforms: list.platforms,
+        pepper,
+        chain: options.claims?.chain,
+        preview: options.claims?.preview,
+        limits: options.claims?.limits,
+        log: (line) => {
+          app.log.warn(line);
+        },
+      });
       await app.register(platformRoutes, {
         platforms: list.platforms,
         keys: (options.platform ?? options.prepare ?? {}).keys,
         dir: options.platform?.dir,
         limits: options.platform?.limits,
+        claims,
       });
+      // Mounted with the platform routes, open or closed: closed, each answers 503 claims-unavailable,
+      // and a prepare's deliverTo is refused the same way. The line names the variables, never a value.
+      await app.register(claimRoutes, { claims, keys: (options.platform ?? options.prepare ?? {}).keys });
       platformMounted = true;
+      if (!claims.open) {
+        const line = `claim routes closed, every one answers 503: ${claims.why}`;
+        if (env.NODE_ENV === "production") app.log.warn(line);
+        else app.log.info(line);
+      }
     }
   } else {
     app.log.info(
@@ -1052,6 +1090,8 @@ export async function buildServer(
     deps: options.sweep?.deps,
   });
   app.decorate("privateSweep", sweep);
+  const claimService = claims?.open === true ? claims.service : undefined;
+  app.decorate("claimSweep", async () => await claimService?.sweep());
   if (options.sweep !== undefined || env.NODE_ENV !== "test") {
     const stopSweep = sweep.start();
     app.addHook("onClose", async () => {
@@ -1065,6 +1105,10 @@ export async function buildServer(
       if (reloading === 0) {
         void reload();
       }
+      // The claim sweep keeps its own guard against a pass still running, and never throws.
+      void app.claimSweep().catch((error: unknown) => {
+        app.log.warn({ reason: safeReason(error) }, "claim sweep failed, tickets left as they were");
+      });
     }, refreshMs);
     // A refresh that is only waiting for its next tick must not keep the process alive.
     timer.unref();

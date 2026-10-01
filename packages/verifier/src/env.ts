@@ -102,6 +102,13 @@ const DEFAULT_PLATFORM_PREPARES_PER_KEY_PER_DAY = "100";
 const DEFAULT_GLOBAL_PLATFORM_PREPARES_PER_DAY = "500";
 
 /**
+ * What GET /claims, accept and refuse may cost together in one UTC day, for everyone. Each lookup
+ * is one Privy user read and up to a page of gateway reads, so this bounds what free accounts can
+ * spend of both. Zero closes the three routes, like every other ceiling here.
+ */
+const DEFAULT_CLAIM_REQUESTS_PER_DAY = "20000";
+
+/**
  * What the hourly sweep of orphaned private copies does: nothing, log what it would delete, or
  * delete. Dry is the default so a new host only logs until an operator has read a few runs and
  * switches it on (ruling D5).
@@ -397,6 +404,15 @@ const schema = z
         return names as ExpectedRoute[];
       }),
     PRIVY_JWKS_OVERRIDE_PATH: optionalText(),
+    CLAIM_PEPPER: optionalPattern(
+      /^(?:[0-9a-fA-F]{2}){32,128}$/,
+      "CLAIM_PEPPER must be 64 to 256 hex characters, at least 32 bytes from a CSPRNG such as `openssl rand -hex 32`",
+    ),
+    CLAIM_PEPPER_VERSION: optionalPattern(
+      /^[1-9][0-9]{0,8}$/,
+      "CLAIM_PEPPER_VERSION must be a whole number from 1, raised by one on every new CLAIM_PEPPER",
+    ),
+    CLAIM_REQUESTS_PER_DAY: dayCeiling("CLAIM_REQUESTS_PER_DAY", DEFAULT_CLAIM_REQUESTS_PER_DAY),
     NODE_ENV: optionalText(),
   })
   .superRefine((value, ctx) => {
@@ -439,6 +455,15 @@ const schema = z
         path: ["PRIVY_JWKS_OVERRIDE_PATH"],
         message:
           "PRIVY_JWKS_OVERRIDE_PATH is for local tests only and is refused when NODE_ENV is production, because it would let anyone holding that key sign tokens this service accepts",
+      });
+    }
+    // A version with no pepper, or a pepper with no version, would hash emails under a tag that
+    // does not say which secret made them, so rotation could not tell old tickets from new.
+    if ((value.CLAIM_PEPPER === undefined) !== (value.CLAIM_PEPPER_VERSION === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["CLAIM_PEPPER"],
+        message: "CLAIM_PEPPER and CLAIM_PEPPER_VERSION go together: set both to open the claim routes, or neither to keep them closed",
       });
     }
     if (value.X402_ENABLED && value.X402_PAY_TO_ADDRESS === undefined) {
@@ -654,6 +679,9 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     MATCH_WAIT_MS: source.MATCH_WAIT_MS,
     EXPECT_ROUTES: source.EXPECT_ROUTES,
     PRIVY_JWKS_OVERRIDE_PATH: source.PRIVY_JWKS_OVERRIDE_PATH,
+    CLAIM_PEPPER: source.CLAIM_PEPPER,
+    CLAIM_PEPPER_VERSION: source.CLAIM_PEPPER_VERSION,
+    CLAIM_REQUESTS_PER_DAY: source.CLAIM_REQUESTS_PER_DAY,
     NODE_ENV: source.NODE_ENV,
   });
 

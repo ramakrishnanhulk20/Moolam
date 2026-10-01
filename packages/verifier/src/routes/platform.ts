@@ -58,7 +58,36 @@ import {
 } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
 import { registrationOf, signedFile, type SignedFile } from "../sealed.js";
+import { deliverable, readDeliverTo, type ClaimService, type ClaimSetup } from "../claims/service.js";
+import {
+  ClaimStoreClosed,
+  isTicketId,
+  markFailed,
+  standingFor,
+  writeProblem,
+  writeTicket,
+  type Ticket,
+  type VerifiedBy,
+} from "../claims/store.js";
 import { CallerGone, SERVICE_FAULT_REASON, givesUploadsBack, statusOf, studioTurn } from "./shared.js";
+
+/**
+ * The most tickets one deliveries answer names. A platform's worker sends at most once per entry
+ * per poll, so this bounds the gas one poll can spend (P34); the rest come on the next poll.
+ */
+const MAX_DELIVERIES = 32;
+
+/** The accepted tickets read against the chain per poll, oldest first, to find MAX_DELIVERIES still held. */
+const DELIVERY_CANDIDATES = 64;
+
+/** ownerOf reads in flight at once for one deliveries poll. */
+const DELIVERY_READS_AT_ONCE = 8;
+
+/** A prepare's deliverTo, once read: the email's hash under the pepper and the platform's word for how it checked it. */
+interface Delivery {
+  emailHash: string;
+  verifiedBy: VerifiedBy;
+}
 
 /** What the C2PA manifest records as the tool that made the claim: Moolam, never the platform. */
 const CLAIM_GENERATOR = "moolam-platform-kit/0.1.0";
@@ -95,6 +124,8 @@ export interface PlatformRouteOptions {
   /** Where the platform state lives. Left out, it is the data folder's named files. */
   dir?: string;
   limits?: Partial<PlatformLimits>;
+  /** The claim service a prepare's deliverTo and the deliveries routes use, or why it is closed. */
+  claims?: ClaimSetup;
 }
 
 /**
@@ -119,6 +150,8 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
   });
   /** Handles being signed right now, by their record's hash, so one record is never pinned twice at once. */
   const signing = new Set<string>();
+  /** The open claim service, or undefined when the claim routes are closed on this host. */
+  const claimService = (): ClaimService | undefined => (options.claims?.open === true ? options.claims.service : undefined);
   /** Chain time now, or `earlier` when the chain cannot be read: an older time only makes a deadline sooner. */
   const chainTimeOr = async (earlier: bigint): Promise<bigint> => {
     try {
@@ -163,6 +196,26 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
               ? "in co-sign mode the creator is the person who opens the link, so a prepare names none"
               : "a platform prepare may only repeat the creator wallet and agent its key was listed with",
         });
+      }
+      // Read and hashed before anything is spent, and refused with the field's name only: the value
+      // is an email address and goes into no answer and no log line (P29).
+      let delivery: Delivery | undefined;
+      if (upload.deliverTo !== undefined) {
+        const claims = claimService();
+        if (upload.mode !== "platform") {
+          request.log.warn({ platform: platform.name, field: "deliverTo" }, "rejected: /platform/prepare deliverTo outside platform mode");
+          return reply.code(400).send({ error: "deliverTo" });
+        }
+        if (claims === undefined) {
+          request.log.warn({ platform: platform.name }, "rejected: /platform/prepare deliverTo while the claim routes are closed");
+          return reply.code(503).send({ error: "claims-unavailable" });
+        }
+        const read = readDeliverTo(upload.deliverTo, claims.pepper);
+        if (read === null) {
+          request.log.warn({ platform: platform.name, field: "deliverTo" }, "rejected: /platform/prepare deliverTo");
+          return reply.code(400).send({ error: "deliverTo" });
+        }
+        delivery = read;
       }
       if (upload.mode === "cosign" && stores.pending === undefined) {
         request.log.error({ platform: platform.name }, "rejected: /platform/prepare co-sign with nowhere to freeze files");
@@ -233,6 +286,18 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
         }
       }
 
+      // A key closed for refusals, or at a ticket cap, is told before a slot or a pin is spent. The
+      // check reads only the key's own counts, so its answer is the same for any address (P30).
+      if (delivery !== undefined) {
+        const service = claimService() as ClaimService;
+        const { emailHash } = delivery;
+        const refusal = ticketRefusal(() => writeProblem(service.store.read(), platform.keyHash, emailHash, service.caps, Number(chainNow)));
+        if (refusal !== undefined) {
+          request.log.warn({ platform: platform.name, reason: refusal.error }, "rejected: /platform/prepare ticket not writable");
+          return reply.code(refusal.status).send({ error: refusal.error });
+        }
+      }
+
       const reservation = stores.quota.take(platform.keyHash);
       if (!reservation.ok) {
         request.log.warn({ platform: platform.name }, "rejected: /platform/prepare key quota");
@@ -250,7 +315,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
       // A slot is spent once something that costs Moolam lands: a pin, or files frozen on the volume.
       let spent = false;
       try {
-        return await preparePicture(request, reply, platform, upload, chainNow, () => {
+        return await preparePicture(request, reply, platform, upload, chainNow, delivery, () => {
           spent = true;
         });
       } finally {
@@ -269,6 +334,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
     platform: Platform,
     upload: PlatformUpload,
     chainNow: bigint,
+    delivery: Delivery | undefined,
     spend: () => void,
   ): Promise<FastifyReply> {
     try {
@@ -394,6 +460,43 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
       spend();
       const deadline = (await chainTimeOr(chainNow)) + SIGNATURE_WINDOW_SECONDS;
       const input = passportInput(fields, platform.creatorWallet, deadline);
+
+      // The ticket is written pending: it is an offer only once the chain shows the passport under
+      // the platform's wallet (P27). The answer is the same for any address, a Moolam user's or
+      // not, except deliverNow, which only a standing choice for this very key produces (P30).
+      let deliverNow: string | undefined;
+      if (delivery !== undefined) {
+        const service = claimService() as ClaimService;
+        let ticket: Ticket | undefined;
+        const refusal = ticketRefusal(() => {
+          const found = standingFor(service.store.read(), delivery.emailHash, platform.keyHash);
+          const standing = found !== undefined && deliverable(found.destination, service, platform.creatorWallet) ? found : undefined;
+          const written = writeTicket(
+            service.store,
+            {
+              passportId,
+              keyHash: platform.keyHash,
+              platformName: platform.name,
+              creatorWallet: platform.creatorWallet,
+              verifiedBy: delivery.verifiedBy,
+              emailHash: delivery.emailHash,
+              standing,
+            },
+            Number(chainNow),
+            service.caps,
+          );
+          if (!written.ok) return written.reason;
+          ticket = written.value;
+          deliverNow = standing?.destination;
+          return null;
+        });
+        if (refusal !== undefined) {
+          request.log.warn({ platform: platform.name, reason: refusal.error }, "rejected: /platform/prepare ticket not written after the pin");
+          return reply.code(refusal.status).send({ error: refusal.error });
+        }
+        request.log.info({ platform: platform.name, passportId, ticketId: ticket?.ticketId }, "platform: delivery ticket written");
+      }
+
       request.log.info({ platform: platform.name, passportId, mode: "platform" }, "platform: passport fields prepared");
       return reply.send({
         mode: "platform",
@@ -402,6 +505,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
         files: filesAnswer(set.entries),
         signedFile: file,
         ...shared,
+        ...(deliverNow === undefined ? {} : { deliverNow }),
       });
     }
 
@@ -729,6 +833,108 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
       return reply.send(recordAnswer(record, { digest: asPlatform !== undefined }));
     },
   );
+
+  /**
+   * The accepted tickets of this key waiting for their hand-over (P34): only those whose ownerOf,
+   * read now, is still the platform's wallet, oldest first, at most MAX_DELIVERIES. A ticket whose
+   * holder could not be read is left out of this poll rather than guessed. Every destination is
+   * checked again as it leaves (P31), and the platform's SDK checks it once more before any send.
+   */
+  app.get("/platform/deliveries", async (request: FastifyRequest, reply: FastifyReply) => {
+    const platform = platformForKey(request.headers.authorization, options.platforms, wallClock());
+    if (platform === undefined) {
+      request.log.warn({ ip: request.ip }, "rejected: /platform/deliveries no valid platform key");
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+    const service = claimService();
+    if (service === undefined) {
+      return reply.code(503).send({ error: "claims-unavailable" });
+    }
+    let tickets: Ticket[];
+    try {
+      tickets = service.store.read().tickets;
+    } catch (error) {
+      if (!(error instanceof ClaimStoreClosed)) throw error;
+      request.log.error({ reason: error.message }, "rejected: /platform/deliveries the claim store is closed");
+      return reply.code(503).send({ error: "claims-unavailable" });
+    }
+    const candidates = tickets
+      .filter((ticket) => ticket.state === "accepted" && sameHash(ticket.keyHash, platform.keyHash))
+      .sort((a, b) => (a.acceptedAt ?? 0) - (b.acceptedAt ?? 0))
+      .slice(0, DELIVERY_CANDIDATES);
+    const stillHeld: boolean[] = [];
+    for (let at = 0; at < candidates.length; at += DELIVERY_READS_AT_ONCE) {
+      const chunk = candidates.slice(at, at + DELIVERY_READS_AT_ONCE);
+      stillHeld.push(
+        ...(await Promise.all(
+          chunk.map(async (ticket) => {
+            try {
+              const owner = getAddress(await service.chain.ownerOf(ticket.passportId as Hex));
+              return owner === ticket.creatorWallet && owner === platform.creatorWallet;
+            } catch {
+              return false;
+            }
+          }),
+        )),
+      );
+    }
+    const deliveries = candidates
+      .filter((ticket, index) => stillHeld[index] === true && ticket.destination !== null && deliverable(ticket.destination, service, ticket.creatorWallet))
+      .slice(0, MAX_DELIVERIES)
+      .map((ticket) => ({ ticketId: ticket.ticketId, passportId: ticket.passportId, destination: ticket.destination as string }));
+    return reply.send({ deliveries });
+  });
+
+  /** The platform's worker gave up on a ticket after its last try: accepted moves to failed and the person sees it (P34). */
+  app.post(
+    "/platform/deliveries/:ticketId/failed",
+    async (request: FastifyRequest<{ Params: { ticketId: string } }>, reply: FastifyReply) => {
+      const platform = platformForKey(request.headers.authorization, options.platforms, wallClock());
+      if (platform === undefined) {
+        request.log.warn({ ip: request.ip }, "rejected: /platform/deliveries failed, no valid platform key");
+        return reply.code(401).send({ error: "unauthorized" });
+      }
+      const service = claimService();
+      if (service === undefined) {
+        return reply.code(503).send({ error: "claims-unavailable" });
+      }
+      const ticketId = request.params.ticketId;
+      if (!isTicketId(ticketId)) {
+        return reply.code(404).send({ error: "not-found" });
+      }
+      let outcome: ReturnType<typeof markFailed>;
+      try {
+        outcome = markFailed(service.store, ticketId, platform.keyHash, Number(wallClock()));
+      } catch (error) {
+        if (!(error instanceof ClaimStoreClosed)) throw error;
+        return reply.code(503).send({ error: "claims-unavailable" });
+      }
+      if (!outcome.ok) {
+        // Another key's ticket answers like an unknown one, so a key learns nothing about ids it does not own.
+        return reply.code(outcome.reason === "not-accepted" ? 409 : 404).send({ error: outcome.reason === "not-accepted" ? "not-accepted" : "not-found" });
+      }
+      request.log.info({ platform: platform.name, ticketId }, "platform: delivery marked failed");
+      return reply.send({ ticketId, state: "failed" });
+    },
+  );
+}
+
+/**
+ * The answer for a ticket the store will not write: 403 for a key closed after too many refusals,
+ * 429 at a cap, 503 when the store cannot be read. Undefined when the check passed.
+ */
+function ticketRefusal(check: () => string | null): { status: number; error: string } | undefined {
+  let problem: string | null;
+  try {
+    problem = check();
+  } catch (error) {
+    if (error instanceof ClaimStoreClosed) return { status: 503, error: "claims-unavailable" };
+    throw error;
+  }
+  if (problem === null) return undefined;
+  if (problem === "closed") return { status: 403, error: "deliver-closed" };
+  if (problem === "full") return { status: 429, error: "deliver-full" };
+  return { status: 503, error: "claims-unavailable" };
 }
 
 /**

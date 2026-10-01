@@ -27,6 +27,18 @@ export const PLATFORM_STATE_FILES = {
   pending: "platform-pending",
 } as const;
 
+/**
+ * What the claim routes keep. `tickets` is one file holding every ticket, standing destination,
+ * mute and per-key refusal tally, so a step that touches several of them is one write; the other
+ * three are the per-person meters, each with its own restart behaviour like the files above.
+ */
+export const CLAIM_STATE_FILES = {
+  tickets: "claim-tickets.json",
+  userQuota: "claim-quota-user.json",
+  addressQuota: "claim-quota-address.json",
+  dayCeiling: "claim-day.json",
+} as const;
+
 export interface FolderCheck {
   dir: string;
   writable: boolean;

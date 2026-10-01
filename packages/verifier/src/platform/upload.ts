@@ -8,11 +8,11 @@ import { BadRequest, textField, underUploadCeiling } from "../routes/shared.js";
 import type { PlatformMode } from "./signatures.js";
 
 /** Every text field a platform prepare may carry. Any other name is refused, never skipped. */
-const FIELDS = ["mode", "title", "nonce", "issuedAt", "signature", "training", "creator", "wallet", "agentId"] as const;
+const FIELDS = ["mode", "title", "nonce", "issuedAt", "signature", "training", "creator", "wallet", "agentId", "deliverTo"] as const;
 
 type FieldName = (typeof FIELDS)[number];
 
-/** The most text fields the parser reads before it stops: one more than FIELDS, so a tenth is refused by name. */
+/** The most text fields the parser reads before it stops: one more than FIELDS, so an extra one is refused by name. */
 export const MAX_PLATFORM_FIELDS = FIELDS.length + 1;
 
 /** Checked before the JSON is parsed, as /prepare checks it: the whole statement is far smaller. */
@@ -33,6 +33,11 @@ export interface PlatformUpload {
   training: TrainingConsent | undefined;
   /** Identity fields a body may repeat but never choose (P18). */
   claimed: { creator?: string; wallet?: string; agentId?: string };
+  /**
+   * The deliverTo field as sent, unread: it carries an email address, so it is parsed and hashed
+   * only by readDeliverTo and never goes into a message this parser throws.
+   */
+  deliverTo: string | undefined;
 }
 
 /**
@@ -113,6 +118,7 @@ async function parse(request: FastifyRequest): Promise<PlatformUpload> {
     signature: signature === undefined || signature.trim().length === 0 ? undefined : signature.trim(),
     training: readTerms(fields.get("training")),
     claimed,
+    deliverTo: fields.get("deliverTo"),
   };
 }
 

@@ -80,6 +80,9 @@ the boot loudly and names the variable.
 | `MATCH_WAIT_MS` | no | How long a verification waits for a free matching slot before the caller is answered 503 `busy`, in milliseconds. Defaults to 30000 |
 | `DATA_DIR` | no on Railway, yes on any other host that should remember | The folder every state file lives in, an absolute path such as `/data`. Unset, it is `RAILWAY_VOLUME_MOUNT_PATH`, which Railway sets itself when a volume is attached, and without either it is `test-assets/state` inside the package, which in the container is the image's own disk and is emptied by every deploy |
 | `RECHECK_QUEUE_PATH` | no | The re-check queue's file. Defaults to `recheck-queue.json` in the data folder. Set it only to keep the queue somewhere else; the other state files stay in the data folder |
+| `CLAIM_PEPPER` | yes for the claim routes | The secret every email address is hashed with before anything is kept: 32 to 128 random bytes as hex, made once with `openssl rand -hex 32`. Set it only as a Railway variable, never in a file. Unset, the claim routes answer 503 and a prepare's `deliverTo` is refused; a value that is not hex, or shorter than 64 characters, stops the boot naming the variable and never its value |
+| `CLAIM_PEPPER_VERSION` | with `CLAIM_PEPPER` | A whole number from 1, raised by one with every new pepper. It is written into every hash, so offers made under an older pepper stop matching and the sweep expires them; accepted tickets, standing destinations and mutes made under it stay but no longer match a person. Set both or neither, or the boot stops |
+| `CLAIM_REQUESTS_PER_DAY` | no | What `GET /claims`, accept, refuse, unmute and the standing delete may cost together in one UTC day for everyone, 20,000 unless set. `0` closes them |
 
 Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
 verifies images. It logs one line saying the prepare route is off and answers 404
@@ -219,6 +222,58 @@ has.
 The three handle routes are mounted at log level `silent`, so no request line
 carries a handle; their refusals are logged without the URL. A platform key is
 never logged, stored or answered: the service keeps only its sha256, in the list.
+
+## The claim routes
+
+A platform can leave a passport waiting for its user's email address. The person
+signs in to Moolam with the same address, says "these are mine" or "not mine", and
+the platform's own worker then sends the passport to their wallet. The routes mount
+with the platform routes and are open only with `CLAIM_PEPPER`,
+`CLAIM_PEPPER_VERSION` and a data folder that can be written; otherwise each
+answers 503 `claims-unavailable`, the boot logs one line naming the missing
+variables, and `/health` leaves them out of `routes`.
+
+| Route | Who calls it | What it does |
+| --- | --- | --- |
+| `POST /platform/prepare` with a `deliverTo` field | the platform's server, with its key | The field is JSON, `{"email":"...","verifiedBy":"google"\|"email-code"\|"platform"}`, platform mode only. The address is normalised, hashed under the pepper and dropped. A malformed field answers 400 `{"error":"deliverTo"}`. A ticket is written pending once the picture is pinned. The answer is the same for any address, except `deliverNow` with a wallet when that person chose to receive this platform's pictures without being asked |
+| `GET /claims` | the web app, with the person's Privy token | Reads the person's verified addresses from Privy's user record (the email account and the Google account's email only) and lists the open offers for them with a preview read through the pinned-content rule, the tickets waiting for or past delivery, their standing destinations and their muted platforms |
+| `POST /claims/accept` | the web app | `{ticketIds (1 to 32), terms, sendFuture}`. Accepts every named ticket for the person's first embedded Privy wallet, or none. `terms` are checked by MoolamConsent's own rule. `sendFuture` keeps that wallet and those terms for the platform's next pictures |
+| `POST /claims/refuse` | the web app | `{ticketIds}`. Refuses every named ticket, or none. A refusal is final, mutes that platform for that address, clears any standing destination for it, and counts against the platform's key |
+| `POST /claims/unmute`, `DELETE /claims/standing/:platformKeyHash` | the web app | Undo a mute, or clear a standing destination |
+| `GET /platform/deliveries` | the platform's worker, with its key | The accepted tickets of that key whose passport the platform's wallet still holds when asked, at most 32, each with the passport id and the destination |
+| `POST /platform/deliveries/:ticketId/failed` | the platform's worker | After its last try: the ticket moves to failed and the person sees it |
+
+A ticket becomes an offer only when the chain shows the passport registered by the
+platform's listed wallet under its label and still held by it. The sweep that
+checks this runs on every index refresh tick (`INDEX_REFRESH_MS`, so `0` also stops
+it), reads at most 200 tickets a tick, and changes nothing when the chain cannot be
+read. A pending ticket that never lands expires two hours after its prepare; an
+offer stands 180 days; an offer whose passport leaves the platform's wallet first is
+closed as moved; "delivered" is said only when the chain shows the destination as
+holder. A closed ticket is pruned 30 days after it closes, and never before its 180 days are up.
+
+| Limit | Value | Kept in |
+| --- | --- | --- |
+| Tickets, standing destinations, mutes and each key's refusal tally | every waiting ticket of every key, at most 20,000 tickets | `claim-tickets.json` |
+| Claim requests per person | 500 in a rolling 24 hours, by Privy user id | `claim-quota-user.json` |
+| Claim requests per caller address | 1,000 in a rolling 24 hours | `claim-quota-address.json` |
+| Claim requests for everyone | `CLAIM_REQUESTS_PER_DAY` per UTC day | `claim-day.json` |
+| Waiting tickets per platform key | 1,000 pending or open | `claim-tickets.json` |
+| Tickets per address and platform | 20 inside a ticket's 180 days, in any state, so a refusal never frees one | `claim-tickets.json` |
+
+A prepare past a ticket cap answers 429 `deliver-full`. A key with at least ten
+refusals, more than one in four of its tickets, stops writing tickets and answers
+403 `deliver-closed` until an operator clears it: stop the service, remove that
+key's entry from the `keys` list in `claim-tickets.json`, and start it again.
+
+`claim-tickets.json` holds no email address, only each address's hash under the
+pepper, and links a hash to a wallet only for a ticket the person accepted or a
+standing destination they chose. Every record is checked against its schema on
+every read; one that fails is dropped and the file written back without it, with a
+count in the log. A file that is not JSON at all closes the claim routes until it is
+fixed or removed, because dropping all of it would forget every refusal and mute.
+Anyone holding both this file and the pepper can test guessed addresses against it,
+which is why the pepper lives only in the host's variables.
 
 ## The MCP server
 
