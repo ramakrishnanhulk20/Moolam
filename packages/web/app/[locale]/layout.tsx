@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, type CSSProperties, type ReactNode } from "react";
 import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ShowGuideAgain } from "@/components/guide/ShowGuideAgain";
@@ -15,7 +15,7 @@ import { PhoneMenu } from "@/components/menu/PhoneMenu";
 import { LateInsights } from "@/components/shell/LateInsights";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { ThemeColor } from "@/components/shell/ThemeColor";
-import type { Tab } from "@/components/shell/tabs";
+import { PHONE_ROOM, type Tab } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -160,7 +160,13 @@ export default async function LocaleLayout({
                 head's one tag cannot know for a reader who chose dark. */}
             <ThemeColor />
             <LenisProvider>
-              <div className="flex min-h-dvh flex-col">
+              {/* --bar-room is the phone's whole bottom room, the tab bar and
+                  the menu's two sides above it (PHONE_ROOM in tabs.ts). Set
+                  here, it reaches everything that keeps clear of the bottom:
+                  the footer, the film's captions, the framed film and the
+                  full-screen pages. Every reader of it is a phone-only rule,
+                  so a laptop is unaffected. */}
+              <div className="flex min-h-dvh flex-col" style={{ "--bar-room": PHONE_ROOM } as CSSProperties}>
                 {/* Below md the top of the screen is the wordmark and the two
                     chips, and everything the old menu button held is in the tab
                     bar at the bottom instead. It keeps the app-header class, so
@@ -242,12 +248,11 @@ export default async function LocaleLayout({
 
                 <main className="flex-1">{children}</main>
 
-                {/* The room the tab bar asks for, on the last thing in the
+                {/* The room the two bars ask for, on the last thing in the
                     column rather than on main: the footer comes after main, so
                     main's own padding left the registry line and the three
                     service lights 57 px behind the bar, measured at 375. The
-                    room is the bar's 56 px plus whatever the phone keeps for
-                    its home indicator, which is --bar-room in globals.css. */}
+                    room is --bar-room, set on the column above. */}
                 <footer className="border-t border-line pb-[var(--bar-room)] md:pb-0">
                   {/* Every row is 44 px tall, the same as the invisible pad
                       globals.css hangs on each footer link, so a pad ends

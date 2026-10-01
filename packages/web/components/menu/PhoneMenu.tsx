@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useReducer, useRef, useState } from "react";
-import { BAR_ROOM } from "@/components/shell/tabs";
+import { BAR_ROOM, DOCK_GAP } from "@/components/shell/tabs";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { usePathname } from "@/lib/i18n/routing";
 import { LeadTile, Tile } from "./Tiles";
@@ -11,22 +11,7 @@ import { CLOSED, MENU, SIDES, currentItem, menuReducer, type ItemKey, type MenuS
 import { EASE } from "./MenuPanel";
 import { stepLink } from "./useMenu";
 
-/**
- * How far above the tab bar the two sides sit: clear of the raised Make disc,
- * which stands 28 px above the bar, with 8 px of air. The tab bar keeps its
- * own place and its own job.
- */
-export const DOCK_GAP = 36;
-/** The two sides' own bar: a 48 px button, 4 px of padding round it and a 1 px rule. */
-export const DOCK_HEIGHT = 58;
 const DOCK_BOTTOM = `calc(${BAR_ROOM} + ${DOCK_GAP}px)`;
-
-/**
- * What a page has to leave under its last line on top of the tab bar's own
- * room (--bar-room, 84 px): the gap and the two sides' bar, less the 28 px of
- * that room the raised Make already takes, plus 12 px of air.
- */
-export const DOCK_ROOM = DOCK_GAP + DOCK_HEIGHT - 28 + 12;
 
 /** Whether the two sides have already risen in this tab, so a language switch does not play the entrance again. */
 let dockHasEntered = false;
@@ -138,9 +123,6 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
       >
         {SIDES.map((side) => sideButton(side, "dock"))}
       </motion.div>
-
-      {/* The page's last line clears the two sides as well as the tab bar. */}
-      <div aria-hidden style={{ height: DOCK_ROOM }} />
 
       <AnimatePresence initial={false}>
         {open !== null ? (

@@ -38,7 +38,8 @@ const { MENU, SIDES, CLOSED, DREAMLOOM_URL, HASHES, currentItem, menuReducer, is
 );
 const { stepLink } = await import("@/components/menu/useMenu");
 const { MenuBar } = await import("@/components/menu/MenuBar");
-const { PhoneMenu, DOCK_ROOM } = await import("@/components/menu/PhoneMenu");
+const { PhoneMenu } = await import("@/components/menu/PhoneMenu");
+const { BAR_ROOM, DOCK_GAP, PHONE_ROOM } = await import("@/components/shell/tabs");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -266,11 +267,10 @@ describe("the page being read is marked", () => {
     expect(html).toContain(`href="${DREAMLOOM_URL}" target="_blank" rel="noreferrer"`);
   });
 
-  it("leaves the page room under its last line for the two sides above the tab bar", () => {
+  it("draws no room of its own: the page keeps clear by the one measure", () => {
     here.path = "/";
     const html = renderToStaticMarkup(withWords(createElement(PhoneMenu, {})));
-    expect(DOCK_ROOM).toBeGreaterThanOrEqual(36 + 58 - 28);
-    expect(html).toContain(`style="height:${DOCK_ROOM}px"`);
+    expect(html).not.toMatch(/style="height:\d+px"/);
   });
 });
 
@@ -436,6 +436,58 @@ describe("the layout", () => {
     expect(box).toBeGreaterThan(-1);
     expect(layout.slice(box, at)).toContain("<BottomBar");
     expect(layout.slice(box, at)).not.toContain("</div>");
+  });
+});
+
+describe("the phone's one bottom room", () => {
+  const safe = "max(env(safe-area-inset-bottom), var(--bar-safe, 0px))";
+
+  it("is the tab bar, the gap over the Make disc, the two sides' bar and 8 px of air, plus the home strip", () => {
+    expect(PHONE_ROOM).toBe(`calc(158px + ${safe})`);
+    expect(BAR_ROOM).toBe(`calc(56px + ${safe})`);
+    const menu = readFileSync(path.join(WEB, "components", "menu", "PhoneMenu.tsx"), "utf8");
+    expect(menu).toContain("const DOCK_BOTTOM = `calc(${BAR_ROOM} + ${DOCK_GAP}px)`;");
+    expect(DOCK_GAP).toBe(36);
+  });
+
+  it("reaches every page as --bar-room, from the column that holds the header, main, footer and bars", () => {
+    const layout = readFileSync(path.join(APP, "layout.tsx"), "utf8");
+    expect(layout).toContain('<div className="flex min-h-dvh flex-col" style={{ "--bar-room": PHONE_ROOM } as CSSProperties}>');
+    const column = layout.indexOf('style={{ "--bar-room": PHONE_ROOM }');
+    for (const part of ["<PhoneHeader", "<main", "<footer", "<BottomBar", "<PhoneMenu"]) {
+      expect(layout.indexOf(part), part).toBeGreaterThan(column);
+    }
+  });
+
+  it("is read only by phone rules, so a laptop is untouched", () => {
+    // Every page that pads itself by the room drops the padding from md up.
+    const readers: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (statSync(full).isDirectory()) {
+          if (name !== "lab") walk(full);
+        } else if (/\.tsx?$/.test(name)) {
+          for (const line of readFileSync(full, "utf8").split("\n")) {
+            if (line.includes("pb-[var(--bar-room)]")) readers.push(`${name}: ${line.trim()}`);
+          }
+        }
+      }
+    };
+    walk(path.join(WEB, "app"));
+    walk(path.join(WEB, "components"));
+    expect(readers.length).toBeGreaterThanOrEqual(3);
+    for (const line of readers) {
+      expect(line).toContain("md:pb-0");
+    }
+    // The film's captions and the framed film read it inside phone-only rules.
+    const css = readFileSync(path.join(WEB, "styles", "globals.css"), "utf8").replace(/\r/g, "");
+    for (const rule of ["--film-words-foot: var(--bar-room);", "--frame-foot: var(--bar-room);"]) {
+      const at = css.indexOf(rule);
+      expect(at, rule).toBeGreaterThan(-1);
+      // The nearest media rule opened before it is the phone one, and no top-level block closed in between.
+      expect(css.lastIndexOf("@media (max-width: 767px)", at)).toBeGreaterThan(css.lastIndexOf("\n}\n", at));
+    }
   });
 });
 

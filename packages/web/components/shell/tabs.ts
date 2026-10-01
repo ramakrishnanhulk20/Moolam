@@ -73,3 +73,27 @@ export const BAR_HEIGHT = 56;
  * it.
  */
 export const BAR_ROOM = `calc(${BAR_HEIGHT}px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)))`;
+
+/**
+ * How far above the tab bar the menu's two sides sit: clear of the raised
+ * Make disc, which stands 28 px above the bar, with 8 px of air.
+ */
+export const DOCK_GAP = 36;
+
+/** The two sides' own bar: a 48 px button, 4 px of padding round it and a 1 px rule. */
+export const DOCK_HEIGHT = 58;
+
+/** The least a line of the page may sit above the two sides' bar. */
+export const DOCK_AIR = 8;
+
+/**
+ * The phone's whole bottom room: the tab bar, the gap over the Make disc, the
+ * two sides' bar, the air above it and the phone's home indicator strip. 158
+ * px on a phone without one.
+ *
+ * This is the one measure for keeping clear of the bottom. The layout hands
+ * it to every page as --bar-room, which the footer, the film's captions, the
+ * framed film and the full-screen pages already read, so nothing sits under
+ * either bar wherever it can come to rest.
+ */
+export const PHONE_ROOM = `calc(${BAR_HEIGHT + DOCK_GAP + DOCK_HEIGHT + DOCK_AIR}px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)))`;
