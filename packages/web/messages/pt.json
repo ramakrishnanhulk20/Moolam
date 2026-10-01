@@ -305,15 +305,6 @@
     },
     "scrollCue": "Role",
     "noWebgl": "Este navegador não consegue exibir o filme em 3D, então a história está aqui como página. Cada número dela é lido ao vivo, como no filme.",
-    "made": {
-      "kicker": "Criada",
-      "title": "Esta aqui foi feita por uma IA.",
-      "body": "O agente {agent} desenhou a imagem e assinou a impressão dela com a própria carteira, guardada pela Privy, antes de o passaporte ser escrito.",
-      "readout": "Agente gerador {agent}, no registro público de agentes (ERC-8004)",
-      "titleNoAgent": "Esta aqui foi registrada por uma pessoa.",
-      "bodyNoAgent": "Nenhum agente assinou esta impressão. Ela foi registrada a partir de um arquivo que o criador enviou, e o passaporte diz exatamente isso.",
-      "readoutNoAgent": "Sem agente gerador neste passaporte"
-    },
     "sealed": {
       "kicker": "Assinada",
       "title": "A chave de acesso do criador assinou.",
@@ -355,16 +346,6 @@
       "noAttestation": "Nenhuma reconferência foi gravada para este passaporte ainda.",
       "provenance": "Números da escada medidos pelo serviço de verificação da Moolam em outra imagem registrada, passaporte {passport}, {date}.",
       "provenanceSelf": "Números medidos pelo serviço de verificação da Moolam neste mesmo passaporte, {date}."
-    },
-    "trusted": {
-      "kicker": "De confiança",
-      "title": "Confiança que um agente ganha imagem por imagem.",
-      "agent": "Agente {agent}",
-      "score": "Nota {score}",
-      "noScore": "Ainda sem nota",
-      "counts": "{rechecks, plural, =1 {# reconferência} other {# reconferências}}, {passports, plural, =1 {# passaporte} other {# passaportes}}",
-      "body": "Cada reconferência gravada de volta na rede conta sob o id do próprio agente, e o índice as soma nesta nota. A reputação dele é a soma do trabalho dele, não uma promessa num site.",
-      "noAgent": "Esta aqui não foi feita por um agente, então não há reputação de agente presa a ela. Quando um agente assina, cada reconferência que a Chainlink faz das imagens dele conta para a nota do próprio agente."
     },
     "tryIt": {
       "kicker": "Experimente",

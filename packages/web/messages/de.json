@@ -289,15 +289,6 @@
     },
     "scrollCue": "Scrollen",
     "noWebgl": "Dieser Browser kann den Film nicht in 3D abspielen, deshalb steht die Geschichte hier als Seite. Jede Zahl darauf ist live gelesen, genau wie im Film.",
-    "made": {
-      "kicker": "Gemacht",
-      "title": "Dieses hier hat eine KI gemacht.",
-      "body": "Agent {agent} hat es gezeichnet und seinen Fingerabdruck mit seiner eigenen, von Privy verwahrten Wallet signiert, bevor der Pass geschrieben wurde.",
-      "readout": "Generator-Agent {agent}, im öffentlichen Agenten-Register (ERC-8004)",
-      "titleNoAgent": "Dieses hier hat ein Mensch eingetragen.",
-      "bodyNoAgent": "Kein Agent hat diesen Fingerabdruck signiert. Es wurde aus einer Datei eingetragen, die der Urheber hochgeladen hat, und genau das sagt der Pass.",
-      "readoutNoAgent": "Kein Generator-Agent auf diesem Pass"
-    },
     "sealed": {
       "kicker": "Signiert",
       "title": "Der Passkey des Urhebers hat es signiert.",
@@ -339,16 +330,6 @@
       "noAttestation": "Für diesen Pass wurde noch keine Nachprüfung geschrieben.",
       "provenance": "Zahlen der Leiter, gemessen vom Moolam-Prüfdienst an einem anderen eingetragenen Bild, Pass {passport}, {date}.",
       "provenanceSelf": "Zahlen, gemessen vom Moolam-Prüfdienst an genau diesem Pass, {date}."
-    },
-    "trusted": {
-      "kicker": "Vertrauenswürdig",
-      "title": "Vertrauen, das ein Agent Bild für Bild verdient.",
-      "agent": "Agent {agent}",
-      "score": "Wert {score}",
-      "noScore": "Noch kein Wert",
-      "counts": "{rechecks, plural, =1 {# Nachprüfung} other {# Nachprüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
-      "body": "Jede in der Kette zurückgeschriebene Nachprüfung zählt auf die eigene Id des Agenten, und der Index rechnet sie zu diesem Wert zusammen. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Webseite.",
-      "noAgent": "Dieses hier hat kein Agent gemacht, also hängt auch kein Ruf eines Agenten daran. Wenn ein Agent signiert, fließt jede Nachprüfung seiner Bilder durch Chainlink in seinen eigenen Vertrauenswert ein."
     },
     "tryIt": {
       "kicker": "Ausprobieren",

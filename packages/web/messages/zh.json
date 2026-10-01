@@ -299,15 +299,6 @@
     },
     "scrollCue": "向下滚动",
     "noWebgl": "这个浏览器无法以 3D 播放影片，所以故事在这里以页面呈现。上面的每个数字都是实时读取的，和影片里一样。",
-    "made": {
-      "kicker": "生成",
-      "title": "这一张是 AI 画的。",
-      "body": "智能体 {agent} 画出了它，并在护照写成之前用自己的钱包为指纹签了名，这个钱包由 Privy 保管。",
-      "readout": "生成智能体 {agent}，列于公开智能体登记处 (ERC-8004)",
-      "titleNoAgent": "这一张是人登记的。",
-      "bodyNoAgent": "没有智能体为这份指纹签名。它是用创作者上传的文件登记的，护照上写的就是这句话。",
-      "readoutNoAgent": "这本护照上没有生成智能体"
-    },
     "sealed": {
       "kicker": "签名",
       "title": "创作者的通行密钥为它签了名。",
@@ -349,16 +340,6 @@
       "noAttestation": "这本护照还没有任何复核被写上链。",
       "provenance": "阶梯上的数字由 Moolam 验证服务在另一张已登记的图片上测得，护照 {passport}，{date}。",
       "provenanceSelf": "数字由 Moolam 验证服务在这本护照上测得，{date}。"
-    },
-    "trusted": {
-      "kicker": "可信",
-      "title": "智能体一张图一张图挣来的信任。",
-      "agent": "智能体 {agent}",
-      "score": "评分 {score}",
-      "noScore": "尚无评分",
-      "counts": "{rechecks, plural, other {# 次复核}}，{passports, plural, other {# 本护照}}",
-      "body": "每一次写回链上的复核都记在这个智能体自己的 id 下，索引把它们算成这个分数。它的声誉是工作的总和，不是网站上的一句话。",
-      "noAgent": "这一张不是智能体做的，所以不关乎任何智能体的声誉。若由智能体签名，Chainlink 对其图片的每一次复核都会计入该智能体自己的分数。"
     },
     "tryIt": {
       "kicker": "试一试",

@@ -298,15 +298,6 @@
     },
     "scrollCue": "Faites défiler",
     "noWebgl": "Ce navigateur ne peut pas lire le film en 3D, l’histoire est donc ici sous forme de page. Chaque chiffre y est lu en direct, comme dans le film.",
-    "made": {
-      "kicker": "Créée",
-      "title": "Celle-ci, c’est une IA qui l’a faite.",
-      "body": "L’agent {agent} l’a dessinée et a signé son empreinte avec son propre portefeuille, gardé par Privy, avant que le passeport ne soit inscrit.",
-      "readout": "Agent générateur {agent}, dans le registre public des agents (ERC-8004)",
-      "titleNoAgent": "Celle-ci, c’est une personne qui l’a enregistrée.",
-      "bodyNoAgent": "Aucun agent n’a signé cette empreinte. Elle a été enregistrée à partir d’un fichier téléversé par le créateur, et le passeport le dit ainsi.",
-      "readoutNoAgent": "Aucun agent générateur sur ce passeport"
-    },
     "sealed": {
       "kicker": "Signée",
       "title": "La clé d’accès du créateur l’a signée.",
@@ -348,16 +339,6 @@
       "noAttestation": "Aucune revérification n’a encore été inscrite pour ce passeport.",
       "provenance": "Chiffres de l’échelle mesurés par le service de vérification de Moolam sur une autre image enregistrée, passeport {passport}, {date}.",
       "provenanceSelf": "Chiffres mesurés par le service de vérification de Moolam sur ce passeport même, {date}."
-    },
-    "trusted": {
-      "kicker": "De confiance",
-      "title": "Une confiance qu’un agent gagne image après image.",
-      "agent": "Agent {agent}",
-      "score": "Indice {score}",
-      "noScore": "Pas encore d’indice",
-      "counts": "{rechecks, plural, =1 {# revérification} other {# revérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
-      "body": "Chaque revérification réinscrite sur la chaîne compte sous l’identifiant de l’agent, et l’index les additionne en cet indice. Sa réputation est la somme de son travail, pas une promesse sur un site.",
-      "noAgent": "Aucun agent n’a fait celle-ci, donc aucune réputation d’agent n’y tient. Quand un agent signe, chaque revérification de ses images par Chainlink compte dans l’indice de cet agent."
     },
     "tryIt": {
       "kicker": "Essayez",

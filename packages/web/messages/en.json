@@ -289,15 +289,6 @@
     },
     "scrollCue": "Scroll",
     "noWebgl": "This browser cannot play the film in 3D, so the story is here as a page. Every figure on it is read live, the same as in the film.",
-    "made": {
-      "kicker": "Made",
-      "title": "An AI made this one.",
-      "body": "Agent {agent} drew it and signed its fingerprint with its own wallet, held by Privy, before the passport was written.",
-      "readout": "Generator agent {agent}, in the public agent registry (ERC-8004)",
-      "titleNoAgent": "A person registered this one.",
-      "bodyNoAgent": "No agent signed this fingerprint. It was registered from a file the creator uploaded, and the passport says exactly that.",
-      "readoutNoAgent": "No generating agent on this passport"
-    },
     "sealed": {
       "kicker": "Signed",
       "title": "Their passkey signed it. Monad wrote it down.",
@@ -339,16 +330,6 @@
       "noAttestation": "No check has been written for this passport yet.",
       "provenance": "Ladder figures measured by the Moolam verify service on another registered image, passport {passport}, {date}.",
       "provenanceSelf": "Figures measured by the Moolam verify service on this passport, {date}."
-    },
-    "trusted": {
-      "kicker": "Trusted",
-      "title": "Trust an agent earns image by image.",
-      "agent": "Agent {agent}",
-      "score": "Score {score}",
-      "noScore": "No score yet",
-      "counts": "{rechecks, plural, =1 {# check} other {# checks}}, {passports, plural, =1 {# passport} other {# passports}}",
-      "body": "Every check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
-      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every Chainlink check of its pictures counts toward that agent's own score."
     },
     "tryIt": {
       "kicker": "Try it",

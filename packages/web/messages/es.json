@@ -309,15 +309,6 @@
     },
     "scrollCue": "Desliza",
     "noWebgl": "Este navegador no puede reproducir la película en 3D, así que la historia está aquí como página. Cada cifra que ves se lee en vivo, igual que en la película.",
-    "made": {
-      "kicker": "Creada",
-      "title": "Esta la hizo una IA.",
-      "body": "El agente {agent} la dibujó y firmó su huella con su propia cartera, custodiada por Privy, antes de que se escribiera el pasaporte.",
-      "readout": "Agente generador {agent}, en el registro público de agentes (ERC-8004)",
-      "titleNoAgent": "Esta la registró una persona.",
-      "bodyNoAgent": "Ningún agente firmó esta huella. Se registró a partir de un archivo que subió el creador, y el pasaporte dice justo eso.",
-      "readoutNoAgent": "Sin agente generador en este pasaporte"
-    },
     "sealed": {
       "kicker": "Firmada",
       "title": "La clave de acceso del creador la firmó.",
@@ -359,16 +350,6 @@
       "noAttestation": "Todavía no se ha escrito ninguna recomprobación para este pasaporte.",
       "provenance": "Cifras de la escalera medidas por el servicio de verificación de Moolam sobre otra imagen registrada, pasaporte {passport}, {date}.",
       "provenanceSelf": "Cifras medidas por el servicio de verificación de Moolam sobre este mismo pasaporte, {date}."
-    },
-    "trusted": {
-      "kicker": "De confianza",
-      "title": "Confianza que un agente gana imagen a imagen.",
-      "agent": "Agente {agent}",
-      "score": "Puntuación {score}",
-      "noScore": "Sin puntuación todavía",
-      "counts": "{rechecks, plural, =1 {# recomprobación} other {# recomprobaciones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
-      "body": "Cada recomprobación escrita de vuelta en la cadena cuenta bajo el id del propio agente, y el índice las suma en esta puntuación. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
-      "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada recomprobación de Chainlink de sus imágenes cuenta para la puntuación de ese mismo agente."
     },
     "tryIt": {
       "kicker": "Pruébalo",
