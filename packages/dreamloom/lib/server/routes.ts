@@ -1,7 +1,7 @@
 import { MoolamPlatformError, type DeliverTo, type PlatformErrorCode } from "@moolam/platform";
 import { getAddress, type Hex } from "viem";
 import { maskEmail } from "../email-mask";
-import { readAccount } from "./accounts";
+import { readAccount, type Account } from "./accounts";
 import { callerAddress } from "./address";
 import { startServer } from "./boot";
 import { followCosign } from "./cosign-worker";
@@ -203,14 +203,27 @@ export function cosignPicture(request: Request, id: string): Promise<Response> {
 const REGISTER_SENT: readonly PlatformErrorCode[] = ["transaction-failed", "consent-failed", "delivery-failed"];
 
 /**
+ * Dreamloom's own words on a passport it registers, carried byte for byte into the passport's document
+ * and shown as Dreamloom's statement. Weaving needs no sign-in, so the signed-in sentence is used only
+ * when the session that owns the picture is signed in with Google at the moment it registers, read
+ * once beside the delivery; any other register gets the visitor sentence.
+ */
+const SIGNED_IN_STATEMENT = "Dreamloom's image agent drew this from the prompt of a person signed in to Dreamloom.";
+const VISITOR_STATEMENT = "Dreamloom's image agent drew this from a visitor's prompt on Dreamloom.";
+
+/** The Google account this request's session signed in as, or null. */
+function accountFor(request: Request): Account | null {
+  const session = readSession(request);
+  return session === null ? null : readAccount(sessionHash(session));
+}
+
+/**
  * Where a picture registered for a signed-in visitor goes: Moolam keeps it waiting under the address
  * Google verified for them. Only for the plain "hold it for me" press, never for a claim to a
  * remembered address, which hands the passport over at once. The address goes to the kit and from
  * there only into the prepare body; the record keeps its mask.
  */
-function deliveryFor(request: Request): { deliverTo: DeliverTo; masked: string } | null {
-  const session = readSession(request);
-  const account = session === null ? null : readAccount(sessionHash(session));
+function deliveryFor(account: Account | null): { deliverTo: DeliverTo; masked: string } | null {
   if (account === null) return null;
   return { deliverTo: { email: account.email, verifiedBy: "google" }, masked: maskEmail(account.email) };
 }
@@ -240,7 +253,9 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       claimTo = remembered;
     }
 
-    const delivery = claimTo === null ? deliveryFor(request) : null;
+    const account = accountFor(request);
+    const delivery = claimTo === null ? deliveryFor(account) : null;
+    const statement = account === null ? VISITOR_STATEMENT : SIGNED_IN_STATEMENT;
 
     if (claimPicture(id, ["woven"], "register") === null) return refuse(409, "state");
     const cap = takeFor(id, "register", "register");
@@ -267,7 +282,7 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       return notFound();
     }
     try {
-      const result = await registerPicture(bytes, title, termsFor(preset), delivery?.deliverTo);
+      const result = await registerPicture(bytes, title, termsFor(preset), delivery?.deliverTo, statement);
       const passportId = result.passportId.toLowerCase();
       const registerTx = result.registerTx.toLowerCase();
       const consentTx = result.consentTx?.toLowerCase();

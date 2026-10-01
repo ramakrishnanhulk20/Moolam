@@ -125,9 +125,25 @@ export function assertDeliverTo(deliverTo: DeliverTo): void {
 }
 
 /**
+ * Throws MoolamPlatformError "invalid-input" unless the platform's statement is a non-empty string.
+ * The full rule (one printable line, the byte limit, no spaces at either end) is the verify service's,
+ * which refuses rather than rewrites, so the kit holds no second copy of it and never trims. Errors
+ * name the field and never the value.
+ */
+export function assertPlatformStatement(statement: string): void {
+  if (typeof statement !== "string" || statement.length === 0) {
+    throw new MoolamPlatformError("invalid-input", "platformStatement must be a non-empty string");
+  }
+}
+
+/**
  * The multipart body /platform/prepare reads: the file, the signed PlatformPrepare's parts, the title,
- * the terms and, in platform mode, the email the passport waits for. The email travels only here, in
- * the body over https, never in a URL or a header.
+ * the terms and, in platform mode, the email the passport waits for and the platform's own statement.
+ * The email travels only here, in the body over https, never in a URL or a header. The statement goes
+ * exactly as given, and only in platform mode: a co-sign passport carries the person's sworn line.
+ *
+ * Throws MoolamPlatformError "invalid-input" for a bad title, an empty statement, or a statement in
+ * co-sign mode.
  */
 export function prepareForm(
   file: Uint8Array,
@@ -136,8 +152,15 @@ export function prepareForm(
   signed: SignedPrepare,
   terms?: AiUseTerms,
   deliverTo?: DeliverTo,
+  platformStatement?: string,
 ): FormData {
   assertTitle(title);
+  if (platformStatement !== undefined) {
+    if (mode !== "platform") {
+      throw new MoolamPlatformError("invalid-input", "platformStatement is for platform mode; a co-sign passport carries the person's sworn line");
+    }
+    assertPlatformStatement(platformStatement);
+  }
   const form = new FormData();
   form.set("mode", mode);
   form.set("title", title);
@@ -149,6 +172,9 @@ export function prepareForm(
   }
   if (deliverTo !== undefined) {
     form.set("deliverTo", JSON.stringify({ email: deliverTo.email, verifiedBy: deliverTo.verifiedBy }));
+  }
+  if (platformStatement !== undefined) {
+    form.set("platformStatement", platformStatement);
   }
   form.set("file", new Blob([new Uint8Array(file)], { type: "application/octet-stream" }), "picture");
   return form;

@@ -314,6 +314,37 @@ What happens, in order:
 Nothing is sent on chain until every check passes, and a result comes back only from receipts with
 status success.
 
+**Your own statement.** Pass `platformStatement` to `registerAsPlatform` and the passport's document
+carries one line in your own words, which the passport page shows as your statement:
+
+```ts
+const registered = await registerAsPlatform(picture, {
+  // ...the options above
+  platformStatement: "Dreamloom's image agent drew this from a visitor's prompt on Dreamloom.",
+});
+```
+
+These are your words, carried byte for byte: the kit sends exactly the string you give it, and the
+verify service writes exactly that string or refuses the prepare. Nothing is trimmed or rewritten.
+The service's rule:
+
+| What | Rule |
+| --- | --- |
+| Lines | One. No line breaks |
+| Characters | Printable only: letters, marks, digits, punctuation, symbols and the plain space. No control or direction characters |
+| Size | At most 1,000 bytes in UTF-8 |
+| Ends | No spaces at either end |
+
+The kit refuses an empty statement as `invalid-input` before anything is sent. Anything else outside
+the rule comes back as `service-refused` with `details.status` 400 and an error that names
+`platformStatement`, never your words. Say only what is true for every picture you send it with:
+Dreamloom sends one sentence when the person is signed in and another when they are not. Leave it
+out and the document carries no statement at all.
+
+`platformStatement` is platform mode only. A co-sign passport carries the person's own sworn line
+instead, "I made this picture, or I hold the rights to register it.", so `startCosign` has no such
+option and the service refuses a co-sign prepare that carries one.
+
 ### Handing a passport to a person
 
 This is how the person claims a platform-mode passport you hold for them when they give you an

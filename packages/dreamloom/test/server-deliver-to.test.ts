@@ -1,8 +1,8 @@
 // What this file does not cover: the verify service's tickets and the kit's prepare body, which the
 // verifier's and the kit's own tests prove. The kit is stood in for, so this file proves what
 // Dreamloom hands the kit (deliverTo, only for a signed-in visitor, only with verifiedBy "google")
-// and what it writes and answers after each result. Sign-in runs the real routes against the offline
-// Google stand-in.
+// and what it writes and answers after each result, and which of Dreamloom's two statements each
+// register path hands the kit. Sign-in runs the real routes against the offline Google stand-in.
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -227,6 +227,64 @@ describe("deliverTo", () => {
     const res = await s.register(first.id, { terms: "noAi", claim: true }, cookie);
     expect(res.status).toBe(200);
     expect("deliverTo" in lastOptions()).toBe(false);
+  });
+});
+
+describe("Dreamloom's statement", () => {
+  const SIGNED_IN = "Dreamloom's image agent drew this from the prompt of a person signed in to Dreamloom.";
+  const VISITOR = "Dreamloom's image agent drew this from a visitor's prompt on Dreamloom.";
+  const KIT_OPTIONS = ["agentAccount", "passkey", "platformKey", "platformStatement", "terms", "title", "verifyUrl", "walletClient"];
+
+  it("says a signed-in person's prompt on a signed-in 'hold it for me', beside the delivery", async () => {
+    const s = await server();
+    const woven = await weaveOne(s);
+    const cookie = await signIn(s, woven.cookie);
+    registers();
+    expect((await s.register(woven.id, { terms: "noAi" }, cookie)).status).toBe(200);
+    expect(lastOptions().platformStatement).toBe(SIGNED_IN);
+    expect(Object.keys(lastOptions()).sort()).toEqual([...KIT_OPTIONS, "deliverTo"].sort());
+  });
+
+  it("says a signed-in person's prompt on a signed-in claim to a remembered address", async () => {
+    const s = await server();
+    const first = await weaveOne(s);
+    const cookie = await signIn(s, first.cookie);
+    expect((await s.remember(HOLDER, cookie)).status).toBe(200);
+    registers();
+    sdk.transferPassport.mockResolvedValue({ passportId: PASSPORT, from: HOLDER, to: HOLDER, txHash: MOVE_TX, blockNumber: 1n });
+    expect((await s.register(first.id, { terms: "noAi", claim: true }, cookie)).status).toBe(200);
+    expect(lastOptions().platformStatement).toBe(SIGNED_IN);
+    expect(Object.keys(lastOptions()).sort()).toEqual(KIT_OPTIONS);
+  });
+
+  it("says a visitor's prompt when nobody is signed in", async () => {
+    const s = await server();
+    const woven = await weaveOne(s);
+    registers();
+    expect((await s.register(woven.id, { terms: "open" }, woven.cookie)).status).toBe(200);
+    expect(lastOptions().platformStatement).toBe(VISITOR);
+    expect(Object.keys(lastOptions()).sort()).toEqual(KIT_OPTIONS);
+  });
+
+  it("says a visitor's prompt after the visitor signs out", async () => {
+    const s = await server();
+    const first = await weaveOne(s);
+    const cookie = await signIn(s, first.cookie);
+    await s.signout(cookie);
+    const woven = await weaveOne(s, cookie);
+    registers();
+    expect((await s.register(woven.id, { terms: "noAi" }, cookie)).status).toBe(200);
+    expect(lastOptions().platformStatement).toBe(VISITOR);
+  });
+
+  it("says a visitor's prompt for a session that is not signed in while another one is", async () => {
+    const s = await server();
+    const mine = await weaveOne(s);
+    await signIn(s, mine.cookie);
+    const theirs = await weaveOne(s);
+    registers();
+    expect((await s.register(theirs.id, { terms: "noAi" }, theirs.cookie)).status).toBe(200);
+    expect(lastOptions().platformStatement).toBe(VISITOR);
   });
 });
 

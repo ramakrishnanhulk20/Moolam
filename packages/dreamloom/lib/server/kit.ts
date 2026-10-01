@@ -108,13 +108,16 @@ function ready(): Kit {
 /**
  * Platform mode: Dreamloom's agent makes it, its passkey signs as creator, its wallet sends and holds.
  * With deliverTo, the passport waits for that verified email at Moolam instead of only in Dreamloom's
- * wallet, or goes straight to the person's Moolam account when they asked Moolam for that.
+ * wallet, or goes straight to the person's Moolam account when they asked Moolam for that. With
+ * platformStatement, the passport's document carries Dreamloom's own sentence about the picture, byte
+ * for byte; the caller picks the one that is true of who asked for it.
  */
 export async function registerPicture(
   file: Uint8Array,
   title: string,
   terms: AiUseTerms,
   deliverTo?: DeliverTo,
+  platformStatement?: string,
 ): Promise<PlatformRegistration> {
   const k = ready();
   return await registerAsPlatform(file, {
@@ -126,6 +129,7 @@ export async function registerPicture(
     title,
     terms,
     ...(deliverTo === undefined ? {} : { deliverTo }),
+    ...(platformStatement === undefined ? {} : { platformStatement }),
   });
 }
 

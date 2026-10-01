@@ -9,6 +9,7 @@ import type { ServerPasskey } from "./passkey.js";
 import {
   PREPARE_TIMEOUT_MS,
   assertDeliverTo,
+  assertPlatformStatement,
   assertTitle,
   prepareForm,
   sha256Hex,
@@ -41,6 +42,13 @@ export interface RegisterAsPlatformOptions {
    * user. It travels only in the prepare request's body and the kit never logs it.
    */
   deliverTo?: DeliverTo;
+  /**
+   * The platform's own one-line statement about the picture, carried byte for byte into the
+   * passport's document and shown on its page as the platform's words. The verify service refuses one
+   * that is not a single printable line of at most 1,000 bytes with no spaces at either end. Leave out
+   * and the document carries no statement.
+   */
+  platformStatement?: string;
 }
 
 export interface PlatformRegistration {
@@ -70,7 +78,10 @@ export interface PlatformRegistration {
  * then setConsent states the same terms that went into the manifest (P24). With deliverTo, the email
  * rides in the prepare body; when the answer carries deliverNow, the person's standing destination,
  * that address passes the same recipient check every transfer does before anything is sent, and the
- * passport is handed to it by transferPassport after the terms are written (P31).
+ * passport is handed to it by transferPassport after the terms are written (P31). With
+ * platformStatement, the platform's own words ride in the prepare body exactly as given. The prepare
+ * answer does not echo them, so the kit has nothing to compare them against; the service either
+ * writes them as sent or refuses the prepare.
  *
  * Nothing is sent on chain until every check has passed, and a result is returned only from
  * receipts with status success.
@@ -91,6 +102,9 @@ export async function registerAsPlatform(file: Uint8Array, options: RegisterAsPl
   }
   if (options.deliverTo !== undefined) {
     assertDeliverTo(options.deliverTo);
+  }
+  if (options.platformStatement !== undefined) {
+    assertPlatformStatement(options.platformStatement);
   }
   const target: ServiceTarget = { verifyUrl: options.verifyUrl, platformKey: options.platformKey };
   const reader = readerFor(walletClient);
@@ -116,7 +130,7 @@ export async function registerAsPlatform(file: Uint8Array, options: RegisterAsPl
       method: "POST",
       path: "/platform/prepare",
       what: "the platform prepare",
-      body: prepareForm(file, "platform", options.title, signed, terms, options.deliverTo),
+      body: prepareForm(file, "platform", options.title, signed, terms, options.deliverTo, options.platformStatement),
       timeoutMs: PREPARE_TIMEOUT_MS,
       maxAnswerBytes: MAX_PREPARE_ANSWER_BYTES,
     },
