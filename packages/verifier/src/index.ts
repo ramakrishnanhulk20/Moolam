@@ -205,6 +205,31 @@ export class HammingIndex {
     return first;
   }
 
+  /**
+   * Every passport carrying a fingerprint within both limits, one list per fingerprint, each list in
+   * this index's chain order. The look-alike search reads these whole, because it orders by the
+   * shared rule in lookalike-rule.ts and asks only for registrations before a given second, which
+   * the earliest of a row in block order does not answer.
+   */
+  rowsWithin(
+    phash: bigint,
+    blockhash: Hex,
+    limits: { phashMax: number; blockhashMax: number },
+  ): (readonly Registration[])[] {
+    const rows: (readonly Registration[])[] = [];
+    const target = decodeBlockhash(blockhash);
+    for (let position = 0; position < this.rows; position += 1) {
+      if (hamming64(this.phashes[position] as bigint, phash) > limits.phashMax) {
+        continue;
+      }
+      if (this.blockhashDistanceAt(position, target) > limits.blockhashMax) {
+        continue;
+      }
+      rows.push(this.groups[position] as Registration[]);
+    }
+    return rows;
+  }
+
   /** Visits every row within both limits, named by the earliest passport carrying its fingerprint. */
   private scan(
     phash: bigint,

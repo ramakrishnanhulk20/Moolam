@@ -3,7 +3,7 @@ import { FETCH_TIMEOUT_MS } from "../env.js";
 import { rechecksFrom } from "../recheck.js";
 import type { IndexedRecord } from "../index.js";
 import { MONAD_CHAIN_ID } from "../reputation/registry.js";
-import type { IndexerProgress } from "../types.js";
+import type { Hex, IndexerProgress } from "../types.js";
 import { hex } from "./hex.js";
 import type { PassportSource, SourceLoad } from "./PassportSource.js";
 
@@ -13,7 +13,8 @@ import type { PassportSource, SourceLoad } from "./PassportSource.js";
  * with an ascending sort: no offset, which would drift while the index is still
  * syncing and could skip or repeat rows.
  */
-const PASSPORT_PAGE = `Passport(where: { id: { _gt: $after } }, order_by: { id: asc }, limit: $limit) {
+function passportPage(network: NetworkVerdicts | undefined): string {
+  return `Passport(where: { id: { _gt: $after } }, order_by: { id: asc }, limit: $limit) {
     id
     phash
     blockhash
@@ -30,12 +31,40 @@ const PASSPORT_PAGE = `Passport(where: { id: { _gt: $after } }, order_by: { id: 
       matched
       distance
       at
-    }
+    }${network === undefined ? "" : networkSelection(network)}
   }`;
+}
 
-const PASSPORT_QUERY = `query MoolamPassports($limit: Int!, $after: String!) {
-  ${PASSPORT_PAGE}
+/**
+ * Which receiver's attestations count as Chainlink's network verdict, and from what unix second.
+ * Both go into the query as literals: the receiver is checked as an address and the time as a
+ * whole number before they get here, so nothing a caller sends can reach the query text.
+ */
+export interface NetworkVerdicts {
+  receiver: Hex;
+  activation: number;
+}
+
+/**
+ * At most one attestation from the network's receiver at or after activation. The newest
+ * attestation above cannot answer this, because a later test run on another receiver would hide
+ * a network verdict that landed first.
+ */
+function networkSelection(network: NetworkVerdicts): string {
+  if (!/^0x[0-9a-f]{40}$/.test(network.receiver) || !Number.isSafeInteger(network.activation) || network.activation < 0) {
+    throw new Error("the network verdict settings must be a lower-case address and a whole number of seconds");
+  }
+  return `
+    network: attestations(where: { receiver: { _eq: "${network.receiver}" }, at: { _gte: "${network.activation}" } }, limit: 1) {
+      at
+    }`;
+}
+
+function passportQuery(network: NetworkVerdicts | undefined): string {
+  return `query MoolamPassports($limit: Int!, $after: String!) {
+  ${passportPage(network)}
 }`;
+}
 
 /**
  * The first page also asks Envio how far it has indexed (review pass 10, V99). Both come out of one
@@ -45,14 +74,16 @@ const PASSPORT_QUERY = `query MoolamPassports($limit: Int!, $after: String!) {
  * timestamp_caught_up_to_head_or_endblock stays null until it has caught up with the chain once,
  * which is where a redeployed indexer replaying from its start block shows.
  */
-const FIRST_PAGE_QUERY = `query MoolamPassportsAndProgress($limit: Int!, $after: String!) {
+function firstPageQuery(network: NetworkVerdicts | undefined): string {
+  return `query MoolamPassportsAndProgress($limit: Int!, $after: String!) {
   chain_metadata {
     chain_id
     latest_processed_block
     timestamp_caught_up_to_head_or_endblock
   }
-  ${PASSPORT_PAGE}
+  ${passportPage(network)}
 }`;
+}
 
 const DEFAULT_PAGE_SIZE = 500;
 
@@ -102,6 +133,9 @@ const rowSchema = z.object({
   matchedCount: z.unknown().optional(),
   mismatchedCount: z.unknown().optional(),
   attestations: z.unknown().optional(),
+  // Read loosely for the same reason: a network field served badly costs the backlog its answer
+  // for this passport ("cannot tell"), never the load.
+  network: z.unknown().optional(),
 });
 
 const responseSchema = z.object({
@@ -146,6 +180,11 @@ function progressFrom(metadata: unknown, chainId: number): IndexerSays | null {
   return null;
 }
 
+/** The network verdict field of one row: present when the index answered a list, left off otherwise. */
+function networkVerdictOf(field: unknown): { networkVerdict?: boolean } {
+  return Array.isArray(field) ? { networkVerdict: field.length > 0 } : {};
+}
+
 /** The one chain read this source makes: a block's time, the newest block's when no number is given. A viem public client has it. */
 export interface BlockReader {
   getBlock(args?: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
@@ -188,6 +227,9 @@ async function progressOf(says: IndexerSays | null, times: BlockTimes | undefine
  * so a verify answer can say what the Chainlink workflow found without a lookup
  * of its own per verification.
  *
+ * Given `network`, each row also says whether Chainlink's network has written a verdict for it, so
+ * the look-alike backlog knows which passports still wait for one without a read of its own.
+ *
  * Each load also reads how far the indexer has got from Envio's chain_metadata, and asks the chain
  * for two block times, the indexer's newest block and the chain head, so the service can tell an
  * indexer that has stopped or is re-syncing from one that is current (review pass 10, V99). With no
@@ -198,8 +240,10 @@ export class EnvioSource implements PassportSource {
   private readonly pageSize: number;
   private readonly chain: BlockReader | undefined;
   private readonly chainId: number;
+  private readonly network: NetworkVerdicts | undefined;
+  private readonly queries: { first: string; rest: string };
 
-  constructor(opts: { url: string; pageSize?: number; chain?: BlockReader; chainId?: number }) {
+  constructor(opts: { url: string; pageSize?: number; chain?: BlockReader; chainId?: number; network?: NetworkVerdicts }) {
     const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
     if (!Number.isInteger(pageSize) || pageSize < 1) {
       throw new Error("EnvioSource pageSize must be a whole number of at least 1");
@@ -208,6 +252,9 @@ export class EnvioSource implements PassportSource {
     this.pageSize = pageSize;
     this.chain = opts.chain;
     this.chainId = opts.chainId ?? MONAD_CHAIN_ID;
+    this.network = opts.network;
+    // Built once, so a bad setting fails the boot here rather than the first load.
+    this.queries = { first: firstPageQuery(this.network), rest: passportQuery(this.network) };
   }
 
   /** Every passport, read exactly as loadWithProgress reads them. */
@@ -252,6 +299,7 @@ export class EnvioSource implements PassportSource {
           ...(row.registeredBlock === undefined ? {} : { registeredBlock: Number(row.registeredBlock) }),
           metadataURI: row.metadataURI,
           rechecks: rechecksFrom(row),
+          ...(this.network === undefined ? {} : networkVerdictOf(row.network)),
         });
       }
 
@@ -278,7 +326,7 @@ export class EnvioSource implements PassportSource {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          query: withProgress ? FIRST_PAGE_QUERY : PASSPORT_QUERY,
+          query: withProgress ? this.queries.first : this.queries.rest,
           variables: { limit: this.pageSize, after },
         }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),

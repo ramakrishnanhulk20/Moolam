@@ -58,6 +58,12 @@ export interface PassportRecord {
   registeredAt: number;
   metadataURI: string;
   rechecks?: PassportRechecks;
+  /**
+   * Whether Chainlink's network has written a verdict for this passport: an attestation from the
+   * network's receiver at or after the activation time. Left off by a source that was not asked or
+   * cannot say, which the backlog reads as "cannot tell", never as "no verdict".
+   */
+  networkVerdict?: boolean;
 }
 
 /**

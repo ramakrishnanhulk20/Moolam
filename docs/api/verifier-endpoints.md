@@ -4,16 +4,16 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Twenty-seven routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
+Twenty-nine routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
 tool call as a short event stream. The service listens on `VERIFIER_PORT`, which defaults to 4000.
-Twenty of the twenty-seven are mounted only when the host is configured for them: `/verify/paid` needs
+Twenty of the twenty-nine are mounted only when the host is configured for them: `/verify/paid` needs
 `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, `/generate` and `/edit` each need
 those plus their own keys, the two `/unseal` routes and the three `/sealed` routes need exactly what
 `/prepare` needs, and the four `/platform` routes need that plus `PRIVY_APP_SECRET` and a platform
 list that loads. The five `/claims` routes and the two `/platform/deliveries` routes are mounted
 with the `/platform` routes, and answer `503` `claims-unavailable` until the host has both
 `CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`. An unmounted route answers `404` like any other path that does not exist. The five
-`/recheck` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
+`/recheck` routes, the two `/lookalikes` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
 uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link` answers `503` until
 `SEALED_LINK_TOKEN` is set.
 
@@ -716,9 +716,34 @@ the caller already has them, and the answer has to sit in a browser's memory nex
     constraintInfo?: string,
     standard: "cawg.training-mining/1.1"
   },
-  preparedBy: string               // the Privy user id the token carried
+  preparedBy: string,              // the Privy user id the token carried
+  lookalike:                       // on every 200, public and sealed alike, see below
+    | { state: "found", passportId: `0x${string}`, title: string, registeredAt: number }
+    | { state: "yours", passportId: `0x${string}` }
+    | { state: "none", indexAt: number }
+    | { state: "unchecked" }
 }
 ```
+
+**The look-alike warning.** Before handing back the fields, the service runs its matcher on the
+signed file and on its seven other turns and mirrors, against the passport index in memory, at the
+shared thresholds (10 of 64 pHash bits and 40 of 256 blockhash bits, the numbers the Chainlink
+workflow uses from the same file). A passport counts as earlier only when its chain `registeredAt`
+is strictly before the current second, so one registered in the same second never does.
+
+- `found` names the earliest earlier look-alike by another creator, outside the creator's own edit
+  family: its id, lower case; its title, read from its metadata document by the pinned-content rule
+  above and made one plain line of at most 120 code points (control, format and direction
+  characters become a space, then the line is cut), or `""` when the document could not be read;
+  and its `registeredAt` from the chain record, in unix seconds. Nothing in it is a link.
+- `yours` names the creator's own earliest earlier look-alike, when every earlier one is theirs or
+  an edit within their family. The creator's wallets are read from Privy, only when there is a match.
+- `none` means the search ran and found nothing, on an index current to `indexAt`, in unix seconds.
+- `unchecked` means the search could not answer: the index was stale, the turns could not be taken,
+  or the creator's wallets could not be read within 5 seconds. A screen says so in words; it never
+  draws this as nothing found.
+
+The warning never stops the prepare and never changes the pinned files: the person decides.
 
 The browser adds its own wallet address and a deadline to those passport fields, reads
 `hashPassport` from the registry, signs that digest with the creator's passkey and sends `register`
@@ -1431,6 +1456,88 @@ A sealed passport whose document asks for a private re-check is queued only whil
 `unknown`, because the runner checks the status again before it spends anything. A copy that is
 `gone` gets the same `409 sealed` a plain sealed passport gets.
 
+## POST /lookalikes/candidates
+
+Which earlier passports might show the same picture as a set of fingerprints. Chainlink's nodes ask
+it during a look-alike run; anyone may. The answer only proposes: the workflow reads each id on
+chain and measures it itself before it writes anything.
+
+**Request.** A JSON body, exactly these two keys:
+
+```json
+{ "fingerprints": [{ "phash": "0x<16 hex>", "blockhash": "0x<64 hex>" }], "asOf": 1790000000 }
+```
+
+`fingerprints` holds 1 to 8 pairs, such as a picture's eight turns and mirrors. `asOf` is a whole
+number of unix seconds, no later than this host's clock plus 60 seconds.
+
+**Response.** `200` with one of:
+
+```ts
+{ status: "ok", candidates: `0x${string}`[] }   // 0 to 3 passport ids, lower case
+{ status: "not-ready" }                          // no list at all
+```
+
+Every passport carrying a fingerprint within 10 pHash bits and 40 blockhash bits of any pair, and
+registered strictly before `asOf` by its chain `registeredAt`, is a candidate. Each fingerprint
+counts once, named by its first registration, so later copies of one fingerprint take no extra
+place. The list is sorted by `registeredAt`, then by id, and cut to three, so the earliest
+registration within the thresholds is always first. The answer depends only on the index in memory
+and the request, so two callers with the same body get the same bytes while one copy of the index
+is in hand.
+
+`not-ready` means the index is stale or has not been loaded through `asOf`: behind the indexer, its
+newest processed block is older than `asOf`. The caller should ask again later rather than read it
+as "none".
+
+| Code | When |
+| --- | --- |
+| `200` | `ok` or `not-ready` |
+| `400` | Not JSON, an extra or missing key, a pair out of shape, no pairs or more than 8, an `asOf` that is not a whole number or is more than 60 seconds ahead. Refused before any search |
+| `429` | Over the service's 60 a minute per address, or `{ "error": "route-limit" }` once every caller together has asked 600 times this minute, with `retry-after` |
+
+## GET /lookalikes/backlog
+
+Which passports still wait for Chainlink's network. The workflow's ten-minute run asks it to catch
+up on runs that were dropped and on passports registered before the network run went live.
+
+**Request.** `GET /lookalikes/backlog?asOf=<unix seconds>&n=<1 to 7>`, nothing else in the query.
+`asOf` may be at most 60 seconds ahead of this host's clock.
+
+**Response.** `200` with one of:
+
+```ts
+{ status: "ok", passports: `0x${string}`[] }    // 0 to n passport ids, lower case, oldest first
+{ status: "not-ready" }
+```
+
+A passport is listed when it was registered strictly before `asOf`, its metadata document is public
+and names its picture as pinned content (so the workflow can check it), and it still lacks one of:
+
+- a network verdict: an attestation from receiver `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` at or
+  after `NETWORK_ACTIVATION_TIME`, read from the index;
+- for an original, a look-alike record: a `LookalikeChecked` event from `LOOKALIKE_RECEIVER` whose
+  `executedAt` is at or after `NETWORK_ACTIVATION_TIME`. Until the index carries these records, the
+  service reads the events itself in the background, after each index refresh.
+
+With `NETWORK_ACTIVATION_TIME` unset the list says nothing about either. With it set and
+`LOOKALIKE_RECEIVER` unset, it says nothing about look-alike records. The order is `registeredAt`,
+then id.
+
+`not-ready` comes instead of a shorter list whenever a passport that could belong in it cannot be
+judged yet: the index is stale or not loaded through `asOf`, the index cannot say whether a verdict
+landed, the look-alike events have not been read up to the chain head, or a document has never been
+read. A document whose read failed is left out and read again ten minutes later.
+
+Neither look-alike route reads the chain, Pinata or the gateway while the request waits: the
+documents and the events are read in the background, and the answer comes from memory.
+
+| Code | When |
+| --- | --- |
+| `200` | `ok` or `not-ready` |
+| `400` | A missing or extra query parameter, an `n` outside 1 to 7, or an `asOf` that is not a whole number or is more than 60 seconds ahead |
+| `429` | Over the service's 60 a minute per address, or `{ "error": "route-limit" }` once every caller together has asked 120 times this minute, with `retry-after` |
+
 ## GET /recheck/status/:passportId
 
 Where a request got to.
@@ -1662,9 +1769,13 @@ computed before the pin.
   manifest: { embedded: true },
   training?: { ...terms, standard: "cawg.training-mining/1.1" },
   platform: { name: string, agentId: string },
-  deliverNow?: `0x${string}`       // with deliverTo only: the person's standing choice for this key
+  deliverNow?: `0x${string}`,      // with deliverTo only: the person's standing choice for this key
+  lookalike: { state: "found" | "yours" | "none" | "unchecked", ... }  // as under /prepare
 }
 ```
+
+`lookalike` is the warning described under [`/prepare`](#post-prepare), with the platform's own
+creator wallet as the creator: its earlier passports read `yours`.
 
 With `deliverTo`, a ticket is written pending after the pins and opens once the chain shows the
 passport under the platform's wallet. `deliverNow` appears only when the person behind that address
@@ -1685,9 +1796,13 @@ signed (P6).
   openBy: number,                  // chain time by which the person must open the link
   manifest: { embedded: true },
   training?: { ...terms, standard: "cawg.training-mining/1.1" },
-  platform: { name: string, agentId: string }
+  platform: { name: string, agentId: string },
+  lookalike: { state: "found" | "none" | "unchecked", ... }  // as under /prepare
 }
 ```
+
+In co-sign mode the creator is whoever opens the link, unknown at this point, so every earlier
+look-alike reads `found` and none reads `yours`.
 
 The service keeps only the handle's sha256. The person's link is `https://moolam.vercel.app/cosign#<handle>`.
 

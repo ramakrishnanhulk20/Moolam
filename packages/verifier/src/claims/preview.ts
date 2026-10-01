@@ -51,6 +51,23 @@ export function previewOf(document: unknown): Preview | null {
   return { title, image: `ipfs://${cid}` };
 }
 
+/** Every run of characters PRINTABLE_TEXT does not take, the same class read the other way. */
+const NOT_PRINTABLE = /[^\p{L}\p{M}\p{N}\p{P}\p{S} ]+/gu;
+
+/**
+ * A stranger's title made into one plain line under P36's rule, for an answer that must still name
+ * the passport when its title breaks the rule: NFKC, every run of control, format, direction and
+ * line-break characters turned into one space, spaces folded, then cut to 120 code points. What
+ * comes out passes PRINTABLE_TEXT, or is empty when nothing printable was there or the value was
+ * not text. Like previewOf, it does not catch look-alike letters from two scripts.
+ */
+export function plainTitle(name: unknown): string {
+  if (typeof name !== "string") return "";
+  const plain = name.normalize("NFKC").replace(NOT_PRINTABLE, " ").replace(/ {2,}/g, " ").trim();
+  const cut = [...plain].slice(0, MAX_TITLE_CODE_POINTS).join("").trimEnd();
+  return cut.length > 0 && PRINTABLE_TEXT.test(cut) ? cut : "";
+}
+
 /** The live preview reader: one gateway read per document, with what it found kept by its address. */
 export function previewReader(
   read: DocumentReader = async (uri) => await readMetadataDocument(uri, { timeoutMs: PREVIEW_READ_MS }),

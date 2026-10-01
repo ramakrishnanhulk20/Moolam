@@ -413,6 +413,11 @@ const schema = z
       "CLAIM_PEPPER_VERSION must be a whole number from 1, raised by one on every new CLAIM_PEPPER",
     ),
     CLAIM_REQUESTS_PER_DAY: dayCeiling("CLAIM_REQUESTS_PER_DAY", DEFAULT_CLAIM_REQUESTS_PER_DAY),
+    NETWORK_ACTIVATION_TIME: optionalUnixSeconds("NETWORK_ACTIVATION_TIME"),
+    LOOKALIKE_RECEIVER: optionalPattern(
+      /^0x(?!0{40}$)[0-9a-fA-F]{40}$/,
+      "LOOKALIKE_RECEIVER must be MoolamLookalikes' address, 0x followed by 40 hex characters and not the zero address",
+    ).transform((value) => value?.toLowerCase()),
     NODE_ENV: optionalText(),
   })
   .superRefine((value, ctx) => {
@@ -564,6 +569,31 @@ function milliseconds(name: string, fallback: number, min: number): z.ZodType<nu
     });
 }
 
+/**
+ * An optional moment in unix seconds, a whole number from 1 to the year 2100. Blank means unset.
+ * The message never repeats what was set.
+ */
+function optionalUnixSeconds(name: string): z.ZodType<number | undefined> {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .transform((value, ctx) => {
+      if (value === undefined || value.length === 0) {
+        return undefined;
+      }
+      const seconds = /^[0-9]{1,10}$/.test(value) ? Number(value) : Number.NaN;
+      if (!Number.isInteger(seconds) || seconds < 1 || seconds > MAX_ENV_UNIX_SECONDS) {
+        ctx.addIssue({ code: "custom", message: `${name} must be a whole number of unix seconds, such as 1790000000` });
+        return z.NEVER;
+      }
+      return seconds;
+    });
+}
+
+/** 1 January 2100 in unix seconds, the latest moment a setting may name. */
+const MAX_ENV_UNIX_SECONDS = 4_102_444_800;
+
 /** An optional value where a blank line in .env means the same as no line at all. */
 function optionalText(): z.ZodType<string | undefined> {
   return z
@@ -682,6 +712,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     CLAIM_PEPPER: source.CLAIM_PEPPER,
     CLAIM_PEPPER_VERSION: source.CLAIM_PEPPER_VERSION,
     CLAIM_REQUESTS_PER_DAY: source.CLAIM_REQUESTS_PER_DAY,
+    NETWORK_ACTIVATION_TIME: source.NETWORK_ACTIVATION_TIME,
+    LOOKALIKE_RECEIVER: source.LOOKALIKE_RECEIVER,
     NODE_ENV: source.NODE_ENV,
   });
 

@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { Worker } from "node:worker_threads";
 import sharp, { type Metadata, type Sharp } from "sharp";
 import type { BlockhashAnswer, BlockhashJob } from "./fingerprintWorker.js";
+import { LOOKALIKE_BLOCKHASH_BITS, LOOKALIKE_PHASH_BITS } from "./lookalike-rule.js";
 import type { Hex } from "./types.js";
 
 const require = createRequire(import.meta.url);
@@ -40,17 +41,19 @@ const BLOCKHASH_BITS = BLOCKHASH_BITS_PER_ROW * BLOCKHASH_BITS_PER_ROW;
  * headroom over the worst honest case. Cropping 10 percent (21 bits), rotating
  * 90 degrees (31 bits) and mirroring (29 bits) sit above it and are not caught
  * by this hash: those need the rotated and mirrored variants fingerprinted at
- * registration time instead.
+ * registration time instead. The number itself lives in lookalike-rule.ts, the one file the
+ * Chainlink workflow keeps a byte for byte copy of, so both sides judge "alike" by the same bits.
  */
-export const PHASH_MATCH_THRESHOLD = 10;
+export const PHASH_MATCH_THRESHOLD = LOOKALIKE_PHASH_BITS;
 
 /**
  * Same idea for the 256-bit blockhash. The spike measured the same honest
  * transforms at 0 bits, and the brightness lift at 10 bits, so 40 is roughly
  * four times the worst honest case and still far below the 74 bits a 10 percent
- * crop produced or the 128 bits a random pair averages.
+ * crop produced or the 128 bits a random pair averages. Held in lookalike-rule.ts for the same
+ * reason as the pHash threshold.
  */
-export const BLOCKHASH_MATCH_THRESHOLD = 40;
+export const BLOCKHASH_MATCH_THRESHOLD = LOOKALIKE_BLOCKHASH_BITS;
 
 /**
  * The most pixels we will decode from an image a stranger sent, 40 megapixels.

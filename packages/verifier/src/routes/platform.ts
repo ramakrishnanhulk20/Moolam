@@ -13,6 +13,8 @@ import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
 import { gatewayUrl } from "../ipfs/pinata.js";
 import { dayLimitRefusal } from "../limits/globalDay.js";
+import { lookalikeBeforeSigning, pairsOf, type LookalikeAnswer } from "../lookalike/presign.js";
+import type { FingerprintPair } from "../lookalike/search.js";
 import { AGENT_IDENTITY_REGISTRY, AI_SOURCE_TYPE, FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import { safeReason } from "../net/errorText.js";
 import { liveChain, type PlatformChain } from "../platform/chain.js";
@@ -70,6 +72,7 @@ import {
   type VerifiedBy,
 } from "../claims/store.js";
 import { CallerGone, SERVICE_FAULT_REASON, givesUploadsBack, statusOf, studioTurn } from "./shared.js";
+import { presignReads, type PresignOptions } from "./prepare.js";
 
 /**
  * The most tickets one deliveries answer names. A platform's worker sends at most once per entry
@@ -126,6 +129,8 @@ export interface PlatformRouteOptions {
   limits?: Partial<PlatformLimits>;
   /** The claim service a prepare's deliverTo and the deliveries routes use, or why it is closed. */
   claims?: ClaimSetup;
+  /** Replaces the title read behind the look-alike warning, for tests. */
+  lookalike?: Pick<PresignOptions, "titleOf">;
 }
 
 /**
@@ -138,12 +143,17 @@ export interface PlatformRouteOptions {
  * read at that moment (P19). Every window is read against chain time (P12). The handle routes answer
  * with `no-store`, are logged by nothing that could carry their URL, and compare every handle in
  * constant time (P4).
+ *
+ * Both prepare answers carry `lookalike`, the same four states the studio's /prepare answers
+ * (L19, L20), judged against the platform's own wallet in platform mode and against nobody in
+ * co-sign mode, where the creator is not known until the link is opened.
  */
 export async function platformRoutes(app: FastifyInstance, options: PlatformRouteOptions): Promise<void> {
   const chain: PlatformChain = liveChain();
   const registryRead = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
   const dom = registryDomain();
+  const { titleOf } = presignReads(options.lookalike);
   const limits: PlatformLimits = { ...DEFAULT_PLATFORM_LIMITS, ...options.limits };
   const stores = platformStores(options.dir, limits, dom, (line) => {
     app.log.warn(line);
@@ -348,8 +358,9 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
     }
 
     let prepared: PreparedResult;
+    let pairs: FingerprintPair[] | undefined;
     try {
-      prepared = await studioTurn(app, request, upload.bytes, async () => {
+      ({ prepared, pairs } = await studioTurn(app, request, upload.bytes, async () => {
         const made = await prepareOrFallback(upload.bytes, {
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,
@@ -364,8 +375,8 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
           log: request.log,
         });
         await assertStableFingerprint(made.print.phash, made.thumbnail);
-        return made;
-      });
+        return { prepared: made, pairs: await pairsOf(made.bytes, made.print) };
+      }));
     } catch (error) {
       const reason = safeReason(error);
       if (error instanceof CallerGone) return reply.code(499).send({ error: "client-gone" });
@@ -403,6 +414,16 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
     if ((await registrationOf(registryRead, registry, passportId, request.log)) === "registered") {
       return reply.code(409).send({ error: "already-registered", passportId });
     }
+
+    // In platform mode the creator is the platform's own wallet, so its earlier passports are
+    // "yours". In co-sign mode the creator is whoever opens the link, unknown here, so every
+    // earlier match is somebody else's and the person sees the warning before they sign.
+    const lookalike: Promise<LookalikeAnswer> = lookalikeBeforeSigning(
+      app.verifier.snapshot(),
+      pairs,
+      { creators: async () => (upload.mode === "platform" ? [platform.creatorWallet] : []), titleOf },
+      Math.floor(Date.now() / 1000),
+    );
 
     const slug = fileSlug(upload.title, passportId);
     const set = buildFileSet({
@@ -506,6 +527,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
         signedFile: file,
         ...shared,
         ...(deliverNow === undefined ? {} : { deliverNow }),
+        lookalike: await lookalike,
       });
     }
 
@@ -554,6 +576,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
       files: filesAnswer(set.entries),
       openBy: record.openBy,
       ...shared,
+      lookalike: await lookalike,
     });
   }
 

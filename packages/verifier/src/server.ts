@@ -22,6 +22,9 @@ import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSw
 import { fairGate, type GoneCheck } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { defaultDayStore, globalDay, type GlobalDay } from "./limits/globalDay.js";
+import { NETWORK_RECEIVER, lookalikeHalfOn, type BacklogSettings } from "./lookalike/backlog.js";
+import { lookalikeKnowledge, type LookalikeKnowledge } from "./lookalike/knowledge.js";
+import type { LedgerChain } from "./lookalike/ledger.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { safeReason } from "./net/errorText.js";
 import {
@@ -37,9 +40,10 @@ import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { claimRoutes } from "./routes/claims.js";
 import { healthRoutes } from "./routes/health.js";
+import { lookalikeRoutes } from "./routes/lookalikes.js";
 import { mcpRoutes, type McpRouteOptions } from "./routes/mcp.js";
 import { platformRoutes } from "./routes/platform.js";
-import { prepareRoutes } from "./routes/prepare.js";
+import { prepareRoutes, type PresignOptions } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
 import { privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
 import { BadRequest } from "./routes/shared.js";
@@ -335,6 +339,14 @@ export interface IndexCopy {
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
   /** How current this copy is, judged now: its own load time and its own indexer progress. */
   state: () => IndexState;
+  /** Every passport in this copy by its lower-cased id. */
+  passports: ReadonlyMap<Hex, PassportRecord>;
+  /**
+   * Whether this copy holds every passport registered strictly before the unix second `asOf`. Behind
+   * an indexer that is the time of the newest block it had processed, which every earlier second's
+   * blocks come before; a source with no indexer is judged by when it loaded.
+   */
+  covers: (asOf: number) => boolean;
 }
 
 export interface Verifier {
@@ -457,6 +469,8 @@ declare module "fastify" {
     privateSweep: PrivateSweep;
     /** One pass of the claim sweep, run on every index refresh tick; undefined while the claim routes are closed. */
     claimSweep: () => Promise<SweepCounts | undefined>;
+    /** What the look-alike backlog knows besides the index, refreshed after every index refresh. */
+    lookalikes: LookalikeKnowledge;
   }
 }
 
@@ -483,7 +497,15 @@ export function sourceFromEnv(): PassportSource {
     throw new Error('PASSPORT_SOURCE "envio" needs ENVIO_GRAPHQL_URL');
   }
   const chain = env.NODE_ENV === "test" ? undefined : (readClient() as unknown as BlockReader);
-  return new EnvioSource({ url: env.ENVIO_GRAPHQL_URL, ...(chain === undefined ? {} : { chain }) });
+  const network =
+    env.NETWORK_ACTIVATION_TIME === undefined
+      ? undefined
+      : { receiver: NETWORK_RECEIVER, activation: env.NETWORK_ACTIVATION_TIME };
+  return new EnvioSource({
+    url: env.ENVIO_GRAPHQL_URL,
+    ...(chain === undefined ? {} : { chain }),
+    ...(network === undefined ? {} : { network }),
+  });
 }
 
 /**
@@ -549,7 +571,8 @@ export async function buildServer(
     source?: PassportSource;
     logger?: boolean;
     payments?: x402HTTPResourceServer;
-    prepare?: { keys?: PrivyKeys };
+    /** Replaces the Privy key set, and the wallet and title reads behind the look-alike warning. */
+    prepare?: { keys?: PrivyKeys; lookalike?: PresignOptions };
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
     unseal?: { keys?: PrivyKeys };
@@ -558,7 +581,13 @@ export async function buildServer(
      * Mounts the platform routes with this Privy key set, this list document in place of the bundled
      * one (it is loaded and checked the same way), this folder for their state and these limits.
      */
-    platform?: { keys?: PrivyKeys; list?: unknown; dir?: string; limits?: Partial<PlatformLimits> };
+    platform?: {
+      keys?: PrivyKeys;
+      list?: unknown;
+      dir?: string;
+      limits?: Partial<PlatformLimits>;
+      lookalike?: Pick<PresignOptions, "titleOf">;
+    };
     /**
      * Replaces the claim routes' pepper (null closes them as a host without one is closed), their
      * chain, their preview reader and their limits, for tests. Their files live in the platform dir.
@@ -582,6 +611,17 @@ export async function buildServer(
       runnerToken?: string;
       readDocument?: DocumentReader;
       findRecord?: UnsealRecordFinder;
+    };
+    /**
+     * Replaces the look-alike settings, the document reader and chain the backlog's refresh reads,
+     * the two route ceilings and the clock the routes read `asOf` on, for tests.
+     */
+    lookalikes?: {
+      settings?: BacklogSettings;
+      readDocument?: DocumentReader;
+      chain?: LedgerChain;
+      ceilings?: { candidates?: number; backlog?: number };
+      clock?: () => number;
     };
   } = {},
 ): Promise<FastifyInstance> {
@@ -690,9 +730,22 @@ export async function buildServer(
     pinned.set(bytes, current);
     return current;
   };
+  const covers = (copy: LoadedIndex, asOf: number): boolean => {
+    if (copy.progress === undefined) {
+      return Math.floor(copy.loadedAtMs / 1000) >= asOf;
+    }
+    const through = copy.progress?.blockTime ?? null;
+    return through !== null && through >= asOf;
+  };
   const snapshot = (bytes?: Buffer): IndexCopy => {
     const copy = copyFor(bytes);
-    return { index: copy.index, lookupExact: lookupIn(copy), state: () => stateOf(copy) };
+    return {
+      index: copy.index,
+      lookupExact: lookupIn(copy),
+      state: () => stateOf(copy),
+      passports: copy.byId,
+      covers: (asOf) => covers(copy, asOf),
+    };
   };
   const gate = fairGate({ verifySlots: VERIFY_SLOTS, studioSlots: STUDIO_SLOTS, maxWaitMs: env.MATCH_WAIT_MS });
   // Under a test runner the default reader makes no network call: a unit suite must not depend on
@@ -704,6 +757,22 @@ export async function buildServer(
     (env.NODE_ENV === "test"
       ? offlinePictureReader()
       : pictureReader({ readDocument: liveDocument, findRecord: liveRecord }));
+
+  // The settings come from the environment and nothing else: the workflow holds its own copy of
+  // the activation time and the receivers, never one read from this service (L15). Under a test
+  // runner nothing is read from a gateway or the chain unless a test hands its own reader in.
+  const lookalikeSettings: BacklogSettings = options.lookalikes?.settings ?? {
+    ...(env.NETWORK_ACTIVATION_TIME === undefined ? {} : { activation: env.NETWORK_ACTIVATION_TIME }),
+    ...(env.LOOKALIKE_RECEIVER === undefined ? {} : { receiver: env.LOOKALIKE_RECEIVER as Hex }),
+  };
+  const lookalikes = lookalikeKnowledge({
+    settings: lookalikeSettings,
+    readDocument: options.lookalikes?.readDocument ?? (env.NODE_ENV === "test" ? undefined : liveDocument),
+    chain:
+      options.lookalikes?.chain ??
+      (env.NODE_ENV === "test" || !lookalikeHalfOn(lookalikeSettings) ? undefined : (readClient() as unknown as LedgerChain)),
+  });
+  app.decorate("lookalikes", lookalikes);
 
   // How many loads are running now. The timer skips its tick while one is, so loads never pile up
   // behind a slow indexer (review pass 11, V114).
@@ -956,6 +1025,13 @@ export async function buildServer(
 
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
+  // Read only and keyless, so every host answers Chainlink's nodes, under the service's per-address
+  // limit and a ceiling of each route's own.
+  await app.register(lookalikeRoutes, {
+    view: lookalikes.view,
+    ...(options.lookalikes?.ceilings === undefined ? {} : { ceilings: options.lookalikes.ceilings }),
+    ...(options.lookalikes?.clock === undefined ? {} : { clock: options.lookalikes.clock }),
+  });
   // Read only and signed by nothing, so it mounts on every host, in its own scope: its body limit,
   // body parser, Origin check and CORS headers are its own and reach no other route.
   await app.register(mcpRoutes, options.mcp ?? {});
@@ -1064,6 +1140,7 @@ export async function buildServer(
         dir: options.platform?.dir,
         limits: options.platform?.limits,
         claims,
+        ...(options.platform?.lookalike === undefined ? {} : { lookalike: options.platform.lookalike }),
       });
       // Mounted with the platform routes, open or closed: closed, each answers 503 claims-unavailable,
       // and a prepare's deliverTo is refused the same way. The line names the variables, never a value.
@@ -1103,7 +1180,8 @@ export async function buildServer(
   if (refreshMs > 0) {
     const timer = setInterval(() => {
       if (reloading === 0) {
-        void reload();
+        // The backlog's knowledge is read on after the copy it describes is in hand.
+        void reload().then(async () => await lookalikes.refresh(current.byId));
       }
       // The claim sweep keeps its own guard against a pass still running, and never throws.
       void app.claimSweep().catch((error: unknown) => {
@@ -1115,6 +1193,15 @@ export async function buildServer(
     app.addHook("onClose", async () => {
       clearInterval(timer);
     });
+  }
+
+  // The first look at the backlog's documents and records starts now, in the background, so the
+  // backlog is ready within a refresh or two of boot rather than only after the first tick.
+  if (env.NODE_ENV !== "test") {
+    void lookalikes.refresh(current.byId);
+  }
+  if (lookalikeSettings.receiver !== undefined && lookalikeSettings.activation === undefined) {
+    app.log.warn("look-alike backlog: LOOKALIKE_RECEIVER is set without NETWORK_ACTIVATION_TIME, so look-alike records are not judged until both are set");
   }
 
   app.log.info(

@@ -1,13 +1,17 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
+import { embeddedWallets } from "../auth/wallet.js";
 import { SignerUnavailable } from "../c2pa.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
+import { privy } from "../generate/privy.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { liveTitleReader, lookalikeBeforeSigning, pairsOf, type LookalikeAnswer } from "../lookalike/presign.js";
+import type { FingerprintPair } from "../lookalike/search.js";
 import { safeReason } from "../net/errorText.js";
 import {
   CAPTURED_DESCRIPTION,
@@ -90,6 +94,32 @@ const titleSchema = z.string().trim().min(1).max(120);
  */
 const MAX_TRAINING_FIELD_BYTES = 1024;
 
+/** Replaces the two reads behind the look-alike warning, for tests. */
+export interface PresignOptions {
+  /** The embedded wallets of a Privy user. Throws when they cannot be read. */
+  walletsOf?: (userId: string) => Promise<readonly string[]>;
+  /** The plain title of the passport whose metadata document this is, "" when unreadable. */
+  titleOf?: (metadataURI: string) => Promise<string>;
+}
+
+/**
+ * The live reads behind the warning. Under a test runner neither reaches Privy or a gateway: the
+ * wallets read throws, so a picture with an earlier match answers "unchecked", and titles are "".
+ */
+export function presignReads(options: PresignOptions = {}): Required<PresignOptions> {
+  const testing = env.NODE_ENV === "test";
+  return {
+    walletsOf:
+      options.walletsOf ??
+      (testing
+        ? async () => {
+            throw new Error("no wallet reader under a test runner");
+          }
+        : async (userId) => await embeddedWallets(privy(), userId)),
+    titleOf: options.titleOf ?? (testing ? async () => "" : liveTitleReader()),
+  };
+}
+
 /** One verification per request, shared by the rate-limit key and the handler. */
 const identities = new WeakMap<FastifyRequest, Promise<PrivyIdentity | undefined>>();
 
@@ -167,6 +197,15 @@ const SEALED_FILE_REFUSED = {
  * it is deleted again if that pin fails. The public document gains `privateRecheck: true` and
  * nothing that names the private file.
  *
+ * Every 200 answer carries `lookalike`, what the service's matcher found among earlier passports
+ * for the signed file and its turns and mirrors, at the shared thresholds and strictly earlier by
+ * the shared rule (L10, L19): "found" with the earliest earlier passport by another creator and
+ * another edit family, its id, its title as one plain line of at most 120 code points and its chain
+ * registration second (L20); "yours" with the creator's own earlier passport when nobody else's is
+ * there; "none" with the second the index was current to; or "unchecked" when the index was stale,
+ * the turns could not be taken, or the creator's wallets could not be read. It never stops a
+ * registration: the person decides.
+ *
  * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed or privateRecheck
  * flag or training statement, 400 `private-recheck-needs-sealed` for privateRecheck without
  * sealed, 413 over the size or pixel limit or `signed-file-too-large` when signing grew the file
@@ -183,8 +222,12 @@ const SEALED_FILE_REFUSED = {
  * a manifest: buildServer loads the signer before registering it, because a host with no signing
  * identity would otherwise answer 200 with an unsigned picture for every upload.
  */
-export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
+export async function prepareRoutes(
+  app: FastifyInstance,
+  options: { keys?: PrivyKeys; lookalike?: PresignOptions } = {},
+): Promise<void> {
   const chain = readClient();
+  const reads = presignReads(options.lookalike);
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
   // A route with a limit of its own gets only that one from @fastify/rate-limit 11, never the
@@ -290,6 +333,9 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         // makeThumbnail the public path uses, from the signed bytes, so the private run hashes
         // the same thumbnail a public run would (B14).
         let privateThumbnail: Buffer | undefined;
+        // The signed file's eight fingerprints for the look-alike search, taken in the same turn
+        // because they decode; undefined when they could not be taken, which reads "unchecked".
+        let pairs: FingerprintPair[] | undefined;
         // Every path is judged by the thumbnail a re-check would hash before anything is signed by
         // the creator or pinned by this service (review pass 5, intake 1). A plain sealed prepare
         // keeps no thumbnail, so it is judged by the one an unseal would publish.
@@ -301,17 +347,20 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
                 ? await makeThumbnail(sealed.bytes, PRIVATE_THUMBNAIL_MAX_BYTES)
                 : undefined;
               await assertStableFingerprint(sealed.print.phash, thumbnail ?? (await recheckThumbnail(sealed.bytes)));
-              return { sealed, thumbnail };
+              return { sealed, thumbnail, pairs: await pairsOf(sealed.bytes, sealed.print) };
             });
             studio = made.sealed;
             privateThumbnail = made.thumbnail;
+            pairs = made.pairs;
           } else {
-            published = await studioTurn(app, request, upload.bytes, async () => {
+            const made = await studioTurn(app, request, upload.bytes, async () => {
               const prepared = await prepareOrFallback(upload.bytes, settings);
               await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
-              return prepared;
+              return { prepared, pairs: await pairsOf(prepared.bytes, prepared.print) };
             });
+            published = made.prepared;
             studio = published;
+            pairs = made.pairs;
           }
         } catch (error) {
           const reason = safeReason(error);
@@ -394,6 +443,15 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           );
           return reply.code(503).send(CHAIN_UNREACHABLE);
         }
+
+        // Started now and read while the pins run: the search is in memory, and only a match
+        // costs the wallet read and the title read, each bounded. It never fails the prepare.
+        const lookalike: Promise<LookalikeAnswer> = lookalikeBeforeSigning(
+          app.verifier.snapshot(),
+          pairs,
+          { creators: async () => await reads.walletsOf(identity.userId), titleOf: reads.titleOf },
+          Math.floor(Date.now() / 1000),
+        );
 
         const slug = fileSlug(upload.title, studio.print.sha256);
         const passport = (metadataURI: string): Record<string, unknown> => ({
@@ -489,6 +547,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             sealed: true,
             ...(privateCopy === undefined ? {} : { privateRecheck: true }),
             signedFile: file,
+            lookalike: await lookalike,
           });
         }
 
@@ -567,6 +626,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           manifest: manifestAnswer(published),
           training: trainingStatement(upload.training),
           preparedBy: identity.userId,
+          lookalike: await lookalike,
         });
       } finally {
         if (!pinned) {
