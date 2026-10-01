@@ -164,8 +164,34 @@ export const unsealResponseSchema = unsealRecordSchema.extend({
   quota: quotaSchema.optional(),
 });
 
+/**
+ * Whether an earlier passport looks like this picture, as the verify service's search answered it.
+ * An answer this page cannot read becomes undefined rather than failing the prepare, and the studio
+ * reads undefined as "could not check", never as "none found".
+ */
+const lookalikeAnswer = z
+  .discriminatedUnion("state", [
+    z.object({ state: z.literal("found"), passportId: hexWord, title: z.string().max(400), registeredAt: z.number().int().nonnegative() }),
+    z.object({ state: z.literal("yours"), passportId: hexWord }),
+    z.object({ state: z.literal("none"), indexAt: z.number().int().nonnegative() }),
+    z.object({ state: z.literal("unchecked") }),
+  ])
+  .optional()
+  .catch(undefined);
+
+/** What Google's web search found for a public photo; "silent" also covers every way it said nothing. */
+const webCheckAnswer = z
+  .discriminatedUnion("state", [
+    z.object({ state: z.literal("found"), count: z.number().int().nonnegative(), pages: z.array(z.string().max(256)).max(10) }),
+    z.object({ state: z.literal("silent") }),
+  ])
+  .optional()
+  .catch(undefined);
+
 /** Everything both kinds of prepare answer carry, whatever became public. */
 const preparedFields = {
+  lookalike: lookalikeAnswer,
+  webCheck: webCheckAnswer,
   passport: z.object({
     exactHash: hexWord,
     parentId: hexWord,
