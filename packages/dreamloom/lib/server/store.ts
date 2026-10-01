@@ -67,13 +67,27 @@ const recordSchema = z.strictObject({
   moveTx: hex32.optional(),
   movedTo: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   failure: z.string().regex(/^[a-z-]{1,32}$/).optional(),
+  /**
+   * For a picture registered while its visitor was signed in with Google: whether the passport waits
+   * for them at Moolam or went straight to their Moolam account, and the masked address it waits
+   * under. Only the mask is kept here, never the address.
+   */
+  delivery: z
+    .strictObject({
+      kind: z.enum(["waiting", "straight"]),
+      to: z.string().min(1).max(320),
+    })
+    .optional(),
 });
 
 export type PictureRecord = z.infer<typeof recordSchema>;
 
 /** What a transition may write. The state, the owner and the prompt are never among them. */
 export type TransitionFields = Partial<
-  Pick<PictureRecord, "title" | "mode" | "cosign" | "passportId" | "registerTx" | "consentTx" | "moveTx" | "movedTo" | "failure">
+  Pick<
+    PictureRecord,
+    "title" | "mode" | "cosign" | "passportId" | "registerTx" | "consentTx" | "moveTx" | "movedTo" | "failure" | "delivery"
+  >
 >;
 
 function picturesDir(): string {
@@ -309,4 +323,21 @@ export function forgetAddress(hash: string): void {
 /** Whether any stored picture belongs to this session, so only a session Dreamloom knows can keep a record. */
 export function sessionHasPictures(hash: string): boolean {
   return listPictures().some((record) => record.sessionHash === hash);
+}
+
+/**
+ * Hands everything a session owns to a fresh session: its pictures and its remembered address. Run
+ * at sign-in, so a cookie someone else planted before the visitor signed in never becomes a
+ * signed-in session, and the visitor keeps the pictures they wove before signing in.
+ */
+export function rebindSession(oldHash: string, newHash: string): void {
+  if (!SESSION_HASH.test(oldHash) || !SESSION_HASH.test(newHash) || oldHash === newHash) return;
+  for (const record of listPictures()) {
+    if (record.sessionHash === oldHash) writeRecord({ ...record, sessionHash: newHash });
+  }
+  const remembered = readSessionRecord(oldHash);
+  if (remembered !== null) {
+    writeAtomic(sessionPath(newHash), `${JSON.stringify(sessionSchema.parse({ ...remembered, sessionHash: newHash }))}\n`);
+  }
+  forgetAddress(oldHash);
 }

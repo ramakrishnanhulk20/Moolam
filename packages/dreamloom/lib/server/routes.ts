@@ -1,5 +1,7 @@
-import { MoolamPlatformError, type PlatformErrorCode } from "@moolam/platform";
+import { MoolamPlatformError, type DeliverTo, type PlatformErrorCode } from "@moolam/platform";
 import { getAddress, type Hex } from "viem";
+import { maskEmail } from "../email-mask";
+import { readAccount } from "./accounts";
 import { callerAddress } from "./address";
 import { startServer } from "./boot";
 import { followCosign } from "./cosign-worker";
@@ -60,7 +62,7 @@ const notFound = () => refuse(404, "not-found");
  * anything else. The start work runs again on the first request, which does nothing when
  * instrumentation.ts already ran it.
  */
-function route(request: Request, run: () => Promise<Response>): Promise<Response> {
+export function route(request: Request, run: () => Promise<Response>): Promise<Response> {
   return guarded(async () => {
     startServer();
     if (request.method !== "GET" && request.method !== "HEAD" && !originAllowed(request)) {
@@ -78,7 +80,7 @@ function view(record: PictureRecord): Record<string, unknown> {
   if (record.cosign !== undefined && (record.state === "cosign-open" || record.state === "cosign-signed")) {
     out.cosignUrl = record.cosign.cosignUrl;
   }
-  for (const key of ["passportId", "registerTx", "consentTx", "moveTx", "movedTo", "failure"] as const) {
+  for (const key of ["passportId", "registerTx", "consentTx", "moveTx", "movedTo", "failure", "delivery"] as const) {
     if (record[key] !== undefined) out[key] = record[key];
   }
   return out;
@@ -198,7 +200,20 @@ export function cosignPicture(request: Request, id: string): Promise<Response> {
  * The kit's codes that are thrown before register is sent on chain. registerAsPlatform checks
  * everything first and sends last, so only a transaction or consent failure can follow a send.
  */
-const REGISTER_SENT: readonly PlatformErrorCode[] = ["transaction-failed", "consent-failed"];
+const REGISTER_SENT: readonly PlatformErrorCode[] = ["transaction-failed", "consent-failed", "delivery-failed"];
+
+/**
+ * Where a picture registered for a signed-in visitor goes: Moolam keeps it waiting under the address
+ * Google verified for them. Only for the plain "hold it for me" press, never for a claim to a
+ * remembered address, which hands the passport over at once. The address goes to the kit and from
+ * there only into the prepare body; the record keeps its mask.
+ */
+function deliveryFor(request: Request): { deliverTo: DeliverTo; masked: string } | null {
+  const session = readSession(request);
+  const account = session === null ? null : readAccount(sessionHash(session));
+  if (account === null) return null;
+  return { deliverTo: { email: account.email, verifiedBy: "google" }, masked: maskEmail(account.email) };
+}
 
 /**
  * POST /api/pictures/:id/register: Dreamloom registers the picture under its own name, in platform
@@ -225,6 +240,8 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       claimTo = remembered;
     }
 
+    const delivery = claimTo === null ? deliveryFor(request) : null;
+
     if (claimPicture(id, ["woven"], "register") === null) return refuse(409, "state");
     const cap = takeFor(id, "register", "register");
     if ("refusal" in cap) return cap.refusal;
@@ -250,17 +267,26 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       return notFound();
     }
     try {
-      const result = await registerPicture(bytes, title, termsFor(preset));
+      const result = await registerPicture(bytes, title, termsFor(preset), delivery?.deliverTo);
       const passportId = result.passportId.toLowerCase();
       const registerTx = result.registerTx.toLowerCase();
       const consentTx = result.consentTx?.toLowerCase();
+      const straight = delivery !== null && result.transfer !== null ? result.transfer : null;
+      const waitsFor = delivery === null ? {} : { delivery: { kind: straight === null ? "waiting" : "straight", to: delivery.masked } as const };
       advancePicture(
         id,
         "registered",
-        { title, mode: "platform", passportId, registerTx, ...(consentTx === undefined ? {} : { consentTx }) },
+        { title, mode: "platform", passportId, registerTx, ...(consentTx === undefined ? {} : { consentTx }), ...waitsFor },
         result.signedFile,
       );
-      const registered = { passportId, registerTx, consentTx: consentTx ?? null, title };
+      const registered = { passportId, registerTx, consentTx: consentTx ?? null, title, ...waitsFor };
+      if (straight !== null) {
+        // The person had asked Moolam to send Dreamloom's pictures straight to their account, and the
+        // kit handed it over after its own recipient checks and a fresh ownerOf read.
+        const moveTx = straight.txHash.toLowerCase();
+        advancePicture(id, "moved", { moveTx, movedTo: straight.to });
+        return json(200, { ...registered, moveTx, movedTo: straight.to });
+      }
       if (claimTo === null || moveTicket === null) return json(200, registered);
       return json(200, { ...registered, ...(await moveToRemembered(id, passportId, claimTo, moveTicket)) });
     } catch (error) {
@@ -272,6 +298,20 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       }
       // Nothing was moved on any path below, so the move's count goes back.
       if (moveTicket !== null) giveBack(moveTicket);
+      if (error instanceof MoolamPlatformError && error.code === "delivery-failed" && delivery !== null) {
+        // Registered and its terms written, but the hand-over to the person's standing destination
+        // did not go through, so the passport waits in Dreamloom's wallet under their ticket.
+        const passportId = String(error.details.passportId ?? "").toLowerCase();
+        const registerTx = String(error.details.registerTx ?? "").toLowerCase();
+        const consentTx = typeof error.details.consentTx === "string" ? error.details.consentTx.toLowerCase() : undefined;
+        if (HEX32.test(passportId) && HEX32.test(registerTx)) {
+          const waitsFor = { delivery: { kind: "waiting", to: delivery.masked } as const };
+          const terms = consentTx !== undefined && HEX32.test(consentTx) ? { consentTx } : {};
+          advancePicture(id, "registered", { title, mode: "platform", passportId, registerTx, ...terms, ...waitsFor });
+          logLine("register", error.code);
+          return json(200, { passportId, registerTx, consentTx: terms.consentTx ?? null, title, ...waitsFor });
+        }
+      }
       if (error instanceof MoolamPlatformError && error.code === "consent-failed") {
         // The kit puts the ids from the register receipt in the error, so the passport is a fact;
         // the terms are not, and the record says so. Dreamloom keeps holding it, and the visitor can

@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { AccountChip } from "@/components/account/account-chip";
 import { Wordmark } from "@/components/wordmark";
 import { Arrow, PRIMARY_BUTTON, ProblemNote } from "./bits";
 import { Celebration } from "./celebration";
@@ -236,7 +237,8 @@ function ReadySide({
 }) {
   const heading = picture.state === "registered" && picture.mode === "platform" ? HELD : HEADINGS[picture.state];
   const canMove = picture.state === "registered" && picture.mode === "platform";
-  const claimedTo = picture.state === "moved" ? picture.movedTo : undefined;
+  // A passport that went straight to the person's Moolam account needs no offer to remember an address.
+  const claimedTo = picture.state === "moved" && picture.delivery?.kind !== "straight" ? picture.movedTo : undefined;
 
   return (
     <div>
@@ -422,11 +424,12 @@ function Nav() {
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="mx-auto flex max-w-[88rem] items-center justify-between gap-4 px-5 pt-5 sm:px-10 sm:pt-7"
+      className="mx-auto flex max-w-[88rem] flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 pt-5 sm:px-10 sm:pt-7"
     >
       <a href="/" className="rounded-full transition-opacity hover:opacity-75">
         <Wordmark />
       </a>
+      <AccountChip />
       <NavLink href="/">Weave another</NavLink>
     </motion.nav>
   );

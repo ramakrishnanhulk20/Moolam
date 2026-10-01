@@ -51,6 +51,8 @@ const schema = z.object({
   DREAMLOOM_PASSKEY_RP_ID: text(z.string().min(1).max(253)),
   DREAMLOOM_PLATFORM_KEY: text(z.string().regex(/^[0-9a-fA-F]{64}$/)),
   OPENAI_API_KEY: text(z.string().min(1).max(512)),
+  GOOGLE_CLIENT_ID: text(z.string().min(1).max(512)),
+  GOOGLE_CLIENT_SECRET: text(z.string().min(1).max(512)),
   DATA_DIR: text(z.string().min(1).max(1024)),
   WEAVES_PER_ADDRESS_PER_DAY: cap(5),
   WEAVES_PER_DAY: cap(60),

@@ -4,12 +4,15 @@ import {
   registerAsPlatform,
   resumeCosign,
   rpIdProblem,
+  runDeliveries,
   startCosign,
   transferPassport,
   type AgentAccount,
   type AiUseTerms,
   type ChainReader,
   type CosignHandle,
+  type DeliverTo,
+  type DeliveryWorker,
   type PassportTransfer,
   type PlatformRegistration,
   type PlatformWalletClient,
@@ -102,8 +105,17 @@ function ready(): Kit {
   return k;
 }
 
-/** Platform mode: Dreamloom's agent makes it, its passkey signs as creator, its wallet sends and holds. */
-export async function registerPicture(file: Uint8Array, title: string, terms: AiUseTerms): Promise<PlatformRegistration> {
+/**
+ * Platform mode: Dreamloom's agent makes it, its passkey signs as creator, its wallet sends and holds.
+ * With deliverTo, the passport waits for that verified email at Moolam instead of only in Dreamloom's
+ * wallet, or goes straight to the person's Moolam account when they asked Moolam for that.
+ */
+export async function registerPicture(
+  file: Uint8Array,
+  title: string,
+  terms: AiUseTerms,
+  deliverTo?: DeliverTo,
+): Promise<PlatformRegistration> {
   const k = ready();
   return await registerAsPlatform(file, {
     verifyUrl: k.verifyUrl,
@@ -113,6 +125,19 @@ export async function registerPicture(file: Uint8Array, title: string, terms: Ai
     walletClient: k.walletClient,
     title,
     terms,
+    ...(deliverTo === undefined ? {} : { deliverTo }),
+  });
+}
+
+/** Starts the kit's delivery worker on Dreamloom's wallet: it hands over passports their people accepted at Moolam. */
+export async function openDeliveries(intervalMs: number): Promise<DeliveryWorker> {
+  const k = ready();
+  return await runDeliveries({
+    verifyUrl: k.verifyUrl,
+    platformKey: k.platformKey,
+    walletClient: k.walletClient,
+    publicClient: k.publicClient,
+    intervalMs,
   });
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { AccountChip } from "./account/account-chip";
 import { HeroCollage } from "./gallery/hero-collage";
 import { PromptBox } from "./weave/prompt-box";
 import { Wordmark } from "./wordmark";
@@ -32,11 +33,12 @@ export function Hero() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="mx-auto flex max-w-[88rem] items-center justify-between px-5 pt-5 sm:px-10 sm:pt-7"
+        className="mx-auto flex max-w-[88rem] flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-10 sm:pt-7"
       >
         <a href="/" className="rounded-full transition-opacity hover:opacity-75">
           <Wordmark />
         </a>
+        <AccountChip />
         <a
           href="#gallery"
           className="inline-flex min-h-11 items-center rounded-full border-2 border-ink/10 bg-card/70 px-4 py-2 text-sm font-semibold text-ink backdrop-blur transition hover:-translate-y-0.5 hover:border-violet hover:text-violet"

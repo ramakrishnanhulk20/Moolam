@@ -1,4 +1,5 @@
 import { resumeOpenCosigns } from "./cosign-worker";
+import { startDeliveries } from "./delivery-worker";
 import { EnvError, env } from "./env";
 import { logLine } from "./http";
 import { kitReady } from "./kit";
@@ -15,7 +16,8 @@ let started = false;
 /**
  * What Dreamloom does once when a server process starts: check its settings, stopping a production
  * server that is missing one (the line names the variable, never a value), mark claims a dead
- * process left behind as "interrupted", and pick up stored co-signs in the background.
+ * process left behind as "interrupted", pick up stored co-signs in the background, and start the
+ * delivery worker that hands over passports their people accepted at Moolam.
  *
  * Runs from instrumentation.ts at start and again from the first request, where it does nothing
  * the second time. Never waits for a co-sign, so a start is never held up by one.
@@ -35,4 +37,5 @@ export function startServer(stop: () => void = () => process.exit(1)): void {
   const interrupted = failStuckClaims(STUCK_CLAIM_MS);
   if (interrupted.length > 0) logLine("start", `${interrupted.length} interrupted`);
   void resumeOpenCosigns();
+  startDeliveries();
 }

@@ -19,6 +19,7 @@ const sdk = vi.hoisted(() => ({
   signAsAgent: vi.fn(),
   waitForPassport: vi.fn(),
   transferPassport: vi.fn(),
+  runDeliveries: vi.fn(),
   realTransfer: undefined as unknown as (...args: unknown[]) => Promise<unknown>,
 }));
 
@@ -34,6 +35,7 @@ vi.mock("@moolam/platform", async (importOriginal) => {
     signAsAgent: sdk.signAsAgent,
     waitForPassport: sdk.waitForPassport,
     transferPassport: sdk.transferPassport,
+    runDeliveries: sdk.runDeliveries,
   };
 });
 

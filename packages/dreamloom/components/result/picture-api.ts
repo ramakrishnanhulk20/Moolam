@@ -26,6 +26,7 @@ const pictureShape = z.object({
   moveTx: z.string().regex(HEX32).optional(),
   movedTo: z.string().regex(ADDRESS).optional(),
   failure: z.string().optional(),
+  delivery: z.object({ kind: z.enum(["waiting", "straight"]), to: z.string() }).optional(),
 });
 
 export type PictureView = z.infer<typeof pictureShape>;

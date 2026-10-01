@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { OutArrow } from "./bits";
+import { DeliveryTicket } from "./delivery-ticket";
 import { passportLink, shortHash, transactionLink } from "./moolam-links";
 import { failureWords, type PictureView } from "./picture-api";
 
@@ -24,6 +25,8 @@ export function PassportPanel({
   const registerHref = picture.registerTx === undefined ? null : transactionLink(picture.registerTx);
   const moveHref = picture.moveTx === undefined ? null : transactionLink(picture.moveTx);
   const moved = picture.state === "moved";
+  const straight = moved && picture.delivery?.kind === "straight";
+  const waiting = picture.state === "registered" && picture.delivery?.kind === "waiting";
 
   const holder = moved
     ? "You claimed it, so it sits in your own Moolam account and credits you as the person who imagined it."
@@ -54,7 +57,8 @@ export function PassportPanel({
           {picture.title}
         </p>
       )}
-      <p className="relative mt-3 max-w-[34rem] text-base text-white/75">{holder}</p>
+      {!straight && <p className="relative mt-3 max-w-[34rem] text-base text-white/75">{holder}</p>}
+      {(straight || waiting) && picture.delivery !== undefined && <DeliveryTicket delivery={picture.delivery} moolamSite={moolamSite} />}
 
       {picture.failure === "terms" && (
         <p className="relative mt-4 rounded-2xl border-2 border-sun/40 bg-sun/10 px-4 py-3 text-sm font-medium text-sun">

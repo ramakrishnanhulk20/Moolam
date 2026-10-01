@@ -23,6 +23,20 @@ export function passportLink(moolamSite: string, passportId: string): string | n
   return HEX32.test(id) ? `${base(moolamSite)}/en/passport/${id}` : null;
 }
 
+/** Moolam's My pictures page, where a passport waiting under a verified email is claimed. */
+export function mineLink(moolamSite: string): string {
+  return `${base(moolamSite)}/en/mine`;
+}
+
+/** The same page written for reading: the host and path, no scheme. */
+export function mineLabel(moolamSite: string): string {
+  try {
+    return `${new URL(moolamSite).host}/en/mine`;
+  } catch {
+    return "moolam.vercel.app/en/mine";
+  }
+}
+
 /** Moolam's connect page, told which site asked so it can name it and answer only there. */
 export function connectLink(moolamSite: string, ownOrigin: string): string {
   return `${base(moolamSite)}/en/connect?origin=${encodeURIComponent(ownOrigin)}`;

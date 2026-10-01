@@ -15,6 +15,7 @@ const sdk = vi.hoisted(() => ({
   signAsAgent: vi.fn(),
   waitForPassport: vi.fn(),
   transferPassport: vi.fn(),
+  runDeliveries: vi.fn(),
 }));
 
 vi.mock("@moolam/platform", async (importOriginal) => {
