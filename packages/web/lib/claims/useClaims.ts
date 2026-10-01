@@ -21,16 +21,32 @@ export const HANDOVER_POLLS = 20;
 /** What one platform's card is doing right now. */
 export type PlatformBusy = "mine" | "notMine" | "unmute" | "stop";
 
+/** Where a failure is drawn: under the platform's offer card, or under its row in the settings. */
+export type FailurePlace = "offer" | "setting";
+
+/**
+ * The key a failure is held under. A platform can have an offer card and a
+ * settings row at once, and a refusal belongs under the control that was
+ * pressed, so the two never share a key.
+ */
+export function failureKey(place: FailurePlace, platformKeyHash: string): string {
+  return `${place}:${platformKeyHash.toLowerCase()}`;
+}
+
+function placeOf(kind: PlatformBusy): FailurePlace {
+  return kind === "mine" || kind === "notMine" ? "offer" : "setting";
+}
+
 export interface ClaimsState {
   status: "reading" | "ready" | "failed";
   answer: ClaimsAnswer | null;
-  /** Why the list could not be read, when it could not. */
+  /** Why the list could not be read, when it could not. Kept through the next read so the line does not blink out under the press. */
   refusal: ClaimRefusal | null;
 }
 
 export interface Claims extends ClaimsState {
   busy: Readonly<Record<string, PlatformBusy>>;
-  /** The last refusal for one platform's card, by its key hash. */
+  /** The last refusal for one platform's card or settings row, by failureKey. */
   failures: Readonly<Record<string, ClaimRefusal>>;
   /** True while the page is reading the list again for a handover. */
   watching: boolean;
@@ -73,6 +89,8 @@ export function useClaims({
   }, [getToken]);
 
   const read = useCallback(async (): Promise<ClaimsAnswer | null> => {
+    // A read after a failed one says so, so its button can rest until the answer is in.
+    if (live.current) setState((was) => (was.status === "failed" ? { ...was, status: "reading" } : was));
     const access = await token.current().catch(() => null);
     if (access === null) {
       if (live.current) setState((was) => ({ ...was, status: "failed", refusal: SIGN_IN }));
@@ -113,12 +131,13 @@ export function useClaims({
     async (key: Hex, kind: PlatformBusy, act: (access: string, answer: ClaimsAnswer) => Promise<{ ok: true } | { ok: false; refusal: ClaimRefusal }>) => {
       const answer = state.answer;
       if (answer === null || busy[key] !== undefined) return;
+      const place = failureKey(placeOf(kind), key);
       setBusy((was) => ({ ...was, [key]: kind }));
-      setFailures((was) => without(was, key));
+      setFailures((was) => without(was, place));
       const access = await token.current().catch(() => null);
       const outcome = access === null ? ({ ok: false, refusal: SIGN_IN } as const) : await act(access, answer);
       if (!live.current) return;
-      if (!outcome.ok) setFailures((was) => ({ ...was, [key]: outcome.refusal }));
+      if (!outcome.ok) setFailures((was) => ({ ...was, [place]: outcome.refusal }));
       setPolls(0);
       await read();
       if (live.current) setBusy((was) => without(was, key));

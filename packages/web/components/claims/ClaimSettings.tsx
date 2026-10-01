@@ -6,7 +6,7 @@ import type { Hex } from "viem";
 import { WaitLabel } from "@/components/studio/WaitLabel";
 import type { ClaimsAnswer } from "@/lib/claims/client";
 import type { ClaimRefusal } from "@/lib/claims/refusal";
-import type { PlatformBusy } from "@/lib/claims/useClaims";
+import { failureKey, type PlatformBusy } from "@/lib/claims/useClaims";
 import { RefusalLine } from "./RefusalLine";
 
 /**
@@ -54,7 +54,7 @@ export function ClaimSettings({
         {rows.map((row, index) => {
           const key = row.platform.keyHash;
           const working = busy[key] === "stop" || busy[key] === "unmute";
-          const failure = failures[key];
+          const failure = failures[failureKey("setting", key)];
           return (
             <motion.li
               key={`${row.kind}-${key}`}

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Use, UseField } from "@/lib/chain/consent";
 import { USE_FIELDS } from "@/lib/chain/consent";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
@@ -57,6 +57,8 @@ export function ConsentChoice({
   const t = useTranslations("passport.consent");
   const reduced = useIsReducedMotion();
   const [open, setOpen] = useState(false);
+  // My pictures can hold one of these per platform, so a fixed id would point every label at the first field.
+  const conditionsId = useId();
   const small = size === "compact";
 
   const chosen = choiceOf(draft.consent);
@@ -192,11 +194,11 @@ export function ConsentChoice({
             className="overflow-hidden"
           >
             <div className={`border-s-2 border-accent/50 ps-5 ${small ? "mt-6" : "mt-8"}`}>
-              <label htmlFor="consent-conditions" className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+              <label htmlFor={conditionsId} className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                 {t("control.conditionsLabel")}
               </label>
               <textarea
-                id="consent-conditions"
+                id={conditionsId}
                 rows={2}
                 value={draft.constraintInfo}
                 disabled={disabled}

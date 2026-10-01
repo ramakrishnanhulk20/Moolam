@@ -10,7 +10,7 @@ import type { ClaimsAnswer, ClaimTerms } from "@/lib/claims/client";
 import { offersByPlatform, waitingByPlatform } from "@/lib/claims/offers";
 import type { ClaimRefusal } from "@/lib/claims/refusal";
 import type { ConfirmRow } from "@/lib/claims/useClaimConfirm";
-import type { PlatformBusy } from "@/lib/claims/useClaims";
+import { failureKey, type PlatformBusy } from "@/lib/claims/useClaims";
 import type { PendingGroup } from "@/lib/claims/usePendingConfirm";
 import type { ConsentDraft } from "@/lib/consent/call";
 import { ClaimSettings } from "./ClaimSettings";
@@ -129,7 +129,7 @@ export function ClaimsView(props: ClaimsViewProps) {
               group={group}
               emails={props.emails}
               busy={props.busy[group.platform.keyHash]}
-              failure={props.failures[group.platform.keyHash]}
+              failure={props.failures[failureKey("offer", group.platform.keyHash)]}
               index={index}
               onMine={props.onMine}
               onNotMine={props.onNotMine}

@@ -2137,6 +2137,7 @@
     "handingOver": "Waiting for {platform} to hand them over",
     "handoverNote": "This page looks again on its own",
     "lookAgain": "Look again",
+    "readFailed": "We could not check whether platforms are holding pictures for you.",
     "handoverFailed": "{platform} could not hand {count, plural, one {this picture} other {these pictures}} over. Ask {platform} to send {count, plural, one {it} other {them}} again.",
     "confirm": {
       "heading": "Confirm these as yours",

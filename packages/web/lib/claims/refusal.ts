@@ -56,6 +56,22 @@ const WORDS: Record<string, Omit<ClaimRefusal, "word">> = {
 };
 
 /**
+ * What My pictures draws when the list could not be read and there is no
+ * earlier list to keep showing.
+ *
+ * A service with its claim routes closed says so in its own word: that is the
+ * operator's choice and nothing the person can mend, so nothing is drawn. A
+ * sign-in that ran out keeps its own words and the sign-in button. Anything
+ * else is one quiet line with a way to read again, because a person sent here
+ * by a platform's "your passport is waiting" must never meet a blank.
+ */
+export function unreadLine(refusal: ClaimRefusal): "none" | "signIn" | "readFailed" {
+  if (refusal.word === "claims-unavailable") return "none";
+  if (refusal.key === "signIn") return "signIn";
+  return "readFailed";
+}
+
+/**
  * The refusal for one answer. Status 0 is a request that never got an answer,
  * and -1 an answer in a shape this page does not know.
  */

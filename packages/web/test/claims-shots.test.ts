@@ -14,6 +14,7 @@ import type { Hex } from "viem";
 import en from "@/messages/en.json";
 import type { ClaimsAnswer } from "@/lib/claims/client";
 import type { ConfirmRow } from "@/lib/claims/useClaimConfirm";
+import { failureKey } from "@/lib/claims/useClaims";
 
 /**
  * Pictures of "Waiting for you" in each of its states at 1440 and 375 px, for
@@ -35,6 +36,7 @@ vi.mock("@/lib/i18n/routing", () => ({
 
 const { ClaimsView } = await import("@/components/claims/ClaimsView");
 const { ConfirmCard } = await import("@/components/claims/ConfirmCard");
+const { ReadFailed } = await import("@/components/claims/ReadFailed");
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../kitchen/reports/claims-web/", import.meta.url));
@@ -277,7 +279,7 @@ const STATES: Record<string, ReactElement> = {
     },
   ),
   "7-refused": view(OFFERS, {
-    failures: { [KEY_A]: { key: "notOpen", next: "reload", word: "not-open" } },
+    failures: { [failureKey("offer", KEY_A)]: { key: "notOpen", next: "reload", word: "not-open" } },
   }),
   "8-settings-only": view({
     offers: [],
@@ -285,6 +287,7 @@ const STATES: Record<string, ReactElement> = {
     standing: [{ platform: { name: "Dreamloom", keyHash: KEY_A }, destination: WALLET }],
     muted: [{ platform: { name: "Pixel Forge", keyHash: `0x${"c3".repeat(32)}` as Hex } }],
   }),
+  "9-read-failed": createElement(ReadFailed, { refusal: { key: "badResponse", next: "again" }, reading: false, onAgain: NOOP, onSignIn: NOOP }),
 };
 
 /** The section where the page puts it: under the page's own opening, above the grid. */

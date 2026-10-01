@@ -128,9 +128,10 @@ export const CONSENT_REVERTS: Record<string, RevertCopy> = {
   ConstraintInfoTooLong: { key: "conditionsTooLong", next: "again" },
   ConstraintInfoNotPrintable: { key: "conditionsNotPrintable", next: "again" },
 
-  // The batch path belongs to the agent, which states for many pictures at
-  // once. No screen sends it, so a generic line is more honest than an
-  // invented one.
+  // The batch path. The claims confirm on My pictures sends one, and it
+  // refuses an empty list or one over 32 before anything is signed, so
+  // reaching either of these means something no person can mend from the
+  // page, and the general words stay more honest than invented ones.
   EmptyBatch: { key: "reverted" },
   BatchTooLarge: { key: "reverted" },
 
