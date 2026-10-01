@@ -111,3 +111,41 @@ describe("an Explore plate in light", () => {
     expect(drawn).not.toContain('data-scrim="dark"');
   });
 });
+
+describe("an Explore plate on a phone, in either theme", () => {
+  const markup = render(createElement(Plate, { plate: { ...picture, platform: "Dreamloom" } }));
+
+  it("puts the top and the foot in one column, so the platform line can never climb over the letters", () => {
+    // The mocked link keeps only its class, so the plate is the first anchor.
+    const plate = classOf(markup, "<a ");
+    expect(plate).toContain("flex flex-col");
+    // A box that hides its overflow is held to four by five; one that clips grows to its words.
+    expect(plate).toContain("supports-[overflow:clip]:overflow-clip");
+
+    const top = classOf(markup, "data-plate-top=");
+    expect(top).toContain("@max-[17rem]:relative");
+    expect(top).toContain("@max-[17rem]:z-[1]");
+    // The top gives back exactly the foot's empty fade padding, in both themes.
+    expect(top).toContain("@max-[17rem]:-mb-8");
+    expect(top).toContain("group-has-[[data-plate-seal]]:mb-0");
+
+    const foot = classOf(markup, "data-plate-foot");
+    expect(foot).toContain("@max-[17rem]:relative");
+    expect(foot).toContain("@max-[17rem]:mt-auto");
+    expect(foot).toContain("@max-[17rem]:pt-8");
+    expect(markup.indexOf("data-plate-top=")).toBeLessThan(markup.indexOf("data-plate-platform"));
+  });
+
+  it("holds the title to the two lines it was meant to have", () => {
+    const title = /<span class="([^"]*)">Black Basalt Lighthouse at Night<\/span>/.exec(markup)?.[1] ?? "";
+    expect(title).toContain("line-clamp-2");
+    // A display class after the clamp turned it back into a plain block and let four lines through.
+    expect(title.split(/\s+/)).not.toContain("block");
+  });
+
+  it("lays the pressed plate's veil over the lifted top", () => {
+    const veil = /<span aria-hidden="true" class="([^"]*bg-bg transition-opacity[^"]*)"/.exec(markup)?.[1] ?? "";
+    expect(veil).toContain("absolute inset-0");
+    expect(veil).toContain("z-[2]");
+  });
+});

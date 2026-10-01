@@ -254,8 +254,8 @@ describe("the favicon, the manifest and the phone bar", () => {
     expect(made.description).toBe(en.meta.home);
     expect(made.start_url).toBe("/en");
     expect(made.display).toBe("standalone");
-    expect(made.theme_color).toBe("#08080a");
-    expect(made.background_color).toBe("#08080a");
+    expect(made.theme_color).toBe("#e4ddd0");
+    expect(made.background_color).toBe("#e4ddd0");
     expect(made.icons?.map((icon) => icon.src)).toEqual(["/icon.svg", "/apple-icon.png", "/favicon.ico"]);
   });
 
@@ -268,6 +268,30 @@ describe("the favicon, the manifest and the phone bar", () => {
     const css = source("styles/globals.css");
     expect(css).toContain("--bg: #08080a");
     expect(css).toContain("--bg: #e4ddd0");
+  });
+
+  it("paints a page with no theme class, a browser running no script, in the light palette", () => {
+    const css = source("styles/globals.css").replace(/\r\n/g, "\n");
+    const light = css.indexOf(":root,\n.light,\n");
+    const dark = css.indexOf("\n.dark {\n  --bg: #08080a;");
+    expect(light).toBeGreaterThan(-1);
+    expect(css.slice(light, css.indexOf("\n}", light))).toContain("--bg: #e4ddd0;");
+    // Both selectors weigh the same on <html>, so the dark block has to come
+    // later to win when its class is there.
+    expect(dark).toBeGreaterThan(light);
+    expect(css).not.toMatch(/:root,\s*\.dark/);
+    expect(/\nhtml \{[^}]*color-scheme: light;/.exec(css)).not.toBeNull();
+    expect(css).not.toContain("color-scheme: light dark");
+  });
+
+  it("fetches the phone header's light lockup first, since every first visit paints it", () => {
+    const header = source("components/shell/PhoneHeader.tsx");
+    const tag = (variant: string) => {
+      const at = header.indexOf(`data-lockup="${variant}"`);
+      return header.slice(header.lastIndexOf("<Image", at), header.indexOf("/>", at));
+    };
+    expect(tag("light")).toContain('fetchPriority="high"');
+    expect(tag("dark")).not.toContain("fetchPriority");
   });
 });
 

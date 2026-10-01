@@ -38,7 +38,6 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             height={63}
             unoptimized
             loading="eager"
-            fetchPriority="high"
             data-lockup="dark"
             className="hidden dark:block [body:has([data-story])_&]:block"
           />
@@ -49,6 +48,7 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             height={63}
             unoptimized
             loading="eager"
+            fetchPriority="high"
             data-lockup="light"
             className="block dark:hidden [body:has([data-story])_&]:hidden"
           />

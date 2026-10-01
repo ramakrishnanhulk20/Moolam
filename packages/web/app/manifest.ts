@@ -21,10 +21,10 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    // The film and every app screen open on the dark palette, so the splash and
-    // the phone's own chrome start there rather than flashing white first.
-    background_color: "#08080a",
-    theme_color: "#08080a",
+    // Every first visit opens on the light palette, so the splash and the
+    // phone's own chrome start on its Linen ground rather than flashing black.
+    background_color: "#e4ddd0",
+    theme_color: "#e4ddd0",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },

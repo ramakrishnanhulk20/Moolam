@@ -61,6 +61,25 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     foot: "group-has-[[data-plate-seal]]:relative group-has-[[data-plate-seal]]:pt-3 [.light_&]:group-has-[[data-plate-seal]]:pt-3",
   };
 
+  // On a plate narrower than 17rem, every plate on a phone, the top and the
+  // foot used to be pinned to opposite edges independently, and a two line
+  // title under a platform line climbed over the letters and the AI-use marks.
+  // There both join the plate's flow instead: the foot is pushed to the bottom
+  // when there is room, and when there is not it starts where the top ends and
+  // the plate grows, the way a plate with no picture already does. It can grow
+  // because it clips rather than hides: a box that hides its overflow is held
+  // to its four by five, and one that clips is not. The top gives back the
+  // foot's empty fade padding, so the words of the foot start exactly where the
+  // top's own padding ends. That padding is pinned to 2rem here in both themes,
+  // since sm:p-4 would otherwise leave dark with less than the top gives back. The top is lifted over the fade so its tags keep their
+  // ground, and the pressed plate's veil is lifted over the top in turn. A
+  // plate with the kolam mark in its flow keeps the column it already had.
+  const narrow = {
+    plate: "supports-[overflow:clip]:overflow-clip",
+    top: "@max-[17rem]:relative @max-[17rem]:z-[1] @max-[17rem]:-mb-8 group-has-[[data-plate-seal]]:mb-0",
+    foot: "@max-[17rem]:relative @max-[17rem]:mt-auto @max-[17rem]:pt-8",
+  };
+
   // In light the picture has no band across its top, so each group of words
   // up here stands on a small tag of the page's own ground instead. The tag
   // reaches out past the words by its own padding, so the words sit exactly
@@ -77,7 +96,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     <span
       data-plate-top
       className={`pointer-events-none grid grid-cols-1 content-start items-start gap-x-3 gap-y-2 p-3 @[17rem]:grid-cols-[minmax(0,1fr)_auto] ${
-        sealed ? "relative shrink-0" : `absolute inset-x-0 top-0 ${ifSeal.top}`
+        sealed ? "relative shrink-0" : `absolute inset-x-0 top-0 ${ifSeal.top} ${narrow.top}`
       }`}
     >
       {/* A sealed plate on a phone has its marks in a column beside the
@@ -129,7 +148,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       href={`/passport/${plate.id}`}
       data-plate={sealed ? "sealed" : "picture"}
       className={`group @container relative aspect-[4/5] min-w-0 grow overflow-hidden bg-bg-sunken outline-offset-[-2px] ${
-        sealed ? "flex flex-col" : `block ${ifSeal.plate}`
+        sealed ? "flex flex-col" : `flex flex-col ${narrow.plate} ${ifSeal.plate}`
       }`}
     >
       {sealed ? (
@@ -218,7 +237,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
           // pt-8 on a wide screen and the title would start inside the fade.
           sealed
             ? "relative border-t border-line bg-bg-raised"
-            : `absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))] ${ifSeal.foot}`
+            : `absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))] ${ifSeal.foot} ${narrow.foot}`
         }`}
       >
         {/* Truthiness, like the statement above: a sheet held from before
@@ -228,7 +247,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
             wide and almost every real title was cut: "Monsoon Fishing Nets
             Drying" arrived as "Monsoon Fishing N...". */}
-        <span className="line-clamp-2 block font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
+        <span className="line-clamp-2 font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
           {plate.title ?? t("untitled")}
         </span>
         {/* The id and the date are the two things a reader checks a plate by, so
@@ -307,7 +326,7 @@ function Opening() {
       <span
         aria-hidden
         data-plate-opening={pending ? "true" : undefined}
-        className={`pointer-events-none absolute inset-0 bg-bg transition-opacity duration-200 ${
+        className={`pointer-events-none absolute inset-0 z-[2] bg-bg transition-opacity duration-200 ${
           pending ? "opacity-45" : "opacity-0"
         }`}
       />
@@ -315,7 +334,7 @@ function Opening() {
         <>
           <span
             aria-hidden
-            className="motif pointer-events-none absolute inset-0 m-auto h-4 w-4 animate-pulse"
+            className="motif pointer-events-none absolute inset-0 z-[2] m-auto h-4 w-4 animate-pulse"
           />
           <span className="sr-only">{t("reading")}</span>
         </>

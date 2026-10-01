@@ -4,46 +4,21 @@
    follow that class rather than the operating system setting. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Dark is the default palette: the light one below only takes over when the
-   toggle asks for it. One accent does all the decorative work; the status
-   colours are a separate, colder family so a warning never reads as brand. */
-:root,
-.dark {
-  --bg: #08080a;
-  --bg-raised: #101014;
-  --bg-sunken: #050506;
-  --line: #23232b;
-  --line-strong: #34343f;
-  --text: #f4f2ee;
-  --text-muted: #9a99a4;
-  --text-faint: #7e7d89;
-
-  --accent: #ffb7c5;
-  --accent-ink: #0b0b0c;
-  --accent-soft: rgb(255 183 197 / 0.14);
-
-  --status-verified: #3fbfa8;
-  --status-pending: #5b8def;
-  --status-disputed: #b06fd8;
-  --status-failed: #ff5f4d;
-
-  --scrim-from: rgb(8 8 10 / 0.92);
-  --scrim-to: rgb(8 8 10 / 0);
-  --grain-opacity: 0.05;
-  --grain-blend: overlay;
-}
-
-/* The light palette, and the one place inside the film that is allowed to use
-   it: the card the story ends on, on the film and on the still page alike. The
-   film stays dark whatever the toggle says, but the last screen hands the page
-   back, so a visitor who chose light sees the toggle do something on the home
-   page too.
+/* The light palette, which is the default: the tokens with no theme class are
+   these, so a visitor whose browser runs no script still gets Linen, and the
+   dark block after this one wins once its class is on <html> because it comes
+   later at the same weight. It is also the one place inside the film that is
+   allowed to use it: the card the story ends on, on the film and on the still
+   page alike. The film stays dark whatever the toggle says, but the last
+   screen hands the page back, so a visitor in light sees it do something on
+   the home page too.
    The ground is Linen, the unbleached page Ram picked on the brand lab on 30
    September 2026. Every ink clears 4.5:1 on all three of its grounds, the
    sunken one included, because the code blocks and wells are text too. The
    faint grey, the accent and three status colours each sit the least shade
    darker that gets there, in their own hue, and the failure red stays 16.0
    apart from the accent in CIEDE2000 so the two never read as one. */
+:root,
 .light,
 .light .story-close,
 .light [data-story="still"] > div > section:last-child {
@@ -69,6 +44,35 @@
   --scrim-to: rgb(228 221 208 / 0);
   --grain-opacity: 0.07;
   --grain-blend: multiply;
+}
+
+/* The dark palette, for a visitor who chose it: next-themes puts the class on
+   <html> before the first paint. One accent does all the decorative work; the
+   status colours are a separate, colder family so a warning never reads as
+   brand. */
+.dark {
+  --bg: #08080a;
+  --bg-raised: #101014;
+  --bg-sunken: #050506;
+  --line: #23232b;
+  --line-strong: #34343f;
+  --text: #f4f2ee;
+  --text-muted: #9a99a4;
+  --text-faint: #7e7d89;
+
+  --accent: #ffb7c5;
+  --accent-ink: #0b0b0c;
+  --accent-soft: rgb(255 183 197 / 0.14);
+
+  --status-verified: #3fbfa8;
+  --status-pending: #5b8def;
+  --status-disputed: #b06fd8;
+  --status-failed: #ff5f4d;
+
+  --scrim-from: rgb(8 8 10 / 0.92);
+  --scrim-to: rgb(8 8 10 / 0);
+  --grain-opacity: 0.05;
+  --grain-blend: overlay;
 }
 
 @theme inline {
@@ -97,11 +101,10 @@
 
 html {
   background: var(--bg);
-  /* The browser's own furniture, its scrollbars and form controls, follows the
-     theme class rather than a dark scheme pinned on the document. Before that
-     class lands, and for a visitor who has chosen nothing, the phone's own
-     light or dark setting decides. */
-  color-scheme: light dark;
+  /* The browser's own furniture, its scrollbars and form controls, is light like
+     the default tokens, and turns dark with the dark class. The phone's own
+     setting never decides, so a page without its script matches its palette. */
+  color-scheme: light;
 }
 
 .dark {
