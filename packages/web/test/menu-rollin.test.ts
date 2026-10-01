@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { pageExists } from "@/lib/docs/pages";
 import { indexSlug } from "@/lib/docs/links";
 import { activeTab } from "@/components/shell/tabs";
+import { FILM_STYLE } from "@/components/story/room";
 import en from "@/messages/en.json";
 
 /**
@@ -551,9 +552,9 @@ describe("the phone's one bottom room", () => {
     for (const line of readers) {
       expect(line).toContain("md:pb-0");
     }
-    // The film's captions and the framed film read it inside phone-only rules.
-    const css = readFileSync(path.join(WEB, "styles", "globals.css"), "utf8").replace(/\r/g, "");
-    for (const rule of ["--film-words-foot: var(--bar-room);", "--frame-foot: var(--bar-room);"]) {
+    // The film's captions read it inside a phone-only rule, in the film's own style.
+    const css = FILM_STYLE.replace(/\r/g, "");
+    for (const rule of ["--film-words-foot: var(--bar-room);"]) {
       const at = css.indexOf(rule);
       expect(at, rule).toBeGreaterThan(-1);
       // The nearest media rule opened before it is the phone one, and no top-level block closed in between.

@@ -13,7 +13,7 @@ const web = fileURLToPath(new URL("..", import.meta.url));
 const read = (path: string) => readFileSync(join(web, path), "utf8");
 const CSS = read("styles/globals.css");
 
-const LIGHT_SELECTOR = '.light,\n.light .story-close,\n.light [data-story="still"] > div > section:last-child {';
+const LIGHT_SELECTOR = ":root,\n.light {";
 
 function lightTokens(): Record<string, string> {
   const from = CSS.indexOf(LIGHT_SELECTOR);

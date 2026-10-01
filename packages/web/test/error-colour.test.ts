@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WarningMark } from "@/components/WarningMark";
+import { FILM_STYLE } from "@/components/story/room";
 
 /**
  * The failure red Ram picked on the lab's second bench, drawing A, and the mark
@@ -18,10 +19,10 @@ import { WarningMark } from "@/components/WarningMark";
 const CSS = readFileSync(fileURLToPath(new URL("../styles/globals.css", import.meta.url)), "utf8").replace(/\r\n/g, "\n");
 
 /** The custom properties set directly inside the block that opens with `selector`. */
-function block(selector: string): Record<string, string> {
-  const at = CSS.indexOf(`${selector} {`);
+function block(selector: string, css: string = CSS): Record<string, string> {
+  const at = css.indexOf(`${selector} {`);
   expect(at, `no block for ${selector}`).toBeGreaterThanOrEqual(0);
-  const body = CSS.slice(at, CSS.indexOf("}", at));
+  const body = css.slice(at, css.indexOf("}", at));
   const tokens: Record<string, string> = {};
   for (const match of body.matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
     tokens[match[1]] = match[2].trim();
@@ -55,19 +56,16 @@ function tint(ground: string, red: string, share = 0.05): string {
 }
 
 const THEMES = [
-  { name: "dark", selector: ".dark", red: "#ff5f4d" },
-  {
-    name: "light",
-    selector: '.light,\n.light .story-close,\n.light [data-story="still"] > div > section:last-child',
-    red: "#a92912",
-  },
-  { name: "story", selector: ".story", red: "#ff5f4d" },
+  { name: "dark", selector: ".dark", red: "#ff5f4d", css: CSS },
+  { name: "light", selector: ":root,\n.light", red: "#a92912", css: CSS },
+  // The film's dark tokens live in its own style now, not in globals.css.
+  { name: "story", selector: "html.dark [data-film-room]", red: "#ff5f4d", css: FILM_STYLE.replace(/\r\n/g, "\n") },
 ] as const;
 
 describe("the failure red", () => {
   for (const theme of THEMES) {
     describe(`in the ${theme.name} block`, () => {
-      const tokens = block(theme.selector);
+      const tokens = block(theme.selector, theme.css);
 
       it(`is ${theme.red}`, () => {
         expect(tokens["--status-failed"]).toBe(theme.red);

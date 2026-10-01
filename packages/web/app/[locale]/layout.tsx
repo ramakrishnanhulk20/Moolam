@@ -185,10 +185,7 @@ export default async function LocaleLayout({
                       <>
                         {/* The lockup files carry clear space on every side, so the box is 63 px
                             tall for 24 px of cap height and the negative margin keeps the bar the
-                            height the ink asks for. The theme class picks the variant, and the
-                            story pages force the dark one because that bar floats on a dark film.
-                            Under the light theme the story bar is the page's own cream, so the two
-                            rules in globals.css that watch data-lockup hand the light one back. */}
+                            height the ink asks for. The theme class picks the variant. */}
                         <Link
                           href="/"
                           className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
@@ -201,7 +198,7 @@ export default async function LocaleLayout({
                             unoptimized
                             loading="eager"
                             data-lockup="dark"
-                            className="hidden dark:block [body:has([data-story])_&]:block"
+                            className="hidden dark:block"
                           />
                           {/* Only one of the two lockups is ever painted, and the
                               server cannot know which: the theme is a class the
@@ -219,7 +216,7 @@ export default async function LocaleLayout({
                             loading="eager"
                             fetchPriority="high"
                             data-lockup="light"
-                            className="block dark:hidden [body:has([data-story])_&]:hidden"
+                            className="block dark:hidden"
                           />
                         </Link>
                       </>

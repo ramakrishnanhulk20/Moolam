@@ -272,7 +272,7 @@ describe("the favicon, the manifest and the phone bar", () => {
 
   it("paints a page with no theme class, a browser running no script, in the light palette", () => {
     const css = source("styles/globals.css").replace(/\r\n/g, "\n");
-    const light = css.indexOf(":root,\n.light,\n");
+    const light = css.indexOf(":root,\n.light {\n");
     const dark = css.indexOf("\n.dark {\n  --bg: #08080a;");
     expect(light).toBeGreaterThan(-1);
     expect(css.slice(light, css.indexOf("\n}", light))).toContain("--bg: #e4ddd0;");
@@ -340,7 +340,7 @@ describe("the one contrast failure the audit found", () => {
     // The keyword takes the light palette's accent, which clears the bar on the
     // code block's ground since the accent was darkened for the sunken wells.
     expect(css).toMatch(/span\[style\*="--shiki-light:#D73A49" i\] \{\n {2}color: var\(--accent\);/);
-    const from = css.indexOf(".light,\n");
+    const from = css.indexOf(":root,\n.light {\n");
     const light = css.slice(from, css.indexOf("\n}", from));
     const keyword = /--accent:\s*(#[0-9a-f]{6})/i.exec(light)?.[1];
     expect(keyword).toBeDefined();
