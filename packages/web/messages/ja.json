@@ -143,7 +143,7 @@
     "counts": {
       "total": "パスポート",
       "generated": "生成",
-      "rechecked": "確認済み",
+      "rechecked": "判定あり",
       "stated": "AI 利用の表明あり"
     },
     "countsError": "件数を読み取れませんでした: {reason}。",
@@ -163,7 +163,7 @@
       "generated": "生成",
       "captured": "撮影",
       "edits": "編集",
-      "rechecked": "確認済み",
+      "rechecked": "判定あり",
       "manifest": "Content Credentials 付き",
       "disputed": "異議が認められた",
       "lookalike": "よく似た画像の後に登録",
@@ -187,14 +187,16 @@
     "clearAgent": "エージェントの絞り込みを外す",
     "marks": {
       "manifest": "Content Credentials 付き",
-      "rechecked": "チェーン上で確認済み",
-      "chainlink": "Chainlink ワークフローが確認",
+      "rechecked": "Moolam が名前を挙げられない書き手による、チェーン上の判定",
+      "chainlink": "Chainlink のネットワークが確認",
       "disputed": "異議が認められた",
-      "platform": "{platform} で描画"
+      "platform": "{platform} で描画",
+      "testRun": "Chainlink のシミュレーターでのテスト実行で、確認ではありません",
+      "unconfirmed": "ネットワークが裏付けていない Chainlink の判定で、確認ではありません"
     },
     "legend": {
       "manifest": "Content Credentials 付き",
-      "rechecked": "チェーン上で確認済み",
+      "rechecked": "チェーン上の判定。Chainlink のネットワークが書いたときだけ確認です",
       "disputed": "この画像か、その編集元の画像で異議が認められた",
       "consent": "AI 利用の表明、四つの用途に四つの印",
       "platform": "Moolam のリストに載るプラットフォームで描画"
@@ -229,7 +231,7 @@
     "kicker": "エージェント",
     "title": "エージェント",
     "lede": "パスポートに署名したとインデックスが見たすべての生成エージェントと、そこで数えられたすべての数字。署名の多い順です。",
-    "scoreMeaning": "0 から 100 までの信頼スコア。Chainlink の確認が、このエージェントの署名とどれだけ一致したかです。認められた異議は二倍に数えて差し引きます。",
+    "scoreMeaning": "0 から 100 までの信頼スコア。Chainlink の判定が、シミュレーターでのテスト実行も含めて、このエージェントの署名とどれだけ一致したかです。認められた異議は二倍に数えて差し引きます。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "スコアの求め方",
     "formulaDoc": "インデックスがこれを数えている場所",
@@ -239,13 +241,13 @@
     "since": "初回 {when}",
     "trustScore": "信頼スコア",
     "passports": "パスポート",
-    "matched": "一致した確認",
-    "mismatched": "外れた確認",
+    "matched": "一致した判定",
+    "mismatched": "外れた判定",
     "upheld": "認められた異議",
     "seeWorks": "このエージェントのパスポート",
     "empty": "パスポートに署名したエージェントを、インデックスはまだ見ていません。",
     "error": "インデックスを読み取れませんでした: {reason}。",
-    "formulaPlain": "一致した確認はスコアを上げ、外れた確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。",
+    "formulaPlain": "一致した判定はスコアを上げ、外れた判定は下げます。テスト実行も含みます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。",
     "strip": {
       "label": "このエージェントが署名した最新の画像"
     }
@@ -1200,11 +1202,11 @@
     "cardMissing": "このエージェントのカードを、保存先から読めませんでした。少ししてからお試しください。",
     "reputation": {
       "heading": "公開エージェント評価ボード (ERC-8004) のフィードバック",
-      "empty": "このエージェントへのフィードバックはまだ記録されていません。Moolam はここに手作業でフィードバックを書きます。確認のたびに書くわけではありません。",
+      "empty": "このエージェントへのフィードバックはまだ記録されていません。Moolam はここに手作業でフィードバックを書きます。判定のたびに書くわけではありません。",
       "error": "レピュテーションレジストリを読めませんでした: {reason}。",
-      "body": "フィードバックは Monad の公開エージェント評価ボード (ERC-8004 レピュテーションレジストリ) にあり、Moolam が手作業で書き込みます。このページはその要約を読みます。隣の信頼スコアは Chainlink の確認を数えたものなので、二つを足し合わせることはありません。",
+      "body": "フィードバックは Monad の公開エージェント評価ボード (ERC-8004 レピュテーションレジストリ) にあり、Moolam が手作業で書き込みます。このページはその要約を読みます。隣の信頼スコアは Chainlink のすべての判定を、テスト実行も含めて数えたものなので、二つを足し合わせることはありません。",
       "registry": "レジストリ {address}",
-      "secondary": "チェーンに手作業で書かれたフィードバックで、確認のスコアとは別です",
+      "secondary": "チェーンに手作業で書かれたフィードバックで、判定のスコアとは別です",
       "entries": "{count, plural, other {# 件}}",
       "latest": "最新の値"
     },
@@ -1214,17 +1216,17 @@
     "index": {
       "heading": "インデックスが数えたもの",
       "trustScore": "信頼スコア",
-      "trustScoreBody": "100 点満点。一致した確認、一致しなかった確認、そして認められた異議から算出します。ならしてあるので、幸運な一件で 100 にはなりません。",
+      "trustScoreBody": "100 点満点。一致した判定、一致しなかった判定、テスト実行も含めて、そして認められた異議から算出します。ならしてあるので、幸運な判定一件で 100 にはなりません。",
       "passportCount": "パスポート",
-      "matchedCount": "一致した確認",
-      "mismatchedCount": "外れた確認",
+      "matchedCount": "一致した判定",
+      "mismatchedCount": "外れた判定",
       "disputesUpheld": "認められた異議",
       "since": "初めて見えたのは {when}",
       "empty": "インデックスは、このエージェントがパスポートに署名するところをまだ見ていません。",
       "error": "インデックスを読めませんでした: {reason}。",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "スコアの求め方",
-      "formulaPlain": "一致した確認はスコアを上げ、外れた確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。"
+      "formulaPlain": "一致した判定はスコアを上げ、外れた判定は下げます。テスト実行も含みます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。"
     },
     "signs": {
       "heading": "このエージェントの署名のしかた",
@@ -2642,7 +2644,7 @@
     "outside": "Moolam のスタジオの外で登録: 宣誓もウェブ照合もありません。",
     "seenEarlier": "署名の前に、これとよく似た先のパスポートが示されていました。",
     "platformStatement": "{platform} の表明",
-    "beforeSworn": "宣誓の仕組みができる前に Moolam を通して登録されたため、宣誓はありません。",
+    "beforeSworn": "宣誓の仕組みができる前に登録されたため、宣誓はありません。",
     "kitNoStatement": "プラットフォームキットを通して登録。{platform} は独自の表明を送らず、プラットフォームの画像はウェブ照合の対象になりません。",
     "cosigned": "{date} に {platform} 上で {person} が自分のパスキーで署名。{platform} のエージェントも同じ画像に署名しました。"
   },

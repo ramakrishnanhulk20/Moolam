@@ -104,7 +104,7 @@ describe("the two numbers the agent page keeps apart", () => {
 
     expect(html).toContain(">67<");
     expect(html).toContain("Trust score");
-    expect(html).toContain("Checks matched");
+    expect(html).toContain("Verdicts matched");
     expect(html).toContain(en.agent.index.formula);
     expect(html).toContain("/docs/developers/envio-indexer#the-trust-score");
   });
@@ -116,7 +116,7 @@ describe("the two numbers the agent page keeps apart", () => {
     expect(html).toContain("2 entries");
     expect(html).toContain(">95<");
     expect(html).toContain("Latest value");
-    expect(html).toContain("Feedback posted on chain by hand, apart from the check score");
+    expect(html).toContain("Feedback posted on chain by hand, apart from the verdict score");
     expect(html).not.toContain("Average score");
   });
 });

@@ -129,7 +129,7 @@
     "counts": {
       "total": "Passports",
       "generated": "Generated",
-      "rechecked": "Checked",
+      "rechecked": "With a verdict",
       "stated": "Carry a statement on AI use"
     },
     "countsError": "The counts could not be read: {reason}.",
@@ -149,7 +149,7 @@
       "generated": "Generated",
       "captured": "Captured",
       "edits": "Edits",
-      "rechecked": "Checked",
+      "rechecked": "With a verdict",
       "manifest": "With Content Credentials",
       "disputed": "Dispute upheld",
       "lookalike": "Registered after a look-alike",
@@ -173,14 +173,16 @@
     "clearAgent": "Clear the agent filter",
     "marks": {
       "manifest": "Carries Content Credentials",
-      "rechecked": "Checked on chain",
-      "chainlink": "Checked by a Chainlink workflow",
+      "rechecked": "A verdict on chain from a writer Moolam cannot name",
+      "chainlink": "Checked by Chainlink's network",
       "disputed": "Dispute upheld",
-      "platform": "Drawn on {platform}"
+      "platform": "Drawn on {platform}",
+      "testRun": "Test run in Chainlink's simulator, not a check",
+      "unconfirmed": "A Chainlink verdict the network has not confirmed, so not a check"
     },
     "legend": {
       "manifest": "Carries Content Credentials",
-      "rechecked": "Checked on chain",
+      "rechecked": "A verdict on chain, a check only when Chainlink's network wrote it",
       "disputed": "Dispute upheld, here or on the picture it was edited from",
       "consent": "Statement on AI use, four marks for the four uses",
       "platform": "Drawn on a platform Moolam lists"
@@ -215,7 +217,7 @@
     "kicker": "Agents",
     "title": "Agents",
     "lede": "Every generating agent the index has seen sign a passport, with everything it has counted for each one. The busiest first.",
-    "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's checks agreed with what this agent signed, with upheld disputes counted against it twice.",
+    "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's verdicts, test runs in its simulator included, agreed with what this agent signed, with upheld disputes counted against it twice.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "How the score is worked out",
     "formulaDoc": "Where the index counts it",
@@ -225,13 +227,13 @@
     "since": "First seen {when}",
     "trustScore": "Trust score",
     "passports": "Passports",
-    "matched": "Checks matched",
-    "mismatched": "Checks missed",
+    "matched": "Verdicts matched",
+    "mismatched": "Verdicts missed",
     "upheld": "Disputes upheld",
     "seeWorks": "See its passports",
     "empty": "The index has not seen an agent sign a passport yet.",
     "error": "The index could not be read: {reason}.",
-    "formulaPlain": "Each check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50.",
+    "formulaPlain": "Each verdict that matched raises the score and each miss lowers it, test runs included; an upheld dispute counts as two misses. A new agent starts at 50.",
     "strip": {
       "label": "Newest pictures this agent signed"
     }
@@ -1186,11 +1188,11 @@
     "cardMissing": "This agent's card could not be read from where it is stored. Try again in a moment.",
     "reputation": {
       "heading": "Feedback on the public agent review board (ERC-8004)",
-      "empty": "No feedback recorded for this agent yet. Moolam posts feedback here by hand, not after every check.",
+      "empty": "No feedback recorded for this agent yet. Moolam posts feedback here by hand, not after every verdict.",
       "error": "The reputation registry could not be read: {reason}.",
-      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), where Moolam posts it by hand. This page reads its summary. The trust score beside it counts the Chainlink checks, so the two are never added together.",
+      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), where Moolam posts it by hand. This page reads its summary. The trust score beside it counts every Chainlink verdict, test runs included, so the two are never added together.",
       "registry": "Registry {address}",
-      "secondary": "Feedback posted on chain by hand, apart from the check score",
+      "secondary": "Feedback posted on chain by hand, apart from the verdict score",
       "entries": "{count, plural, =1 {# entry} other {# entries}}",
       "latest": "Latest value"
     },
@@ -1200,17 +1202,17 @@
     "index": {
       "heading": "What the index has counted",
       "trustScore": "Trust score",
-      "trustScoreBody": "Out of 100, from checks that matched, checks that did not, and any upheld dispute. Smoothed, so one lucky check cannot make it 100.",
+      "trustScoreBody": "Out of 100, from verdicts that matched, verdicts that did not, test runs included, and any upheld dispute. Smoothed, so one lucky verdict cannot make it 100.",
       "passportCount": "Passports",
-      "matchedCount": "Checks matched",
-      "mismatchedCount": "Checks missed",
+      "matchedCount": "Verdicts matched",
+      "mismatchedCount": "Verdicts missed",
       "disputesUpheld": "Disputes upheld",
       "since": "First seen {when}",
       "empty": "The index has not seen this agent sign a passport yet.",
       "error": "The index could not be read: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "How the score is worked out",
-      "formulaPlain": "Each check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
+      "formulaPlain": "Each verdict that matched raises the score and each miss lowers it, test runs included; an upheld dispute counts as two misses. A new agent starts at 50."
     },
     "signs": {
       "heading": "How this agent signs",
@@ -2626,7 +2628,7 @@
     "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
     "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
     "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
-    "beforeSworn": "Registered through Moolam before the sworn line existed, so it carries no sworn statement.",
+    "beforeSworn": "Registered before the sworn line existed, so it carries no sworn statement.",
     "kitNoStatement": "Registered through the platform kit. {platform} sent no statement of its own, and a platform's picture is not checked against the web.",
     "cosigned": "Signed by {person} with their own passkey on {platform}, {date}. {platform}'s agent signed the same picture.",
     "seenEarlier": "Before signing, they were shown an earlier passport like this one.",

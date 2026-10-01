@@ -4,6 +4,8 @@ export interface PlateMarks {
   rechecked: boolean;
   /** True when that re-check came through the Chainlink receiver, which changes the R's words. */
   chainlink: boolean;
+  /** Whether Chainlink's network wrote the newest verdict, as the index says; left out where it does not say. */
+  network?: boolean;
   disputed: boolean;
   sealed?: boolean;
 }
@@ -13,8 +15,31 @@ export interface MarkWords {
   manifest: string;
   rechecked: string;
   chainlink: string;
+  /** A Chainlink verdict the index says the network did not write: a run in the simulator. */
+  testRun: string;
+  /** A Chainlink verdict on an index that does not say yet whether the network wrote it. */
+  unconfirmed: string;
   disputed: string;
   sealed: string;
+}
+
+/**
+ * The R's words and ink, by the trust mark's own rule: only a verdict the
+ * index says Chainlink's network wrote is a check and takes the verified ink.
+ * A run in the simulator, a verdict the index cannot yet tell apart, and a
+ * writer the site cannot name are each said for what they are, in quiet ink.
+ */
+export function verdictMark(
+  marks: Pick<PlateMarks, "chainlink" | "network">,
+  words: Pick<MarkWords, "rechecked" | "chainlink" | "testRun" | "unconfirmed">,
+): { label: string; tone: "verified" | "quiet" } {
+  if (!marks.chainlink) {
+    return { label: words.rechecked, tone: "quiet" };
+  }
+  if (marks.network === true) {
+    return { label: words.chainlink, tone: "verified" };
+  }
+  return { label: marks.network === false ? words.testRun : words.unconfirmed, tone: "quiet" };
 }
 
 /**
@@ -41,14 +66,10 @@ export function Marks({
   litOnly?: boolean;
   className?: string;
 }) {
+  const verdict = verdictMark(marks, words);
   const all = [
     { on: marks.manifest, letter: "M", label: words.manifest, tone: "accent" as const },
-    {
-      on: marks.rechecked,
-      letter: "R",
-      label: marks.chainlink ? words.chainlink : words.rechecked,
-      tone: "verified" as const,
-    },
+    { on: marks.rechecked, letter: "R", label: verdict.label, tone: verdict.tone },
     { on: marks.disputed, letter: "D", label: words.disputed, tone: "disputed" as const },
     { on: marks.sealed === true, letter: "S", label: words.sealed, tone: "accent" as const },
   ];
@@ -75,14 +96,18 @@ function Mark({
   on: boolean;
   letter: string;
   label: string;
-  tone: "accent" | "verified" | "disputed";
+  tone: "accent" | "verified" | "disputed" | "quiet";
 }) {
+  // Quiet is a verdict that is not a check: lit, so the letter still says a
+  // verdict exists, but never in the verified ink the mark's rule reserves.
   const lit =
     tone === "accent"
       ? "border-accent text-accent"
       : tone === "verified"
         ? "border-verified text-verified"
-        : "border-disputed text-disputed";
+        : tone === "disputed"
+          ? "border-disputed text-disputed"
+          : "border-line-strong text-text-muted";
 
   return (
     <span

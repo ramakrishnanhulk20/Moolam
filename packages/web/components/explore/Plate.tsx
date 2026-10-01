@@ -2,6 +2,7 @@
 
 import { useLinkStatus } from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
+import { verdictMark } from "@/components/agents/Marks";
 import { UseBlock } from "@/components/consent/Marks";
 import { MARK_TONES, TONE_INK } from "@/components/mark/tones";
 import { SUMMARY_TONES } from "@/components/consent/tones";
@@ -93,6 +94,18 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   // letters can never be drawn over each other, whatever the language or the
   // plate's width. On a plate narrower than 17rem, which is every plate on a
   // phone, the letters take a line of their own under the kind.
+  // The R's words and ink by the trust mark's rule, shared with the agent
+  // pages so one passport reads the same everywhere it is drawn.
+  const verdict = verdictMark(
+    { chainlink: plate.chainlink, network: plate.network },
+    {
+      rechecked: t("marks.rechecked"),
+      chainlink: t("marks.chainlink"),
+      testRun: t("marks.testRun"),
+      unconfirmed: t("marks.unconfirmed"),
+    },
+  );
+
   const top = (
     <span
       data-plate-top
@@ -117,12 +130,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         className={`flex shrink-0 items-center gap-1 @[17rem]:row-span-2 @[17rem]:justify-end ${ground}`}
       >
         <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
-        <Mark
-          on={plate.rechecked}
-          letter="R"
-          label={plate.chainlink ? t("marks.chainlink") : t("marks.rechecked")}
-          tone="verified"
-        />
+        <Mark on={plate.rechecked} letter="R" label={verdict.label} tone={verdict.tone} />
         <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="disputed" />
         <Mark on={sealed} letter="S" label={t("sealed.mark")} tone="accent" />
       </span>
@@ -419,14 +427,18 @@ function Mark({
   on: boolean;
   letter: string;
   label: string;
-  tone: "accent" | "verified" | "disputed";
+  tone: "accent" | "verified" | "disputed" | "quiet";
 }) {
+  // Quiet is a verdict that is not a check: lit, so the letter still says a
+  // verdict exists, but never in the verified ink the mark's rule reserves.
   const lit =
     tone === "accent"
       ? "border-accent text-accent"
       : tone === "verified"
         ? "border-verified text-verified"
-        : "border-disputed text-disputed";
+        : tone === "disputed"
+          ? "border-disputed text-disputed"
+          : "border-line-strong text-text-muted";
 
   return (
     <span

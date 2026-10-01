@@ -203,12 +203,16 @@ describe("who can reach the copy's making", () => {
   it("is only the home page itself, so no route handler a visitor calls can start it", () => {
     const importers = ["app", "components", "lib"]
       .flatMap((dir) => sources(join(web, dir)))
-      .filter((file) => {
+      .map((file) => ({ file, path: relative(web, file).replace(/\\/g, "/") }))
+      // A lab page is a drawing for Ram's eyes, never a route a visitor reaches; the labs are
+      // deleted before push day and one may import the read to draw the first screen.
+      .filter(({ path }) => !path.startsWith("app/[locale]/lab/"))
+      .filter(({ file, path }) => {
         const text = readFileSync(file, "utf8");
-        const home = relative(web, file).replace(/\\/g, "/").startsWith("components/home/");
+        const home = path.startsWith("components/home/");
         return /["']@\/components\/home\/read["']/.test(text) || (home && /from\s+["']\.\/read["']/.test(text));
       })
-      .map((file) => relative(web, file).replace(/\\/g, "/"));
+      .map(({ path }) => path);
 
     expect(importers).toEqual(["app/[locale]/page.tsx"]);
   });

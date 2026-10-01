@@ -149,7 +149,7 @@
     "counts": {
       "total": "Pasaportes",
       "generated": "Generadas",
-      "rechecked": "Comprobadas",
+      "rechecked": "Con veredicto",
       "stated": "Con declaración sobre el uso por IA"
     },
     "countsError": "No se pudieron leer los totales: {reason}.",
@@ -169,7 +169,7 @@
       "generated": "Generadas",
       "captured": "Capturadas",
       "edits": "Ediciones",
-      "rechecked": "Comprobadas",
+      "rechecked": "Con veredicto",
       "manifest": "Con Content Credentials",
       "disputed": "Disputa aceptada",
       "lookalike": "Registrado después de una parecida",
@@ -193,14 +193,16 @@
     "clearAgent": "Quitar el filtro de agente",
     "marks": {
       "manifest": "Lleva Content Credentials",
-      "rechecked": "Comprobada en la cadena",
-      "chainlink": "Comprobada por un flujo de Chainlink",
+      "rechecked": "Un veredicto en la cadena de un autor que Moolam no puede nombrar",
+      "chainlink": "Comprobada por la red de Chainlink",
       "disputed": "Disputa aceptada",
-      "platform": "Dibujada en {platform}"
+      "platform": "Dibujada en {platform}",
+      "testRun": "Ejecución de prueba en el simulador de Chainlink, no una comprobación",
+      "unconfirmed": "Un veredicto de Chainlink que la red no ha confirmado, así que no es una comprobación"
     },
     "legend": {
       "manifest": "Lleva Content Credentials",
-      "rechecked": "Comprobada en la cadena",
+      "rechecked": "Un veredicto en la cadena, comprobación solo cuando lo escribió la red de Chainlink",
       "disputed": "Disputa aceptada, aquí o en la imagen a partir de la cual se editó",
       "consent": "Declaración sobre el uso por IA, cuatro marcas para los cuatro usos",
       "platform": "Dibujada en una plataforma de la lista de Moolam"
@@ -235,7 +237,7 @@
     "kicker": "Agentes",
     "title": "Agentes",
     "lede": "Cada agente generador que el índice ha visto firmar un pasaporte, con todo lo que lleva contado de cada uno. Primero los que más firman.",
-    "scoreMeaning": "Una puntuación de confianza de 0 a 100: cuántas veces las comprobaciones de Chainlink coincidieron con lo que firmó este agente. Las disputas aceptadas restan el doble.",
+    "scoreMeaning": "Una puntuación de confianza de 0 a 100: cuántas veces los veredictos de Chainlink, incluidas las ejecuciones de prueba en su simulador, coincidieron con lo que firmó este agente. Las disputas aceptadas restan el doble.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "Cómo se calcula la puntuación",
     "formulaDoc": "Dónde lo cuenta el índice",
@@ -245,13 +247,13 @@
     "since": "Visto por primera vez el {when}",
     "trustScore": "Puntuación de confianza",
     "passports": "Pasaportes",
-    "matched": "Comprobaciones acertadas",
-    "mismatched": "Comprobaciones fallidas",
+    "matched": "Veredictos acertados",
+    "mismatched": "Veredictos fallidos",
     "upheld": "Disputas aceptadas",
     "seeWorks": "Ver sus pasaportes",
     "empty": "El índice todavía no ha visto a ningún agente firmar un pasaporte.",
     "error": "No se pudo leer el índice: {reason}.",
-    "formulaPlain": "Cada comprobación que coincide sube la puntuación y cada fallo la baja; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50.",
+    "formulaPlain": "Cada veredicto que coincide sube la puntuación y cada fallo la baja, ejecuciones de prueba incluidas; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50.",
     "strip": {
       "label": "Las últimas imágenes que firmó este agente"
     }
@@ -1206,11 +1208,11 @@
     "cardMissing": "No se pudo leer la tarjeta de este agente desde donde está guardada. Inténtalo en un momento.",
     "reputation": {
       "heading": "Valoraciones en el tablón público de reseñas de agentes (ERC-8004)",
-      "empty": "Todavía no hay valoraciones para este agente. Moolam publica aquí las valoraciones a mano, no después de cada comprobación.",
+      "empty": "Todavía no hay valoraciones para este agente. Moolam publica aquí las valoraciones a mano, no después de cada veredicto.",
       "error": "No se pudo leer el registro de reputación: {reason}.",
-      "body": "Las valoraciones están en el tablón público de reseñas de agentes de Monad (el registro de reputación ERC-8004), donde Moolam las publica a mano. Esta página lee su resumen. La puntuación de confianza de al lado cuenta las comprobaciones de Chainlink, así que las dos nunca se suman.",
+      "body": "Las valoraciones están en el tablón público de reseñas de agentes de Monad (el registro de reputación ERC-8004), donde Moolam las publica a mano. Esta página lee su resumen. La puntuación de confianza de al lado cuenta todos los veredictos de Chainlink, ejecuciones de prueba incluidas, así que las dos nunca se suman.",
       "registry": "Registro {address}",
-      "secondary": "Valoraciones publicadas a mano en la cadena, aparte de la puntuación de comprobaciones",
+      "secondary": "Valoraciones publicadas a mano en la cadena, aparte de la puntuación de veredictos",
       "entries": "{count, plural, =1 {# entrada} other {# entradas}}",
       "latest": "Último valor"
     },
@@ -1220,17 +1222,17 @@
     "index": {
       "heading": "Lo que ha contado el índice",
       "trustScore": "Puntuación de confianza",
-      "trustScoreBody": "Sobre 100, a partir de las comprobaciones que coincidieron, las que no y cualquier disputa aceptada. Está suavizada, así que una sola comprobación con suerte no puede llevarla a 100.",
+      "trustScoreBody": "Sobre 100, a partir de los veredictos que coincidieron, los que no, ejecuciones de prueba incluidas, y cualquier disputa aceptada. Está suavizada, así que un solo veredicto con suerte no puede llevarla a 100.",
       "passportCount": "Pasaportes",
-      "matchedCount": "Comprobaciones acertadas",
-      "mismatchedCount": "Comprobaciones fallidas",
+      "matchedCount": "Veredictos acertados",
+      "mismatchedCount": "Veredictos fallidos",
       "disputesUpheld": "Disputas aceptadas",
       "since": "Visto por primera vez {when}",
       "empty": "El índice todavía no ha visto a este agente firmar un pasaporte.",
       "error": "No se pudo leer el índice: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "Cómo se calcula la puntuación",
-      "formulaPlain": "Cada comprobación que coincide sube la puntuación y cada fallo la baja; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50."
+      "formulaPlain": "Cada veredicto que coincide sube la puntuación y cada fallo la baja, ejecuciones de prueba incluidas; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50."
     },
     "signs": {
       "heading": "Cómo firma este agente",
@@ -2648,7 +2650,7 @@
     "outside": "Registrada fuera del estudio de Moolam: sin declaración jurada, sin comprobación en la web.",
     "seenEarlier": "Antes de firmar, se le mostró un pasaporte anterior parecido a este.",
     "platformStatement": "Declaración de {platform}",
-    "beforeSworn": "Registrada a través de Moolam antes de que existiera la declaración jurada, así que no la lleva.",
+    "beforeSworn": "Registrada antes de que existiera la declaración jurada, así que no la lleva.",
     "kitNoStatement": "Registrada a través del kit para plataformas. {platform} no envió ninguna declaración propia, y la imagen de una plataforma no se comprueba en la web.",
     "cosigned": "Firmada por {person} con su propia clave de acceso en {platform}, el {date}. El agente de {platform} firmó la misma imagen."
   },

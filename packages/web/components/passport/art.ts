@@ -23,10 +23,7 @@ const metadataSchema = z.object({
   // thrown away whole: only the boolean true asks for a private re-check.
   privateRecheck: z.unknown().optional(),
   commitment: z.object({ algorithm: z.string(), value: z.string() }).optional(),
-  // version is the one field only Moolam's verify service writes (metadata.ts
-  // and sealed.ts both pin FINGERPRINT_VERSION); read as anything so an odd
-  // value never costs the picture.
-  fingerprint: z.object({ blockhash: z.string().optional(), version: z.unknown().optional() }).optional(),
+  fingerprint: z.object({ blockhash: z.string().optional() }).optional(),
   // Kept as it was written. lib/data/file-terms.ts reads it on the server, so
   // a statement in a shape this build does not know never fails the document.
   training: z.unknown().optional(),
@@ -130,14 +127,6 @@ export interface Art {
    * "said nothing" and "could not be read" stay two answers (L25, L32).
    */
   statements?: Statements;
-  /**
-   * True when the document carries the fingerprint version Moolam's verify
-   * service writes into every document it pins, public or sealed, and nothing
-   * else does: a document without it was written by something else. With it,
-   * a missing sworn line means the service pinned the document before the
-   * line existed, not that the registration bypassed Moolam.
-   */
-  prepared?: true;
   /** True when the gateway did not answer or the document was not readable. */
   missing: boolean;
 }
@@ -235,7 +224,6 @@ async function readFrom(url: string, documentServed: boolean): Promise<Art | nul
       thumbnailUrl: small === undefined ? undefined : gatewayUrl(small),
       ...(parsed.data.training === undefined ? {} : { training: parsed.data.training }),
       statements: statementsOf(parsed.data),
-      ...(preparedByService(parsed.data) ? { prepared: true as const } : {}),
       // The route reads the image field as it was written, so this does too.
       ...(image !== undefined && documentServed && bareContentId(parsed.data.image) !== null
         ? { original: true as const }
@@ -256,18 +244,6 @@ async function readFrom(url: string, documentServed: boolean): Promise<Art | nul
   } catch {
     return null;
   }
-}
-
-/**
- * Whether Moolam's verify service pinned this document: it is the only writer
- * that puts a whole-number fingerprint version in it (FINGERPRINT_VERSION in
- * packages/verifier/src/metadata.ts, and the same field in sealed.ts), on
- * every path into the registry: the studio's upload, the generator, an edit,
- * a sealed registration, the co-sign page and the platform kit.
- */
-export function preparedByService(document: { fingerprint?: { version?: unknown } }): boolean {
-  const version = document.fingerprint?.version;
-  return typeof version === "number" && Number.isInteger(version) && version >= 1;
 }
 
 /** One line of text, control and direction characters taken out, cut to `max` code points. */

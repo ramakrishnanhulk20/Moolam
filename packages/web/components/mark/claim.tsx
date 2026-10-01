@@ -69,7 +69,12 @@ export async function claimCopy({
   const earlier = statements?.seenEarlier;
   const earlierHref = seenEarlierLink(earlier);
 
-  const origin = claimOrigin({ metadataURI: passport.metadataURI, art, platformKit: platform?.status === "kit" });
+  const origin = claimOrigin({
+    registeredAt: Number(passport.registeredAt),
+    metadataURI: passport.metadataURI,
+    art,
+    platformKit: platform?.status === "kit",
+  });
   const originLine =
     origin === null || origin === "stated"
       ? null

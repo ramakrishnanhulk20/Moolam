@@ -140,7 +140,7 @@
     "counts": {
       "total": "여권",
       "generated": "생성",
-      "rechecked": "확인됨",
+      "rechecked": "판정 있음",
       "stated": "AI 사용 선언 있음"
     },
     "countsError": "집계를 읽지 못했습니다: {reason}.",
@@ -160,7 +160,7 @@
       "generated": "생성",
       "captured": "촬영",
       "edits": "편집",
-      "rechecked": "확인됨",
+      "rechecked": "판정 있음",
       "manifest": "Content Credentials 있음",
       "disputed": "이의 받아들여짐",
       "lookalike": "닮은꼴보다 늦게 등록됨",
@@ -184,14 +184,16 @@
     "clearAgent": "에이전트 필터 지우기",
     "marks": {
       "manifest": "Content Credentials 있음",
-      "rechecked": "체인에서 확인됨",
-      "chainlink": "Chainlink 워크플로가 확인함",
+      "rechecked": "Moolam이 이름을 댈 수 없는 작성자가 체인에 기록한 판정",
+      "chainlink": "Chainlink 네트워크가 확인함",
       "disputed": "이의 받아들여짐",
-      "platform": "{platform}에서 그림"
+      "platform": "{platform}에서 그림",
+      "testRun": "Chainlink 시뮬레이터의 테스트 실행이며, 확인이 아님",
+      "unconfirmed": "네트워크가 확정하지 않은 Chainlink 판정이며, 확인이 아님"
     },
     "legend": {
       "manifest": "Content Credentials 있음",
-      "rechecked": "체인에서 확인됨",
+      "rechecked": "체인에 기록된 판정. Chainlink 네트워크가 기록했을 때만 확인입니다",
       "disputed": "이의 받아들여짐, 여기 또는 편집 원본에서",
       "consent": "AI 사용 선언, 네 가지 용도에 네 개의 표시",
       "platform": "Moolam 목록에 있는 플랫폼에서 그림"
@@ -226,7 +228,7 @@
     "kicker": "에이전트",
     "title": "에이전트",
     "lede": "여권에 서명한 것을 인덱스가 본 모든 생성 에이전트와, 각각에 대해 센 모든 숫자입니다. 많이 서명한 순서입니다.",
-    "scoreMeaning": "0에서 100까지의 신뢰 점수. Chainlink의 확인이 이 에이전트가 서명한 내용과 얼마나 자주 일치했는지입니다. 받아들여진 이의는 두 배로 깎입니다.",
+    "scoreMeaning": "0에서 100까지의 신뢰 점수. Chainlink의 판정이, 시뮬레이터의 테스트 실행까지 포함해, 이 에이전트가 서명한 내용과 얼마나 자주 일치했는지입니다. 받아들여진 이의는 두 배로 깎입니다.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "점수를 구하는 방법",
     "formulaDoc": "인덱스가 이것을 세는 곳",
@@ -236,13 +238,13 @@
     "since": "처음 확인 {when}",
     "trustScore": "신뢰 점수",
     "passports": "여권",
-    "matched": "일치한 확인",
-    "mismatched": "어긋난 확인",
+    "matched": "일치한 판정",
+    "mismatched": "어긋난 판정",
     "upheld": "받아들여진 이의",
     "seeWorks": "이 에이전트의 여권 보기",
     "empty": "여권에 서명한 에이전트를 인덱스가 아직 보지 못했습니다.",
     "error": "인덱스를 읽지 못했습니다: {reason}.",
-    "formulaPlain": "일치한 확인은 점수를 올리고 어긋난 확인은 내립니다. 받아들여진 이의는 어긋난 확인 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다.",
+    "formulaPlain": "일치한 판정은 점수를 올리고 어긋난 판정은 내리며, 테스트 실행도 포함합니다. 받아들여진 이의는 어긋난 판정 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다.",
     "strip": {
       "label": "이 에이전트가 최근에 서명한 이미지"
     }
@@ -1197,11 +1199,11 @@
     "cardMissing": "이 에이전트의 카드를 저장된 곳에서 읽지 못했습니다. 잠시 뒤에 다시 시도해 주세요.",
     "reputation": {
       "heading": "공개 에이전트 평가판(ERC-8004)의 피드백",
-      "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 피드백은 Moolam이 여기에 수동으로 올리며, 확인할 때마다 올리지는 않습니다.",
+      "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 피드백은 Moolam이 여기에 수동으로 올리며, 판정이 날 때마다 올리지는 않습니다.",
       "error": "평판 레지스트리를 읽지 못했습니다: {reason}.",
-      "body": "피드백은 Monad의 공개 에이전트 평가판(ERC-8004 평판 레지스트리)에 있으며, Moolam이 수동으로 올립니다. 이 페이지는 그 요약을 읽습니다. 옆의 신뢰 점수는 Chainlink 확인을 세는 것이라, 둘을 더하는 일은 없습니다.",
+      "body": "피드백은 Monad의 공개 에이전트 평가판(ERC-8004 평판 레지스트리)에 있으며, Moolam이 수동으로 올립니다. 이 페이지는 그 요약을 읽습니다. 옆의 신뢰 점수는 Chainlink의 모든 판정을 테스트 실행까지 포함해 세는 것이라, 둘을 더하는 일은 없습니다.",
       "registry": "레지스트리 {address}",
-      "secondary": "체인에 수동으로 올린 피드백이며, 확인 점수와는 별개입니다",
+      "secondary": "체인에 수동으로 올린 피드백이며, 판정 점수와는 별개입니다",
       "entries": "{count, plural, other {#건}}",
       "latest": "최신 값"
     },
@@ -1211,17 +1213,17 @@
     "index": {
       "heading": "인덱스가 세어 본 것",
       "trustScore": "신뢰 점수",
-      "trustScoreBody": "100점 만점. 일치한 확인, 어긋난 확인, 받아들여진 이의로 계산합니다. 완만하게 눌러 두어서 운 좋은 확인 한 번으로 100이 되지는 않습니다.",
+      "trustScoreBody": "100점 만점. 일치한 판정, 어긋난 판정, 테스트 실행까지 포함해, 그리고 받아들여진 이의로 계산합니다. 완만하게 눌러 두어서 운 좋은 판정 한 번으로 100이 되지는 않습니다.",
       "passportCount": "여권",
-      "matchedCount": "일치한 확인",
-      "mismatchedCount": "어긋난 확인",
+      "matchedCount": "일치한 판정",
+      "mismatchedCount": "어긋난 판정",
       "disputesUpheld": "받아들여진 이의",
       "since": "처음 확인 {when}",
       "empty": "인덱스는 이 에이전트가 여권에 서명하는 것을 아직 보지 못했습니다.",
       "error": "인덱스를 읽지 못했습니다: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "점수를 구하는 방법",
-      "formulaPlain": "일치한 확인은 점수를 올리고 어긋난 확인은 내립니다. 받아들여진 이의는 어긋난 확인 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다."
+      "formulaPlain": "일치한 판정은 점수를 올리고 어긋난 판정은 내리며, 테스트 실행도 포함합니다. 받아들여진 이의는 어긋난 판정 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다."
     },
     "signs": {
       "heading": "이 에이전트가 서명하는 방식",
@@ -2639,7 +2641,7 @@
     "outside": "Moolam 스튜디오 밖에서 등록됨: 서약 문장도 웹 확인도 없음.",
     "seenEarlier": "서명하기 전에, 이와 비슷한 먼저 등록된 여권을 안내받았습니다.",
     "platformStatement": "{platform}의 진술",
-    "beforeSworn": "서약 문장이 생기기 전에 Moolam을 통해 등록되어, 서약 문장이 없습니다.",
+    "beforeSworn": "서약 문장이 생기기 전에 등록되어, 서약 문장이 없습니다.",
     "kitNoStatement": "플랫폼 키트를 통해 등록되었습니다. {platform}은(는) 자체 진술을 보내지 않았고, 플랫폼의 이미지는 웹 확인을 거치지 않습니다.",
     "cosigned": "{date}에 {platform}에서 {person}이(가) 자신의 패스키로 서명했습니다. {platform}의 에이전트도 같은 이미지에 서명했습니다."
   },

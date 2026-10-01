@@ -41,7 +41,6 @@ vi.mock("@/lib/chain/reports", () => ({ heldReportDelivery: reads.delivery }));
 
 const { withoutDoubleStop, endsSentence } = await import("@/lib/i18n/sentence");
 const { claimOrigin, claimOf } = await import("@/components/mark/strength");
-const { preparedByService } = await import("@/components/passport/art");
 const { markStanding } = await import("@/components/passport/labels");
 const { chainlinkRecheck } = await import("@/components/home/finding");
 const { topFacts } = await import("@/components/passport/top-facts");
@@ -239,42 +238,38 @@ describe("row 4: the home first screen's run and the facts strip name the simula
   });
 });
 
-describe("rows 5 and 9: who wrote the document behind the claim", () => {
-  const REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
-  /** The pinned documents of one real passport from each path, cut to the fields the rule reads, as fetched on 2026-10-01. */
-  const DOCUMENTS = {
-    studioGenerated: { id: "0xcdb25d37", generator: { agentId: "10249", registry: REGISTRY }, fingerprint: { phash: "0x6ccf137087789a25", blockhash: "0x00", version: 1 }, createdAt: "2026-09-08T15:34:19.644Z" },
-    cosigned: { id: "0xc7f3f3f0", generator: { agentId: "10273", registry: REGISTRY }, fingerprint: { phash: "0x7b74808f7fd0882f", blockhash: "0x01", version: 1 }, createdAt: "2026-09-30T12:55:37.691Z" },
-    sealed: { id: "0xe83680b2", sealed: true, generator: { agentId: "10249", registry: REGISTRY }, fingerprint: { phash: "0x85c0d272787e6e77", blockhash: "0x00", version: 1 }, createdAt: "2026-09-25T07:19:59.126Z", privateRecheck: true },
-    captured: { id: "0x75bf8bf1", generator: { agentId: "0", registry: REGISTRY }, fingerprint: { phash: "0xedc0b005e11dc1bc", blockhash: "0xff", version: 1 }, createdAt: "2026-09-10T11:12:03.642Z" },
-    kit: { id: "0x6d3a068b", generator: { agentId: "10273", registry: REGISTRY }, fingerprint: { phash: "0xc36b6bccd0312c46", blockhash: "0x03", version: 1 }, createdAt: "2026-10-01T06:43:08.419Z" },
-  };
-  const read = (prepared: boolean, statements: Art["statements"] = { sworn: false }): Pick<Art, "statements" | "prepared"> => ({
-    statements,
-    ...(prepared ? { prepared: true as const } : {}),
+describe("rows 5 and 9: the origin line under the claim rests on chain facts", () => {
+  const pinned = "ipfs://bafkreidocument";
+  const SINCE = 1_790_000_000;
+  const BEFORE = SINCE - 86_400;
+  const AFTER = SINCE + 86_400;
+  /** A document read with no statement, as a raw chain write copying the service's shape would give. */
+  const copied: Pick<Art, "statements"> = { statements: { sworn: false } };
+
+  it("reads a raw write that copies the document format as outside after the sworn line went live, and before it as before", () => {
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false, swornSince: SINCE })).toBe("outside");
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platformKit: false, swornSince: SINCE })).toBe("beforeSworn");
+    // A data: document is an address the service never pins: outside after the line, before it before.
+    const raw = { metadataURI: 'data:application/json,{"name":"signed.jpg"}', art: { missing: true } as Art, platformKit: false, swornSince: SINCE };
+    expect(claimOrigin({ ...raw, registeredAt: AFTER })).toBe("outside");
+    expect(claimOrigin({ ...raw, registeredAt: BEFORE })).toBe("beforeSworn");
   });
 
-  it("finds the field only the verify service writes in every path's real document", () => {
-    for (const document of Object.values(DOCUMENTS)) {
-      expect(preparedByService(document)).toBe(true);
-    }
-    expect(preparedByService({ name: "signed.jpg", source: "moolam live proof on Monad mainnet" } as never)).toBe(false);
-    expect(preparedByService({ fingerprint: { version: "1" } })).toBe(false);
+  it("reads a listed platform's kit passport as kit either way, and a statement as none of the lines", () => {
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: true, swornSince: SINCE })).toBe("kit");
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platformKit: true, swornSince: SINCE })).toBe("kit");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: { sworn: true } }, platformKit: false, swornSince: SINCE })).toBe("stated");
+    expect(
+      claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: { sworn: false, platformStatement: "Drawn on Dreamloom." } }, platformKit: true, swornSince: SINCE }),
+    ).toBe("stated");
   });
 
-  it("says before the sworn line for a service document with no statement, kit for a platform's own, and outside only for the rest", () => {
-    const pinned = "ipfs://bafkreidocument";
-    for (const path of ["studioGenerated", "cosigned", "sealed", "captured"] as const) {
-      expect(claimOrigin({ metadataURI: pinned, art: read(preparedByService(DOCUMENTS[path])), platformKit: false }), path).toBe("beforeSworn");
-    }
-    expect(claimOrigin({ metadataURI: pinned, art: read(preparedByService(DOCUMENTS.kit)), platformKit: true })).toBe("kit");
-    // The three live proofs registered straight on chain carry data: documents the site never reads.
-    expect(claimOrigin({ metadataURI: 'data:application/json,{"name":"signed.jpg"}', art: { missing: true } as Art, platformKit: false })).toBe("outside");
-    // A pinned document written by something else lacks the field.
-    expect(claimOrigin({ metadataURI: pinned, art: read(false), platformKit: false })).toBe("outside");
-    expect(claimOrigin({ metadataURI: pinned, art: read(true, { sworn: true }), platformKit: false })).toBe("stated");
-    expect(claimOrigin({ metadataURI: pinned, art: read(false, { sworn: false, platformStatement: "Drawn on Dreamloom." }), platformKit: true })).toBe("stated");
-    expect(claimOrigin({ metadataURI: pinned, art: { statements: undefined }, platformKit: false })).toBeNull();
+  it("reads every passport without a statement as before while SWORN_SINCE is null, and says nothing for an unread pinned document after it", () => {
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false, swornSince: null })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: undefined }, platformKit: false, swornSince: SINCE })).toBeNull();
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: undefined }, platformKit: false, swornSince: SINCE })).toBe("beforeSworn");
+    expect(en.claim.beforeSworn).not.toContain("Moolam");
   });
 
   it("names the person and the platform for a co-signed picture, where the record used to say uploaded by", () => {

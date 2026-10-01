@@ -15,3 +15,12 @@ export const ANSWER_DAYS = 14;
 export const CLAIM_WINDOW_DAYS = 30;
 
 export const DAY_SECONDS = 86_400;
+
+/**
+ * When the verify service that pins the sworn line went live in production,
+ * in unix seconds, or null until push day. It is the one chain fact the claim's
+ * origin line rests on: a passport registered before it carries no sworn line
+ * whoever prepared it, and one registered after it with no statement came some
+ * other way than through the service. Null reads as "before" for every passport.
+ */
+export const SWORN_SINCE: number | null = null;

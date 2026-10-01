@@ -79,11 +79,19 @@ describe("the letters on a plate", () => {
     expect(markup).toContain(`aria-label="${en.explore.marks.disputed}"`);
   });
 
-  it("names the Chainlink workflow on a mark that was re-checked by one", () => {
-    const markup = render(createElement(Plate, { plate: { ...marked, chainlink: true } }));
+  it("calls a Chainlink verdict a check only when the index says the network wrote it", () => {
+    const unconfirmed = render(createElement(Plate, { plate: { ...marked, chainlink: true } }));
+    // React writes an apostrophe as &#x27; in the markup.
+    const shown = (line: string) => line.replace(/'/g, "&#x27;");
+    expect(unconfirmed).toContain(`aria-label="${shown(en.explore.marks.unconfirmed)}"`);
+    expect(unconfirmed).not.toContain(`aria-label="${shown(en.explore.marks.chainlink)}"`);
 
-    expect(markup).toContain(`aria-label="${en.explore.marks.chainlink}"`);
-    expect(markup).not.toContain(`aria-label="${en.explore.marks.rechecked}"`);
+    const testRun = render(createElement(Plate, { plate: { ...marked, chainlink: true, network: false } }));
+    expect(testRun).toContain(`aria-label="${shown(en.explore.marks.testRun)}"`);
+
+    const checked = render(createElement(Plate, { plate: { ...marked, chainlink: true, network: true } }));
+    expect(checked).toContain(`aria-label="${shown(en.explore.marks.chainlink)}"`);
+    expect(checked).not.toContain(`aria-label="${shown(en.explore.marks.rechecked)}"`);
   });
 
   it("leaves an unlit mark out of the reading rather than announcing three absences per plate", () => {
@@ -101,7 +109,7 @@ describe("the legend under the chips", () => {
     // M is the manifest hash on the passport, R is a re-check written on chain,
     // D is a dispute reaching this picture or the one it was edited from.
     expect(markup).toContain(`<span class="text-accent">M</span> ${en.explore.legend.manifest}`);
-    expect(markup).toContain(`<span class="text-verified">R</span> ${en.explore.legend.rechecked}`);
+    expect(markup).toContain(`<span class="text-verified">R</span> ${en.explore.legend.rechecked.replace(/'/g, "&#x27;")}`);
     expect(markup).toContain(`<span class="text-disputed">D</span> ${en.explore.legend.disputed}`);
   });
 

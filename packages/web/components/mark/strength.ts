@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 import { pinnedUri, type Art } from "@/components/passport/art";
-import { CLAIM_WINDOW_DAYS, DAY_SECONDS } from "./rule";
+import { CLAIM_WINDOW_DAYS, DAY_SECONDS, SWORN_SINCE } from "./rule";
 
 /**
  * Where the claim behind a passport comes from, strongest first.
@@ -56,40 +56,46 @@ export function claimOf(input: ClaimInput): ClaimLine {
 }
 
 /**
- * Who wrote the document behind the claim, read off what it carries (L25).
+ * The origin line under the claim, decided by chain facts and never by a
+ * field in the document, which anyone writing straight on chain can copy (L25).
  *
- * "stated": the sworn line, or a platform's statement in its place, is in it.
- * "beforeSworn": Moolam's verify service pinned it (art.prepared) with no
- * statement, which only a document from before the sworn line existed can be.
- * "kit": the service pinned it for a listed platform registering in its own
- * name, and the platform sent no statement of its own. "outside": the service
- * never pinned it, either because the address is not a pinned document at all
- * (the service only ever pins) or because the document lacks the field only
- * the service writes. Null when a pinned document could not be read, which
- * says nothing either way (L32).
+ * "stated": the sworn line, or a platform's statement in its place, is in the
+ * document. "kit": the signed platform list says a listed platform registered
+ * it in its own name, and it sent no statement. "beforeSworn": the registry's
+ * own time puts it before the sworn line went live, so it could not carry one,
+ * whoever prepared it. "outside": registered after the line went live with no
+ * statement, which no registration through the service does any more. Null
+ * when a pinned document could not be read after that time: a failed read
+ * says nothing either way (L32). An address the service never pins is a chain
+ * fact, so a data: document after that time reads outside.
  */
 export type ClaimOrigin = "stated" | "beforeSworn" | "kit" | "outside";
 
 export function claimOrigin(input: {
+  /** The registry's registeredAt, in unix seconds. */
+  registeredAt: number;
   metadataURI: string;
-  art: Pick<Art, "statements" | "prepared">;
+  art: Pick<Art, "statements">;
   /** True when the platform label says the passport was registered through the kit in the platform's own name. */
   platformKit: boolean;
+  /** When the sworn line went live, for a test; the product reads SWORN_SINCE. */
+  swornSince?: number | null;
 }): ClaimOrigin | null {
   const statements = input.art.statements;
   if (statements !== undefined && (statements.sworn || statements.platformStatement !== undefined)) {
     return "stated";
   }
-  if (pinnedUri(input.metadataURI) === undefined) {
-    return "outside";
+  if (input.platformKit) {
+    return "kit";
+  }
+  const since = input.swornSince === undefined ? SWORN_SINCE : input.swornSince;
+  if (since === null || input.registeredAt < since) {
+    return "beforeSworn";
   }
   if (statements === undefined) {
-    return null;
+    return pinnedUri(input.metadataURI) === undefined ? "outside" : null;
   }
-  if (input.art.prepared !== true) {
-    return "outside";
-  }
-  return input.platformKit ? "kit" : "beforeSworn";
+  return "outside";
 }
 
 const PASSPORT_ID = /^0x[0-9a-fA-F]{64}$/;

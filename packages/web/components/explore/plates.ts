@@ -76,7 +76,9 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         blockhash: art?.blockhash,
         unread: plateUnread(row.metadataURI, art),
         platform: passport === null ? null : plateMark(platforms, passport, agentOwnerNow),
-        ...(row.marks === undefined ? {} : { mark: plateMarkState(row.marks, pictureOf(row.metadataURI, art)) }),
+        ...(row.marks === undefined
+          ? {}
+          : { mark: plateMarkState(row.marks, pictureOf(row.metadataURI, art)), network: row.marks.verdict !== null }),
       };
     }),
   );

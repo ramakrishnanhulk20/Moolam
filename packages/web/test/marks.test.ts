@@ -527,16 +527,21 @@ describe("L25: a registration from outside the studio is labelled, never clean",
       }),
     );
 
-  it("says outside the studio for a document with no sworn line and no platform statement", async () => {
+  it("says before the sworn line for a document with no sworn line and no platform statement, while SWORN_SINCE is null", async () => {
+    // The origin rests on the registry's time against SWORN_SINCE, never on the document;
+    // test/words-honesty.test.ts walks both sides of that moment.
     const markup = await strength({ sworn: false });
-    expect(markup).toContain('data-claim-origin="outside"');
-    expect(markup).toContain(shown(en.claim.outside));
+    expect(markup).toContain('data-claim-origin="beforeSworn"');
+    expect(markup).toContain(shown(en.claim.beforeSworn));
+    expect(markup).not.toContain(shown(en.claim.outside));
   });
 
   it("says nothing of the kind for a sworn document, a platform's statement, or a document nobody could read", async () => {
     expect(await strength({ sworn: true })).not.toContain("data-claim-origin");
     expect(await strength({ sworn: false, platformStatement: "Drawn on Dreamloom by its user." })).not.toContain("data-claim-origin");
-    expect(await strength(undefined)).not.toContain("data-claim-origin");
+    // While SWORN_SINCE is null no passport can carry the line, so a document nobody could
+    // read still reads "before": the line claims nothing the registry's time does not prove.
+    expect(await strength(undefined)).toContain('data-claim-origin="beforeSworn"');
   });
 
   it("names the strength of the claim: studio, a listed platform, or the registrant's own until thirty days pass", () => {

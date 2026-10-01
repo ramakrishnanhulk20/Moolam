@@ -41,6 +41,8 @@ export function PictureStrip({ strip }: { strip: AgentStrip }) {
     manifest: explore("marks.manifest"),
     rechecked: explore("marks.rechecked"),
     chainlink: explore("marks.chainlink"),
+    testRun: explore("marks.testRun"),
+    unconfirmed: explore("marks.unconfirmed"),
     disputed: explore("marks.disputed"),
     sealed: explore("sealed.mark"),
   };

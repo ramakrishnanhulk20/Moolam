@@ -150,7 +150,7 @@
     "counts": {
       "total": "护照",
       "generated": "生成",
-      "rechecked": "已核验",
+      "rechecked": "有判定",
       "stated": "有 AI 使用声明"
     },
     "countsError": "无法读取计数：{reason}。",
@@ -170,7 +170,7 @@
       "generated": "生成",
       "captured": "拍摄",
       "edits": "编辑",
-      "rechecked": "已核验",
+      "rechecked": "有判定",
       "manifest": "带 Content Credentials",
       "disputed": "争议成立",
       "lookalike": "晚于相似图片登记",
@@ -194,14 +194,16 @@
     "clearAgent": "清除智能体筛选",
     "marks": {
       "manifest": "带 Content Credentials",
-      "rechecked": "已在链上核验",
-      "chainlink": "由 Chainlink 工作流核验",
+      "rechecked": "链上的一次判定，写入者 Moolam 无法指认",
+      "chainlink": "由 Chainlink 的网络核验",
       "disputed": "争议成立",
-      "platform": "在 {platform} 上绘制"
+      "platform": "在 {platform} 上绘制",
+      "testRun": "Chainlink 模拟器里的测试运行，不算核验",
+      "unconfirmed": "一次网络尚未确认的 Chainlink 判定，不算核验"
     },
     "legend": {
       "manifest": "带 Content Credentials",
-      "rechecked": "已在链上核验",
+      "rechecked": "链上的一次判定，只有 Chainlink 的网络写入的才算核验",
       "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
       "consent": "AI 使用声明，四种用途四个标记",
       "platform": "在 Moolam 名单上的平台绘制"
@@ -236,7 +238,7 @@
     "kicker": "智能体",
     "title": "智能体",
     "lede": "索引见过在护照上签名的每一个生成智能体，以及为它记下的全部数字。签得最多的排在前面。",
-    "scoreMeaning": "0 到 100 的信任分：Chainlink 的核验有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
+    "scoreMeaning": "0 到 100 的信任分：Chainlink 的判定（包括模拟器里的测试运行）有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "这个分数怎么算出来",
     "formulaDoc": "索引在哪里算它",
@@ -246,13 +248,13 @@
     "since": "首次出现于 {when}",
     "trustScore": "信任分",
     "passports": "护照",
-    "matched": "核验一致",
-    "mismatched": "核验不一致",
+    "matched": "判定一致",
+    "mismatched": "判定不一致",
     "upheld": "争议成立",
     "seeWorks": "查看它的护照",
     "empty": "索引还没有见过任何智能体在护照上签名。",
     "error": "无法读取索引：{reason}。",
-    "formulaPlain": "每一次一致的核验都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。",
+    "formulaPlain": "每一次一致的判定都会让分数上升，每一次不一致都会让它下降，测试运行也算在内；成立的争议算作两次不一致。新智能体从 50 分起步。",
     "strip": {
       "label": "这个智能体签过的最新图片"
     }
@@ -1207,11 +1209,11 @@
     "cardMissing": "无法从存放处读到这个智能体的名片。请稍后再试。",
     "reputation": {
       "heading": "公开智能体评价板上的反馈 (ERC-8004)",
-      "empty": "这个智能体还没有任何反馈记录。反馈由 Moolam 手动写在这里，并不是每次核对后都有。",
+      "empty": "这个智能体还没有任何反馈记录。反馈由 Moolam 手动写在这里，并不是每次判定后都有。",
       "error": "声誉登记处无法读取：{reason}。",
-      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，由 Moolam 手动写上去。本页读取它的汇总。旁边的信任分统计的是 Chainlink 的核验，所以两者从不相加。",
+      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，由 Moolam 手动写上去。本页读取它的汇总。旁边的信任分统计 Chainlink 的每一次判定，测试运行也算在内，所以两者从不相加。",
       "registry": "登记处 {address}",
-      "secondary": "手动写在链上的反馈，不计入核验分数",
+      "secondary": "手动写在链上的反馈，不计入判定分数",
       "entries": "{count, plural, other {# 条}}",
       "latest": "最新数值"
     },
@@ -1221,17 +1223,17 @@
     "index": {
       "heading": "索引数出来的结果",
       "trustScore": "信任分",
-      "trustScoreBody": "满分 100，由一致的核验、不一致的核验以及任何成立的争议算出。做过平滑处理，一次走运的核验不会直接变成 100。",
+      "trustScoreBody": "满分 100，由一致的判定、不一致的判定（测试运行也算在内）以及任何成立的争议算出。做过平滑处理，一次走运的判定不会直接变成 100。",
       "passportCount": "护照",
-      "matchedCount": "核验一致",
-      "mismatchedCount": "核验不一致",
+      "matchedCount": "判定一致",
+      "mismatchedCount": "判定不一致",
       "disputesUpheld": "争议成立",
       "since": "首次出现于 {when}",
       "empty": "索引还没见过这个智能体为哪本护照签过名。",
       "error": "无法读取索引：{reason}。",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "这个分数怎么算出来",
-      "formulaPlain": "每一次一致的核验都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
+      "formulaPlain": "每一次一致的判定都会让分数上升，每一次不一致都会让它下降，测试运行也算在内；成立的争议算作两次不一致。新智能体从 50 分起步。"
     },
     "signs": {
       "heading": "这个智能体怎么签名",
@@ -2649,7 +2651,7 @@
     "outside": "在 Moolam 工作室之外登记：没有签名声明，也没有网上比对。",
     "seenEarlier": "签名之前，登记者看到过一本与此相似的更早护照。",
     "platformStatement": "{platform} 的声明",
-    "beforeSworn": "在签名声明出现之前通过 Moolam 登记，所以没有签名声明。",
+    "beforeSworn": "在签名声明出现之前登记，所以没有签名声明。",
     "kitNoStatement": "通过平台工具包登记。{platform} 没有发送自己的声明，平台的图片也不做网上比对。",
     "cosigned": "{person} 于 {date} 在 {platform} 上用自己的通行密钥签了名。{platform} 的智能体也为同一张图片签了名。"
   },

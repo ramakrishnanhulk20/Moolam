@@ -263,7 +263,8 @@ describe("work order 216", () => {
     const page = inEnglish(await Works({ agentId: 10248n, works: [lit] as never, error: null, locale: "en" }));
     const strip = inEnglish(createElement(PictureStrip, { strip: { tiles: [lit as never], onlyTest: false } }));
 
-    expect(litMarks(explore)).toEqual([en.explore.marks.manifest, en.explore.marks.chainlink]);
+    // The tiles carry no network flag, so the verdict is said as one the network has not confirmed.
+    expect(litMarks(explore)).toEqual([en.explore.marks.manifest, en.explore.marks.unconfirmed]);
     expect(litMarks(page)).toEqual(litMarks(explore));
     expect(litMarks(strip)).toEqual(litMarks(explore));
     expect(page).toContain("aspect-[4/5]");

@@ -129,7 +129,7 @@
     "counts": {
       "total": "Pässe",
       "generated": "Erzeugt",
-      "rechecked": "Geprüft",
+      "rechecked": "Mit Ergebnis",
       "stated": "Mit Erklärung zur KI-Nutzung"
     },
     "countsError": "Die Zahlen konnten nicht gelesen werden: {reason}.",
@@ -149,7 +149,7 @@
       "generated": "Erzeugt",
       "captured": "Fotografiert",
       "edits": "Bearbeitungen",
-      "rechecked": "Geprüft",
+      "rechecked": "Mit Ergebnis",
       "manifest": "Mit Content Credentials",
       "disputed": "Einspruch stattgegeben",
       "lookalike": "Nach einem Doppelgänger eingetragen",
@@ -173,14 +173,16 @@
     "clearAgent": "Agentenfilter entfernen",
     "marks": {
       "manifest": "Trägt Content Credentials",
-      "rechecked": "Auf der Kette geprüft",
-      "chainlink": "Von einem Chainlink-Workflow geprüft",
+      "rechecked": "Ein Ergebnis auf der Kette von einem Schreiber, den Moolam nicht benennen kann",
+      "chainlink": "Vom Netz von Chainlink geprüft",
       "disputed": "Einspruch stattgegeben",
-      "platform": "Gezeichnet auf {platform}"
+      "platform": "Gezeichnet auf {platform}",
+      "testRun": "Testlauf in Chainlinks Simulator, keine Prüfung",
+      "unconfirmed": "Ein Chainlink-Ergebnis, das das Netz nicht bestätigt hat, also keine Prüfung"
     },
     "legend": {
       "manifest": "Trägt Content Credentials",
-      "rechecked": "Auf der Kette geprüft",
+      "rechecked": "Ein Ergebnis auf der Kette, eine Prüfung nur, wenn das Netz von Chainlink es geschrieben hat",
       "disputed": "Einspruch stattgegeben, hier oder beim Bild, aus dem es bearbeitet wurde",
       "consent": "Erklärung zur KI-Nutzung, vier Zeichen für vier Nutzungen",
       "platform": "Gezeichnet auf einer Plattform, die Moolam listet"
@@ -215,7 +217,7 @@
     "kicker": "Agenten",
     "title": "Agenten",
     "lede": "Jeder erzeugende Agent, den der Index einen Pass hat signieren sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
-    "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Prüfungen von Chainlink mit dem übereinstimmten, was dieser Agent signiert hat. Stattgegebene Einsprüche zählen doppelt gegen ihn.",
+    "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Ergebnisse von Chainlink, Testläufe in seinem Simulator eingeschlossen, mit dem übereinstimmten, was dieser Agent signiert hat. Stattgegebene Einsprüche zählen doppelt gegen ihn.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "Wie der Wert entsteht",
     "formulaDoc": "Wo der Index ihn zählt",
@@ -225,13 +227,13 @@
     "since": "Zuerst gesehen am {when}",
     "trustScore": "Vertrauenswert",
     "passports": "Pässe",
-    "matched": "Passende Prüfungen",
-    "mismatched": "Verfehlte Prüfungen",
+    "matched": "Passende Ergebnisse",
+    "mismatched": "Verfehlte Ergebnisse",
     "upheld": "Stattgegebene Einsprüche",
     "seeWorks": "Seine Pässe ansehen",
     "empty": "Der Index hat noch keinen Agenten einen Pass signieren sehen.",
     "error": "Der Index konnte nicht gelesen werden: {reason}.",
-    "formulaPlain": "Jede passende Prüfung hebt den Wert, jede verfehlte senkt ihn; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50.",
+    "formulaPlain": "Jedes passende Ergebnis hebt den Wert, jedes verfehlte senkt ihn, Testläufe eingeschlossen; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50.",
     "strip": {
       "label": "Die neuesten Bilder, die dieser Agent signiert hat"
     }
@@ -1186,11 +1188,11 @@
     "cardMissing": "Die Karte dieses Agenten ließ sich an ihrem Speicherort nicht lesen. Versuch es gleich noch einmal.",
     "reputation": {
       "heading": "Feedback auf der öffentlichen Bewertungstafel für Agenten (ERC-8004)",
-      "empty": "Für diesen Agenten ist noch kein Feedback erfasst. Moolam trägt Feedback hier von Hand ein, nicht nach jeder Prüfung.",
+      "empty": "Für diesen Agenten ist noch kein Feedback erfasst. Moolam trägt Feedback hier von Hand ein, nicht nach jedem Ergebnis.",
       "error": "Das Reputationsregister konnte nicht gelesen werden: {reason}.",
-      "body": "Das Feedback steht auf Monads öffentlicher Bewertungstafel für Agenten (dem ERC-8004-Reputationsregister), wo Moolam es von Hand einträgt. Diese Seite liest die Zusammenfassung. Der Vertrauenswert daneben zählt die Prüfungen von Chainlink, deshalb werden die beiden nie zusammengerechnet.",
+      "body": "Das Feedback steht auf Monads öffentlicher Bewertungstafel für Agenten (dem ERC-8004-Reputationsregister), wo Moolam es von Hand einträgt. Diese Seite liest die Zusammenfassung. Der Vertrauenswert daneben zählt jedes Ergebnis von Chainlink, Testläufe eingeschlossen, deshalb werden die beiden nie zusammengerechnet.",
       "registry": "Register {address}",
-      "secondary": "Von Hand auf der Kette eingetragenes Feedback, unabhängig vom Wert aus den Prüfungen",
+      "secondary": "Von Hand auf der Kette eingetragenes Feedback, unabhängig vom Wert aus den Ergebnissen",
       "entries": "{count, plural, =1 {# Eintrag} other {# Einträge}}",
       "latest": "Letzter Wert"
     },
@@ -1200,17 +1202,17 @@
     "index": {
       "heading": "Was der Index gezählt hat",
       "trustScore": "Vertrauenswert",
-      "trustScoreBody": "Von 100, aus Prüfungen, die passten, solchen, die nicht passten, und jedem stattgegebenen Einspruch. Geglättet, damit eine einzelne glückliche Prüfung nicht 100 ergibt.",
+      "trustScoreBody": "Von 100, aus Ergebnissen, die passten, solchen, die nicht passten, Testläufe eingeschlossen, und jedem stattgegebenen Einspruch. Geglättet, damit ein einzelnes glückliches Ergebnis nicht 100 ergibt.",
       "passportCount": "Pässe",
-      "matchedCount": "Passende Prüfungen",
-      "mismatchedCount": "Verfehlte Prüfungen",
+      "matchedCount": "Passende Ergebnisse",
+      "mismatchedCount": "Verfehlte Ergebnisse",
       "disputesUpheld": "Stattgegebene Einsprüche",
       "since": "Zuerst gesehen am {when}",
       "empty": "Der Index hat diesen Agenten noch keinen Pass signieren sehen.",
       "error": "Der Index konnte nicht gelesen werden: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "Wie der Wert entsteht",
-      "formulaPlain": "Jede passende Prüfung hebt den Wert, jede verfehlte senkt ihn; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50."
+      "formulaPlain": "Jedes passende Ergebnis hebt den Wert, jedes verfehlte senkt ihn, Testläufe eingeschlossen; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50."
     },
     "signs": {
       "heading": "Wie dieser Agent signiert",
@@ -2628,7 +2630,7 @@
     "outside": "Außerhalb von Moolams Studio eingetragen: keine signierte Bestätigung, keine Websuche.",
     "seenEarlier": "Vor dem Signieren bekam die Person einen früheren Pass wie diesen gezeigt.",
     "platformStatement": "Aussage von {platform}",
-    "beforeSworn": "Über Moolam eingetragen, bevor es die signierte Bestätigung gab, deshalb trägt der Pass keine.",
+    "beforeSworn": "Eingetragen, bevor es die signierte Bestätigung gab, deshalb trägt der Pass keine.",
     "kitNoStatement": "Über das Plattform-Kit eingetragen. {platform} hat keine eigene Aussage mitgeschickt, und das Bild einer Plattform wird nicht gegen das Web geprüft.",
     "cosigned": "Signiert von {person} mit dem eigenen Passkey auf {platform}, am {date}. Der Agent von {platform} hat dasselbe Bild signiert."
   },

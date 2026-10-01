@@ -141,7 +141,7 @@
     "counts": {
       "total": "Passeports",
       "generated": "Générées",
-      "rechecked": "Contrôlées",
+      "rechecked": "Avec un verdict",
       "stated": "Avec une déclaration sur l'usage par l'IA"
     },
     "countsError": "Les totaux n'ont pas pu être lus : {reason}.",
@@ -161,7 +161,7 @@
       "generated": "Générées",
       "captured": "Photographiées",
       "edits": "Retouches",
-      "rechecked": "Contrôlées",
+      "rechecked": "Avec un verdict",
       "manifest": "Avec Content Credentials",
       "disputed": "Contestation retenue",
       "lookalike": "Enregistrées après un sosie",
@@ -185,14 +185,16 @@
     "clearAgent": "Retirer le filtre d'agent",
     "marks": {
       "manifest": "Porte des Content Credentials",
-      "rechecked": "Contrôlée sur la chaîne",
-      "chainlink": "Contrôlée par un workflow Chainlink",
+      "rechecked": "Un verdict sur la chaîne d’un auteur que Moolam ne peut pas nommer",
+      "chainlink": "Contrôlée par le réseau de Chainlink",
       "disputed": "Contestation retenue",
-      "platform": "Dessinée sur {platform}"
+      "platform": "Dessinée sur {platform}",
+      "testRun": "Essai dans le simulateur de Chainlink, pas un contrôle",
+      "unconfirmed": "Un verdict Chainlink que le réseau n’a pas confirmé, donc pas un contrôle"
     },
     "legend": {
       "manifest": "Porte des Content Credentials",
-      "rechecked": "Contrôlée sur la chaîne",
+      "rechecked": "Un verdict sur la chaîne, un contrôle seulement quand le réseau de Chainlink l’a inscrit",
       "disputed": "Contestation retenue, ici ou sur l'image dont elle est une retouche",
       "consent": "Déclaration sur l'usage par l'IA, quatre marques pour quatre usages",
       "platform": "Dessinée sur une plateforme que Moolam répertorie"
@@ -227,7 +229,7 @@
     "kicker": "Agents",
     "title": "Agents",
     "lede": "Chaque agent générateur que l'index a vu signer un passeport, avec tout ce qu'il compte pour lui. Les plus actifs en premier.",
-    "scoreMeaning": "Un indice de confiance de 0 à 100 : combien de fois les contrôles de Chainlink ont concordé avec ce que cet agent a signé. Les contestations retenues comptent double contre lui.",
+    "scoreMeaning": "Un indice de confiance de 0 à 100 : combien de fois les verdicts de Chainlink, essais dans son simulateur compris, ont concordé avec ce que cet agent a signé. Les contestations retenues comptent double contre lui.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "Comment l'indice est calculé",
     "formulaDoc": "Où l'index le compte",
@@ -237,13 +239,13 @@
     "since": "Vu pour la première fois le {when}",
     "trustScore": "Indice de confiance",
     "passports": "Passeports",
-    "matched": "Contrôles concordants",
-    "mismatched": "Contrôles manqués",
+    "matched": "Verdicts concordants",
+    "mismatched": "Verdicts manqués",
     "upheld": "Contestations retenues",
     "seeWorks": "Voir ses passeports",
     "empty": "L'index n'a encore vu aucun agent signer un passeport.",
     "error": "L'index n'a pas pu être lu : {reason}.",
-    "formulaPlain": "Chaque contrôle concordant fait monter l’indice et chaque échec le fait baisser ; une contestation retenue compte comme deux échecs. Un nouvel agent part de 50.",
+    "formulaPlain": "Chaque verdict concordant fait monter l’indice et chaque échec le fait baisser, essais compris ; une contestation retenue compte comme deux échecs. Un nouvel agent part de 50.",
     "strip": {
       "label": "Dernières images signées par cet agent"
     }
@@ -1198,11 +1200,11 @@
     "cardMissing": "La carte de cet agent n’a pas pu être lue là où elle est stockée. Réessayez dans un instant.",
     "reputation": {
       "heading": "Retours sur le tableau public d’avis des agents (ERC-8004)",
-      "empty": "Aucun retour n’a encore été enregistré pour cet agent. Moolam inscrit ses retours ici à la main, pas après chaque contrôle.",
+      "empty": "Aucun retour n’a encore été enregistré pour cet agent. Moolam inscrit ses retours ici à la main, pas après chaque verdict.",
       "error": "Le registre de réputation n’a pas pu être lu : {reason}.",
-      "body": "Les retours se trouvent sur le tableau public d’avis des agents de Monad (le registre de réputation ERC-8004), où Moolam les inscrit à la main. Cette page en lit le résumé. L’indice de confiance à côté compte les contrôles de Chainlink, donc les deux ne sont jamais additionnés.",
+      "body": "Les retours se trouvent sur le tableau public d’avis des agents de Monad (le registre de réputation ERC-8004), où Moolam les inscrit à la main. Cette page en lit le résumé. L’indice de confiance à côté compte chaque verdict de Chainlink, essais compris, donc les deux ne sont jamais additionnés.",
       "registry": "Registre {address}",
-      "secondary": "Retours inscrits à la main sur la chaîne, hors indice des contrôles",
+      "secondary": "Retours inscrits à la main sur la chaîne, hors indice des verdicts",
       "entries": "{count, plural, =1 {# entrée} other {# entrées}}",
       "latest": "Dernière valeur"
     },
@@ -1212,17 +1214,17 @@
     "index": {
       "heading": "Ce que l’index a compté",
       "trustScore": "Indice de confiance",
-      "trustScoreBody": "Sur 100, à partir des contrôles concordants, des contrôles manqués et de toute contestation retenue. Lissé, pour qu’un seul coup de chance ne suffise pas à faire 100.",
+      "trustScoreBody": "Sur 100, à partir des verdicts concordants, des verdicts manqués, essais compris, et de toute contestation retenue. Lissé, pour qu’un seul verdict chanceux ne suffise pas à faire 100.",
       "passportCount": "Passeports",
-      "matchedCount": "Contrôles concordants",
-      "mismatchedCount": "Contrôles manqués",
+      "matchedCount": "Verdicts concordants",
+      "mismatchedCount": "Verdicts manqués",
       "disputesUpheld": "Contestations retenues",
       "since": "Vu pour la première fois {when}",
       "empty": "L’index n’a pas encore vu cet agent signer un passeport.",
       "error": "L’index n’a pas pu être lu : {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "Comment l'indice est calculé",
-      "formulaPlain": "Chaque contrôle concordant fait monter l’indice et chaque échec le fait baisser ; une contestation retenue compte comme deux échecs. Un nouvel agent part de 50."
+      "formulaPlain": "Chaque verdict concordant fait monter l’indice et chaque échec le fait baisser, essais compris ; une contestation retenue compte comme deux échecs. Un nouvel agent part de 50."
     },
     "signs": {
       "heading": "Comment cet agent signe",
@@ -2640,7 +2642,7 @@
     "outside": "Enregistrée hors du studio de Moolam : aucune déclaration sur l’honneur, aucune recherche sur le web.",
     "seenEarlier": "Avant de signer, cette personne a vu un passeport antérieur comme celui-ci.",
     "platformStatement": "La déclaration de {platform}",
-    "beforeSworn": "Enregistrée via Moolam avant que la déclaration sur l’honneur n’existe, donc elle n’en porte aucune.",
+    "beforeSworn": "Enregistrée avant que la déclaration sur l’honneur n’existe, donc elle n’en porte aucune.",
     "kitNoStatement": "Enregistrée via le kit pour plateformes. {platform} n’a envoyé aucune déclaration, et l’image d’une plateforme n’est pas recherchée sur le web.",
     "cosigned": "Signée par {person} avec sa propre clé d’accès sur {platform}, le {date}. L’agent de {platform} a signé la même image."
   },
