@@ -33,6 +33,8 @@ const { fileKeepTimes } = await import("../src/sealed.js");
 const { fileCursorStore } = await import("../src/sweep.js");
 const { DAY_ACTIONS, fileDayStore, globalDay } = await import("../src/limits/globalDay.js");
 const { dailyQuota, fileQuotaStore } = await import("../src/generate/quota.js");
+const { AnswerStore } = await import("../src/challenges/store.js");
+const { answerDocument } = await import("../src/challenges/answer.js");
 type DayAction = import("../src/limits/globalDay.js").DayAction;
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -135,6 +137,35 @@ const restarts: Record<keyof typeof STATE_FILES | "queue", (dir: string) => void
   generateQuota: (dir) => quotaRestart(path.join(dir, STATE_FILES.generateQuota)),
   editQuota: (dir) => quotaRestart(path.join(dir, STATE_FILES.editQuota)),
   unsealQuota: (dir) => quotaRestart(path.join(dir, STATE_FILES.unsealQuota)),
+  webCheckDay: (dir) => {
+    const file = path.join(dir, STATE_FILES.webCheckDay);
+    const shut = { generations: 0, edits: 0, unseals: 0, links: 0 };
+    const before = globalDay({ prepares: 2, ...shut }, () => NOW, { store: fileDayStore(file) });
+    expect(before.tryTake("prepares").ok).toBe(true);
+    expect(before.tryTake("prepares").ok).toBe(true);
+
+    const after = globalDay({ prepares: 2, ...shut }, () => NOW + 60_000, { store: fileDayStore(file) });
+    expect(after.tryTake("prepares").ok).toBe(false);
+  },
+  challengeAnswers: (dir) => {
+    const file = path.join(dir, STATE_FILES.challengeAnswers);
+    const document = answerDocument({
+      registry: "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
+      passportId: PASSPORT,
+      openedAt: 1_790_000_000n,
+      challenger: "0x2222222222222222222222222222222222222222",
+      holder: "0x3333333333333333333333333333333333333333",
+      text: "I took this picture at the harbour.",
+      deadline: 1_790_003_600n,
+      signature: `0x${"ab".repeat(65)}`,
+    });
+    const digest = `0x${"cd".repeat(32)}`;
+    new AnswerStore(file).add({ digest, answerURI: "ipfs://bafkreianswer", document });
+
+    const after = new AnswerStore(file);
+    expect(after.answerFor(PASSPORT, 1_790_000_000)?.answerURI).toBe("ipfs://bafkreianswer");
+    expect(after.usedDigest(digest)).toBe(true);
+  },
 };
 
 function quotaRestart(file: string): void {

@@ -418,9 +418,11 @@ describe("a sealed registration", () => {
       "fingerprint",
       "name",
       "sealed",
+      "sworn",
       "training",
     ]);
     expect(document.sealed).toBe(true);
+    expect(document.sworn).toEqual({ text: "I made this picture, or I hold the rights to register it.", version: 1 });
     expect(document.commitment).toEqual({ algorithm: "sha-256", value: answer.passport.exactHash });
     expect(document.fingerprint.blockhash).toBe(answer.passport.blockhash256);
     expect(document.fingerprint.version).toBe(1);

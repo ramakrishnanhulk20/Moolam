@@ -13,6 +13,8 @@ export const STATE_FILES = {
   generateQuota: "quota-generate.json",
   editQuota: "quota-edit.json",
   unsealQuota: "quota-unseal.json",
+  webCheckDay: "web-check-day.json",
+  challengeAnswers: "challenge-answers.json",
 } as const;
 
 /**

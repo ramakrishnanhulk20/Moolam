@@ -17,6 +17,7 @@ import { PinRefused, PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, t
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
 import { safeReason } from "./net/errorText.js";
 import { PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } from "./prepare.js";
+import { swornSchema, type RegistrantStatements } from "./statements.js";
 import { STATE_FILES, stateFile } from "./stateDir.js";
 
 /**
@@ -96,6 +97,13 @@ export const sealedMetadataSchema = z.strictObject({
    * here, and only `true` is accepted, never the string or `false`.
    */
   privateRecheck: z.literal(true).optional(),
+  /**
+   * The registrant's own statements (L21): the sworn line, and the earlier passport the person was
+   * warned about. There is no room for `seenOnline`: a sealed picture is never sent to the web
+   * check, so a sealed document that names web pages is refused here.
+   */
+  sworn: swornSchema.optional(),
+  seenEarlier: z.string().regex(PASSPORT_ID, "seenEarlier must be a passport id: 0x and 64 lower case hex characters").optional(),
 });
 
 export type SealedMetadata = z.infer<typeof sealedMetadataSchema>;
@@ -167,6 +175,8 @@ export interface SealedMetadataInput {
   /** True when the creator asked for a private re-check and a private thumbnail was kept. */
   privateRecheck?: boolean;
   createdAt?: Date;
+  /** The sworn line and an earlier passport, already checked by registrantStatements. */
+  statements?: Pick<RegistrantStatements, "sworn" | "seenEarlier">;
 }
 
 /**
@@ -201,6 +211,8 @@ export function sealedMetadata(input: SealedMetadataInput): SealedMetadata {
     model: input.model,
     prompt: input.prompt,
     privateRecheck: input.privateRecheck === true ? true : undefined,
+    sworn: input.statements?.sworn,
+    seenEarlier: input.statements?.seenEarlier,
   });
 }
 

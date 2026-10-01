@@ -5,10 +5,23 @@ import { trainingSchema, type TrainingConsent } from "../consent.js";
 import { MAX_UPLOAD_BYTES } from "../env.js";
 import type { Platform } from "../platforms/platforms.js";
 import { BadRequest, textField, underUploadCeiling } from "../routes/shared.js";
+import { MAX_PLATFORM_STATEMENT_BYTES, platformStatementSchema } from "../statements.js";
 import type { PlatformMode } from "./signatures.js";
 
 /** Every text field a platform prepare may carry. Any other name is refused, never skipped. */
-const FIELDS = ["mode", "title", "nonce", "issuedAt", "signature", "training", "creator", "wallet", "agentId", "deliverTo"] as const;
+const FIELDS = [
+  "mode",
+  "title",
+  "nonce",
+  "issuedAt",
+  "signature",
+  "training",
+  "creator",
+  "wallet",
+  "agentId",
+  "deliverTo",
+  "platformStatement",
+] as const;
 
 type FieldName = (typeof FIELDS)[number];
 
@@ -38,6 +51,11 @@ export interface PlatformUpload {
    * only by readDeliverTo and never goes into a message this parser throws.
    */
   deliverTo: string | undefined;
+  /**
+   * The platform's own statement for the document, platform mode only, exactly as sent. Undefined
+   * when the kit sent none, and then the document carries no statement at all.
+   */
+  platformStatement: string | undefined;
 }
 
 /**
@@ -47,7 +65,8 @@ export interface PlatformUpload {
  * Throws BadRequest: 413 over the byte limit, 400 for a missing or misnamed file, a field this route
  * does not know or one sent twice, a mode other than "platform" or "cosign", a title outside 1 to 120
  * characters, a nonce that is not 32 bytes of hex, an issuedAt that is not a uint64, or terms the
- * consent contract would refuse (readTerms). UploadsBusy (503) past the ceiling.
+ * consent contract would refuse (readTerms), or a platformStatement in co-sign mode or outside its
+ * shape. UploadsBusy (503) past the ceiling.
  */
 export async function readPlatformUpload(request: FastifyRequest): Promise<PlatformUpload> {
   if (!request.isMultipart()) {
@@ -104,6 +123,19 @@ async function parse(request: FastifyRequest): Promise<PlatformUpload> {
     throw new BadRequest("issuedAt must be a whole number of unix seconds");
   }
   const signature = fields.get("signature");
+  const statement = fields.get("platformStatement");
+  if (statement !== undefined) {
+    // In co-sign mode the person swears Moolam's own line on the co-sign page, so a platform's
+    // words would sit under a signature that is not the platform's.
+    if (mode !== "platform") {
+      throw new BadRequest("platformStatement is for platform mode; in co-sign mode the person signs Moolam's sworn line");
+    }
+    if (!platformStatementSchema.safeParse(statement).success) {
+      throw new BadRequest(
+        `platformStatement must be one line of printable text with no spaces at either end, at most ${MAX_PLATFORM_STATEMENT_BYTES} bytes`,
+      );
+    }
+  }
   const claimed: PlatformUpload["claimed"] = {};
   for (const name of ["creator", "wallet", "agentId"] as const) {
     const value = fields.get(name);
@@ -119,6 +151,7 @@ async function parse(request: FastifyRequest): Promise<PlatformUpload> {
     training: readTerms(fields.get("training")),
     claimed,
     deliverTo: fields.get("deliverTo"),
+    platformStatement: statement,
   };
 }
 

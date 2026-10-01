@@ -57,6 +57,10 @@ import {
   type SignedFile,
 } from "../sealed.js";
 import { SERVICE_FAULT_REASON } from "./shared.js";
+import { registrantStatements } from "../statements.js";
+
+/** The sworn line every studio document carries (L21); the creator swears to it beside the sign button. */
+const SWORN_ONLY = registrantStatements({ voice: "sworn" });
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-agent/0.1.0";
@@ -436,6 +440,7 @@ export async function generateRoutes(
           // passport leaves it out unless the creator asked for it to be public.
           prompt: parsed.data.includePrompt === true ? parsed.data.prompt : undefined,
           privateRecheck,
+          statements: SWORN_ONLY,
         });
       } catch (error) {
         // Which field did not fit is this service's own fault to fix, so it stays in the log.
@@ -543,6 +548,7 @@ export async function generateRoutes(
               agentId: env.GENERATOR_AGENT_ID,
               fingerprint: drawn.print,
               training: parsed.data.training,
+              statements: SWORN_ONLY,
             }),
             // Which model drew it is not part of the shared document, and a generated passport is
             // worth less without it: it is the one field that says what made these pixels.

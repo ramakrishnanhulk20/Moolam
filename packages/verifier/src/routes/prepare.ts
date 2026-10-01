@@ -10,6 +10,7 @@ import { Busy } from "../generate/gate.js";
 import { privy } from "../generate/privy.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { fileDayStore, globalDay, memoryDayStore } from "../limits/globalDay.js";
 import { liveTitleReader, lookalikeBeforeSigning, pairsOf, type LookalikeAnswer } from "../lookalike/presign.js";
 import type { FingerprintPair } from "../lookalike/search.js";
 import { safeReason } from "../net/errorText.js";
@@ -52,6 +53,10 @@ import {
   type SignedFile,
 } from "../sealed.js";
 import { rateLimitKey } from "../limits/addressKey.js";
+import { STATE_FILES, stateFile } from "../stateDir.js";
+import { StatementsRefused, registrantStatements, type RegistrantStatements } from "../statements.js";
+import { liveWebDetector, webCheck, type WebCheckAnswer } from "../webcheck/check.js";
+import type { WebDetector } from "../webcheck/vision.js";
 import {
   BadRequest,
   CallerGone,
@@ -119,6 +124,21 @@ export function presignReads(options: PresignOptions = {}): Required<PresignOpti
     titleOf: options.titleOf ?? (testing ? async () => "" : liveTitleReader()),
   };
 }
+
+/** Replaces the web check's detector, for tests. Given with no detector, the web check is off. */
+export interface WebCheckOptions {
+  detector?: WebDetector;
+}
+
+/**
+ * What the creator is told when the statements their document would carry did not pass their
+ * shape. It cannot come from anything the creator sent: the words are fixed, the passport id comes
+ * from the index and the pages from the web check's own parser, so this is this service's fault.
+ */
+const STATEMENTS_REFUSED = {
+  error: "metadata-refused",
+  reason: "this service refused to publish a document that did not fit the shape it checks against, so nothing was registered. Please try again.",
+} as const;
 
 /** One verification per request, shared by the rate-limit key and the handler. */
 const identities = new WeakMap<FastifyRequest, Promise<PrivyIdentity | undefined>>();
@@ -206,13 +226,26 @@ const SEALED_FILE_REFUSED = {
  * the turns could not be taken, or the creator's wallets could not be read. It never stops a
  * registration: the person decides.
  *
+ * Every 200 answer also carries `webCheck` (L22, L23). Only a public studio upload of a captured
+ * picture is ever sent to Google Cloud Vision, by the one predicate sendsToWeb, and only after the
+ * token, the hourly limit and the day's prepare slot have passed, once the picture is made and
+ * outside the decode gate, under a ten second timeout and VISION_CHECKS_PER_DAY. What is sent is the
+ * public thumbnail, the same bytes the passport will publish. "found" carries how many pages Google
+ * named and up to ten of their addresses, and the document records exactly those as `seenOnline`;
+ * every other outcome is "silent" and records nothing.
+ *
+ * Every document pinned here carries the sworn line and its version, and `seenEarlier` with the
+ * earlier passport's id when the look-alike answer was "found" (L21). Both are the creator's own
+ * statements under their passkey signature, never a chain fact.
+ *
  * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed or privateRecheck
  * flag or training statement, 400 `private-recheck-needs-sealed` for privateRecheck without
  * sealed, 413 over the size or pixel limit or `signed-file-too-large` when signing grew the file
  * past the upload cap, 415 when the file is not an image, 422 `thumbnail-too-large` when a public
  * or privately re-checked picture's thumbnail cannot fit the Chainlink fetch budget, 422
  * `fingerprint-unstable` when the picture's own thumbnail is further from its pHash than the match
- * threshold, 409 `already-registered` when the registry already holds this exact picture, 409
+ * threshold, 500 `metadata-refused` when the document's statements did not pass their shape, 409
+ * `already-registered` when the registry already holds this exact picture, 409
  * `private-copy-not-private` when Pinata did not keep the private copy private under its name, 429
  * past the service's per-address limit, past the per-user limit, or `global-limit` once
  * GLOBAL_PREPARES_PER_DAY is spent for everyone,
@@ -224,11 +257,25 @@ const SEALED_FILE_REFUSED = {
  */
 export async function prepareRoutes(
   app: FastifyInstance,
-  options: { keys?: PrivyKeys; lookalike?: PresignOptions } = {},
+  options: { keys?: PrivyKeys; lookalike?: PresignOptions; webCheck?: WebCheckOptions } = {},
 ): Promise<void> {
   const chain = readClient();
   const reads = presignReads(options.lookalike);
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
+  const detector = options.webCheck === undefined ? liveWebDetector() : options.webCheck.detector;
+  // The studio's day counter, with its fail-closed file, reused under its own file: only its
+  // "prepares" count is taken, once per picture sent to Vision, and every other action is shut.
+  const visionFile = stateFile(STATE_FILES.webCheckDay);
+  const visionDay = globalDay(
+    { prepares: env.VISION_CHECKS_PER_DAY, generations: 0, edits: 0, unseals: 0, links: 0 },
+    Date.now,
+    {
+      store: visionFile === undefined ? memoryDayStore() : fileDayStore(visionFile),
+      log: (line) => {
+        app.log.warn(line);
+      },
+    },
+  );
 
   // A route with a limit of its own gets only that one from @fastify/rate-limit 11, never the
   // service-wide one as well, so a caller signed in as several accounts was held to nothing per
@@ -452,6 +499,22 @@ export async function prepareRoutes(
           { creators: async () => await reads.walletsOf(identity.userId), titleOf: reads.titleOf },
           Math.floor(Date.now() / 1000),
         );
+        // Started beside the look-alike search and the pins, after every gate in front of it. The
+        // predicate inside decides whether anything leaves; a sealed upload never does.
+        const web: Promise<WebCheckAnswer> = webCheck({
+          subject: { route: "studio", kind: HUMAN_KIND, sealed: upload.sealed, platform: false, generated: false },
+          picture: published?.thumbnail,
+          detector,
+          takeSlot: () => visionDay.tryTake("prepares"),
+          log: request.log,
+        });
+        // Both are read before any document is built, because what they found goes into it.
+        const statementsFrom = (found: LookalikeAnswer, seen: WebCheckAnswer): RegistrantStatements =>
+          registrantStatements({
+            voice: "sworn",
+            ...(found.state === "found" ? { seenEarlier: found.passportId } : {}),
+            ...(seen.state === "found" ? { seenOnline: { count: seen.count, pages: seen.pages } } : {}),
+          });
 
         const slug = fileSlug(upload.title, studio.print.sha256);
         const passport = (metadataURI: string): Record<string, unknown> => ({
@@ -467,6 +530,8 @@ export async function prepareRoutes(
         });
 
         if (published === undefined) {
+          const found = await lookalike;
+          const seen = await web;
           let document;
           try {
             document = sealedMetadata({
@@ -476,6 +541,7 @@ export async function prepareRoutes(
               fingerprint: studio.print,
               training: upload.training,
               privateRecheck: upload.privateRecheck,
+              statements: statementsFrom(found, seen),
             });
           } catch (error) {
             // The words that say which field did not fit are this service's own fault to fix, and
@@ -547,7 +613,8 @@ export async function prepareRoutes(
             sealed: true,
             ...(privateCopy === undefined ? {} : { privateRecheck: true }),
             signedFile: file,
-            lookalike: await lookalike,
+            lookalike: found,
+            webCheck: seen,
           });
         }
 
@@ -589,6 +656,15 @@ export async function prepareRoutes(
 
         const image = imagePin.value;
         const thumbnail = thumbnailPin.value;
+        const [found, seen] = await Promise.all([lookalike, web]);
+        let statements: RegistrantStatements;
+        try {
+          statements = statementsFrom(found, seen);
+        } catch (error) {
+          if (!(error instanceof StatementsRefused)) throw error;
+          request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /prepare statements refused");
+          return reply.code(500).send(STATEMENTS_REFUSED);
+        }
         const metadata = passportMetadata({
           title: upload.title,
           description: CAPTURED_DESCRIPTION,
@@ -598,6 +674,7 @@ export async function prepareRoutes(
           agentId: NO_AGENT,
           fingerprint: published.print,
           training: upload.training,
+          statements,
         });
 
         let pinnedMetadata;
@@ -626,7 +703,8 @@ export async function prepareRoutes(
           manifest: manifestAnswer(published),
           training: trainingStatement(upload.training),
           preparedBy: identity.userId,
-          lookalike: await lookalike,
+          lookalike: found,
+          webCheck: seen,
         });
       } finally {
         if (!pinned) {

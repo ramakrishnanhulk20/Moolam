@@ -9,7 +9,10 @@
 // route reads the chain or a gateway while a request waits, and both sit under the service's 60 a
 // minute per address and a ceiling of their own (L18). The look-alike records come from
 // LookalikeChecked events read by the background refresh, counted only at or after activation,
-// and the network verdict from the index's own attestation rows.
+// and the network verdict from the index's own attestation rows. Once the index serves its own
+// Lookalike rows (WO-276) they replace the chain scan, which stands in only while the index has no
+// such entity and is asked again after ten minutes; an index that served them and then fails a read
+// leaves the backlog not-ready.
 // Does NOT cover the live index, a real RPC or the gateway: the index is a stub source or a local
 // mock GraphQL server, the chain a stub, the documents a stub reader. The prepare warning is
 // test/lookalike-presign.test.ts, the rule file itself test/lookalike-rule.test.ts.
@@ -19,6 +22,8 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HammingIndex } from "../src/index.js";
 import { NETWORK_RECEIVER, type BacklogSettings } from "../src/lookalike/backlog.js";
+import { INDEX_ABSENT_RETRY_MS, lookalikeKnowledge } from "../src/lookalike/knowledge.js";
+import { envioLookalikeReader, type IndexedLookalikes, type LookalikeIndexReader } from "../src/lookalike/indexRecords.js";
 import { LEDGER_CHUNK_BLOCKS, type LedgerChain, type LedgerLog } from "../src/lookalike/ledger.js";
 import { UnreachableTarget } from "../src/net/safeFetch.js";
 import { buildServer } from "../src/server.js";
@@ -83,6 +88,7 @@ async function serve(
     readDocument?: (uri: string) => Promise<unknown>;
     chain?: LedgerChain;
     ceilings?: { candidates?: number; backlog?: number };
+    index?: LookalikeIndexReader;
   } = {},
 ): Promise<FastifyInstance> {
   app = await buildServer({
@@ -92,6 +98,7 @@ async function serve(
     lookalikes: {
       settings: options.settings ?? {},
       clock: () => NOW * 1000,
+      ...(options.index === undefined ? {} : { index: options.index }),
       ...(options.readDocument === undefined ? {} : { readDocument: options.readDocument }),
       ...(options.chain === undefined ? {} : { chain: options.chain }),
       ...(options.ceilings === undefined ? {} : { ceilings: options.ceilings }),
@@ -472,5 +479,105 @@ describe("the backlog's two sources of knowledge", () => {
       status: "ok",
       passports: [idFrom(2), idFrom(3), idFrom(4), idFrom(5)],
     });
+  });
+});
+
+describe("the index's Lookalike rows replace the chain scan", () => {
+  const BOTH: BacklogSettings = { activation: ACTIVATION, receiver: RECEIVER };
+  const originals = (): PassportRecord[] => [1, 2, 3].map((byte) => passport(byte, 100 + byte, { networkVerdict: true }));
+
+  /** An index reader that answers `next` and counts how often it was asked. */
+  function indexReader(next: () => IndexedLookalikes) {
+    const asked: number[] = [];
+    const read: LookalikeIndexReader = async (activation) => {
+      asked.push(activation);
+      return next();
+    };
+    return { read, asked };
+  }
+
+  it("reads the records from the index once it serves them, and never scans the chain", async () => {
+    const { chain, calls } = ledgerChain([checked(idFrom(1), ACTIVATION + 5, 18_100n)]);
+    const { read, asked } = indexReader(() => ({ kind: "rows", newest: new Map([[idFrom(2), ACTIVATION + 9]]) }));
+    const server = await serve(originals(), { settings: BOTH, readDocument: documents().read, chain, index: read });
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+
+    // Passport 2 has its record in the index; the chain's record for passport 1 was never read.
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [idFrom(1), idFrom(3)] });
+    expect(asked).toEqual([ACTIVATION]);
+    expect(calls.logs).toEqual([]);
+    expect(calls.blocks).toBe(0);
+  });
+
+  it("scans the chain while the index has no Lookalike entity, and asks the index again after ten minutes", async () => {
+    let now = NOW * 1000;
+    const { chain, calls } = ledgerChain([checked(idFrom(1), ACTIVATION + 5, 18_100n)]);
+    let answer: IndexedLookalikes = { kind: "absent" };
+    const { read, asked } = indexReader(() => answer);
+    const knowledge = lookalikeKnowledge({ settings: BOTH, readDocument: documents().read, chain, index: read, clock: () => now });
+    const passports = new Map(originals().map((record) => [record.id, record]));
+
+    await knowledge.refresh(passports);
+    expect(knowledge.view().records?.newestAt(idFrom(1))).toBe(ACTIVATION + 5);
+    expect(calls.logs.length).toBeGreaterThan(0);
+
+    now += INDEX_ABSENT_RETRY_MS - 1;
+    await knowledge.refresh(passports);
+    expect(asked).toHaveLength(1);
+
+    answer = { kind: "rows", newest: new Map([[idFrom(3), ACTIVATION + 1]]) };
+    now += 1;
+    const scansBefore = calls.logs.length;
+    await knowledge.refresh(passports);
+    expect(asked).toHaveLength(2);
+    expect(knowledge.view().records?.newestAt(idFrom(3))).toBe(ACTIVATION + 1);
+    expect(knowledge.view().records?.newestAt(idFrom(1))).toBeUndefined();
+    await knowledge.refresh(passports);
+    expect(calls.logs.length).toBe(scansBefore);
+  });
+
+  it("says not-ready once an index that served the rows fails a read, never an older list", async () => {
+    let answer: IndexedLookalikes = { kind: "rows", newest: new Map([[idFrom(2), ACTIVATION + 9]]) };
+    const { read } = indexReader(() => answer);
+    const { chain, calls } = ledgerChain([]);
+    const server = await serve(originals(), { settings: BOTH, readDocument: documents().read, chain, index: read });
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+    expect((await backlog(server, "asOf=500&n=7")).json).toMatchObject({ status: "ok" });
+
+    answer = { kind: "failed", reason: "the index answered 502" };
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "not-ready" });
+    expect(calls.logs).toEqual([]);
+  });
+
+  it("reads the rows page by page, keeps only records at or after activation, and tells a missing entity from a failed read", async () => {
+    const pages: unknown[] = [];
+    const answers: unknown[] = [];
+    const fetcher = (async (_url: string, init?: RequestInit) => {
+      pages.push(JSON.parse(String(init?.body)));
+      const next = answers.shift();
+      if (next instanceof Response) return next;
+      return new Response(JSON.stringify(next), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const reader = envioLookalikeReader("https://index.example/v1/graphql", fetcher);
+
+    const full = Array.from({ length: 500 }, (_unused, at) => ({ id: idFrom(at % 200), executedAt: String(ACTIVATION + at) }));
+    answers.push({ data: { Lookalike: full } }, { data: { Lookalike: [{ id: idFrom(0xfe), executedAt: ACTIVATION - 1 }] } });
+    const rows = await reader(ACTIVATION);
+    expect(rows.kind).toBe("rows");
+    const newest = (rows as { newest: Map<Hex, number> }).newest;
+    expect(newest.get(idFrom(1))).toBe(ACTIVATION + 401);
+    expect(newest.has(idFrom(0xfe))).toBe(false);
+    expect((pages[1] as { variables: { after: string } }).variables.after).toBe(idFrom(499 % 200));
+
+    answers.push({ errors: [{ message: "field 'Lookalike' not found in type: 'query_root'", extensions: { code: "validation-failed" } }] });
+    expect(await reader(ACTIVATION)).toEqual({ kind: "absent" });
+
+    answers.push({ errors: [{ message: "database query error", extensions: { code: "unexpected" } }] });
+    expect((await reader(ACTIVATION)).kind).toBe("failed");
+    answers.push(new Response("bad gateway", { status: 502 }));
+    expect((await reader(ACTIVATION)).kind).toBe("failed");
+    answers.push({ data: { Lookalike: [{ id: "not-an-id", executedAt: "1" }] } });
+    expect((await reader(ACTIVATION)).kind).toBe("failed");
   });
 });

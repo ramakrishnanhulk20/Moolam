@@ -46,6 +46,7 @@ import {
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
 import { readPassport } from "../unseal.js";
+import { registrantStatements } from "../statements.js";
 import {
   BadRequest,
   CallerGone,
@@ -455,6 +456,8 @@ async function append(
             manifest: manifestPin.value?.uri,
             agentId: NO_AGENT,
             fingerprint: edited.print,
+            // The sworn line every studio document carries (L21), confirmed beside the edit button.
+            statements: registrantStatements({ voice: "sworn" }),
           }),
           // The chain records the parent id, and these two are the human readable half of the same
           // link: which passport this came from, and what the creator says they changed.

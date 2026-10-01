@@ -24,6 +24,7 @@ import { HammingIndex } from "./index.js";
 import { defaultDayStore, globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { NETWORK_RECEIVER, lookalikeHalfOn, type BacklogSettings } from "./lookalike/backlog.js";
 import { lookalikeKnowledge, type LookalikeKnowledge } from "./lookalike/knowledge.js";
+import { envioLookalikeReader, type LookalikeIndexReader } from "./lookalike/indexRecords.js";
 import type { LedgerChain } from "./lookalike/ledger.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { safeReason } from "./net/errorText.js";
@@ -38,12 +39,13 @@ import type { PlatformLimits } from "./platform/stores.js";
 import { loadPlatforms } from "./platforms/platforms.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
+import { challengeRoutes, type ChallengeRouteOptions } from "./routes/challenges.js";
 import { claimRoutes } from "./routes/claims.js";
 import { healthRoutes } from "./routes/health.js";
 import { lookalikeRoutes } from "./routes/lookalikes.js";
 import { mcpRoutes, type McpRouteOptions } from "./routes/mcp.js";
 import { platformRoutes } from "./routes/platform.js";
-import { prepareRoutes, type PresignOptions } from "./routes/prepare.js";
+import { prepareRoutes, type PresignOptions, type WebCheckOptions } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
 import { privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
 import { BadRequest } from "./routes/shared.js";
@@ -549,6 +551,10 @@ export function sourceFromEnv(): PassportSource {
  * service nothing to take and nothing to serve. Its three runner routes need RUNNER_TOKEN and say
  * so with a 503 when the host has not set one.
  *
+ * The challenge answer routes are mounted on any host with PINATA_JWT, since an answer is pinned,
+ * or when a caller hands in its own options. Under a test runner their chain read is off and both
+ * answer 503 unless a test hands in its own.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -571,8 +577,11 @@ export async function buildServer(
     source?: PassportSource;
     logger?: boolean;
     payments?: x402HTTPResourceServer;
-    /** Replaces the Privy key set, and the wallet and title reads behind the look-alike warning. */
-    prepare?: { keys?: PrivyKeys; lookalike?: PresignOptions };
+    /**
+     * Replaces the Privy key set, the wallet and title reads behind the look-alike warning, and the
+     * web check's detector.
+     */
+    prepare?: { keys?: PrivyKeys; lookalike?: PresignOptions; webCheck?: WebCheckOptions };
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
     unseal?: { keys?: PrivyKeys };
@@ -622,7 +631,10 @@ export async function buildServer(
       chain?: LedgerChain;
       ceilings?: { candidates?: number; backlog?: number };
       clock?: () => number;
+      index?: LookalikeIndexReader;
     };
+    /** Mounts the challenge answer routes with this chain, store, pin and ceilings, for tests. */
+    challenges?: ChallengeRouteOptions;
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -771,6 +783,12 @@ export async function buildServer(
     chain:
       options.lookalikes?.chain ??
       (env.NODE_ENV === "test" || !lookalikeHalfOn(lookalikeSettings) ? undefined : (readClient() as unknown as LedgerChain)),
+    // The index's own Lookalike rows replace the chain scan once the index serves them (WO-276).
+    index:
+      options.lookalikes?.index ??
+      (env.NODE_ENV === "test" || !lookalikeHalfOn(lookalikeSettings) || env.PASSPORT_SOURCE !== "envio" || env.ENVIO_GRAPHQL_URL === undefined
+        ? undefined
+        : envioLookalikeReader(env.ENVIO_GRAPHQL_URL)),
   });
   app.decorate("lookalikes", lookalikes);
 
@@ -901,6 +919,8 @@ export async function buildServer(
   const generatorClosed = (): string | undefined => generator?.closed();
   // Set once the platform routes are registered below, which the route list reads on every call.
   let platformMounted = false;
+  // The holder's answer pins its document, so it rides on the one variable a pin needs.
+  const canAnswer = options.challenges !== undefined || env.PINATA_JWT !== undefined;
   // Set with them: the claim service the prepare's deliverTo, the deliveries and the person routes share.
   let claims: ClaimSetup | undefined;
 
@@ -973,6 +993,9 @@ export async function buildServer(
         "verify",
         ...(mounts["verify/paid"] ? ["verify/paid"] : []),
         "mcp",
+        "lookalikes/candidates",
+        "lookalikes/backlog",
+        "recheck",
         ...(mounts.prepare ? ["prepare"] : []),
         ...(generating ? ["generate"] : []),
         ...(mounts.edit ? ["edit"] : []),
@@ -980,6 +1003,7 @@ export async function buildServer(
         ...(canUnseal ? ["sealed"] : []),
         ...(platformMounted ? ["platform/prepare", "platform/record", "platform/sign", "platform/status"] : []),
         ...(platformMounted && claims?.open === true ? ["platform/deliveries", "claims"] : []),
+        ...(canAnswer ? ["challenges/answer"] : []),
         "health",
       ];
     },
@@ -1111,6 +1135,12 @@ export async function buildServer(
 
   if (payments !== undefined) {
     await app.register(verifyPaidRoutes, { payments });
+  }
+
+  if (canAnswer) {
+    await app.register(challengeRoutes, options.challenges ?? {});
+  } else {
+    app.log.info("challenge answer routes off: they pin the holder's answer, which needs PINATA_JWT, and this host has none");
   }
 
   // Mounted only on a list whose every entry's signatures check out: a refused list is no platform

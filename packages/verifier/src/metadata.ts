@@ -2,6 +2,7 @@ import { trainingStatement, type TrainingConsent, type TrainingStatement } from 
 import type { Hex } from "./fingerprint.js";
 import type { Fingerprint } from "./fingerprint.js";
 import type { PreparedImage } from "./prepare.js";
+import type { RegistrantStatements } from "./statements.js";
 
 /** The fingerprint recipe the registry records. Bump it only when the hashes themselves change. */
 export const FINGERPRINT_VERSION = 1;
@@ -58,6 +59,10 @@ export interface PassportMetadata {
   /** Only when the creator said something about AI use. No key at all means they did not. */
   training?: TrainingStatement;
   createdAt: string;
+  sworn?: RegistrantStatements["sworn"];
+  platformStatement?: string;
+  seenEarlier?: string;
+  seenOnline?: RegistrantStatements["seenOnline"];
 }
 
 export interface PassportMetadataInput {
@@ -75,6 +80,8 @@ export interface PassportMetadataInput {
   /** What the creator said about AI use, exactly as the request stated it. */
   training?: TrainingConsent;
   createdAt?: Date;
+  /** What the registrant says in their own voice, already checked by registrantStatements. */
+  statements?: RegistrantStatements;
 }
 
 /**
@@ -86,7 +93,9 @@ export interface PassportMetadataInput {
  *
  * What the creator said about AI use rides in this document as well as inside the signed manifest,
  * because the creator's passkey signs the address of this document: a statement written here is
- * covered by that signature, while one added later would not be.
+ * covered by that signature, while one added later would not be. The sworn line, an earlier
+ * passport the person was warned about and the pages the web check found ride here for the same
+ * reason, as the registrant's own statements (L21).
  */
 export function passportMetadata(input: PassportMetadataInput): PassportMetadata {
   return {
@@ -107,6 +116,7 @@ export function passportMetadata(input: PassportMetadataInput): PassportMetadata
     },
     training: trainingStatement(input.training),
     createdAt: (input.createdAt ?? new Date()).toISOString(),
+    ...input.statements,
   };
 }
 

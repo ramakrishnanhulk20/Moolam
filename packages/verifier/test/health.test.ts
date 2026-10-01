@@ -1,6 +1,6 @@
 // Covers what GET /health answers: liveness, the index size, the package version, the list of
-// routes this host mounted, in the documented order with /mcp and the four platform routes among
-// them, how much of the day's budget for everyone is gone, the private copy sweep's mode and last
+// routes this host mounted, in the documented order with /mcp, the two look-alike routes, the
+// re-check queue, the four platform routes and the challenge answer among them, how much of the day's budget for everyone is gone, the private copy sweep's mode and last
 // run, and that the probe is never rate-limited, since a probe that can be refused would read as
 // an outage.
 // The generate route and the paid route are switched off below so the list is the same on any
@@ -27,6 +27,8 @@ vi.hoisted(() => {
   // POST /unseal and POST /sealed/forget read the holder's wallets from Privy, which needs the app
   // secret; set here so the list below does not depend on the developer's own .env.
   process.env.PRIVY_APP_SECRET = "test-app-secret-not-a-real-one";
+  // The challenge answer routes ride on a pin token, so the list does not depend on the .env either.
+  process.env.PINATA_JWT = "test-token-not-a-real-pinata-jwt";
 });
 
 const { buildServer } = await import("../src/server.js");
@@ -58,6 +60,9 @@ describe("GET /health", () => {
     expect(response.json().routes).toEqual([
       "verify",
       "mcp",
+      "lookalikes/candidates",
+      "lookalikes/backlog",
+      "recheck",
       "prepare",
       "edit",
       "unseal",
@@ -66,6 +71,7 @@ describe("GET /health", () => {
       "platform/record",
       "platform/sign",
       "platform/status",
+      "challenges/answer",
       "health",
     ]);
   });

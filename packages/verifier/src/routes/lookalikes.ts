@@ -25,7 +25,7 @@ export const AS_OF_SKEW_S = 60;
  */
 export const ROUTE_CEILINGS = { candidates: 600, backlog: 120 } as const;
 
-const WINDOW_MS = 60_000;
+export const WINDOW_MS = 60_000;
 
 const pairSchema = z.strictObject({
   phash: z.string().regex(/^0x[0-9a-fA-F]{16}$/, "phash must be 0x followed by 16 hex characters"),
@@ -57,7 +57,7 @@ export interface LookalikeRouteOptions {
  * A count of every caller's requests to one route in the current minute. Kept in this process's
  * memory: two hosts would each allow the full ceiling, which DEPLOY.md's one host never meets.
  */
-function ceiling(max: number, clock: () => number): () => boolean {
+export function ceiling(max: number, clock: () => number): () => boolean {
   let windowStart = 0;
   let used = 0;
   return () => {

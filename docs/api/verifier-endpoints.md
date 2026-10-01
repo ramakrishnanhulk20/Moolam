@@ -4,13 +4,14 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Twenty-nine routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
+Thirty-one routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
 tool call as a short event stream. The service listens on `VERIFIER_PORT`, which defaults to 4000.
-Twenty of the twenty-nine are mounted only when the host is configured for them: `/verify/paid` needs
+Twenty-two of the thirty-one are mounted only when the host is configured for them: `/verify/paid` needs
 `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, `/generate` and `/edit` each need
 those plus their own keys, the two `/unseal` routes and the three `/sealed` routes need exactly what
 `/prepare` needs, and the four `/platform` routes need that plus `PRIVY_APP_SECRET` and a platform
-list that loads. The five `/claims` routes and the two `/platform/deliveries` routes are mounted
+list that loads. The two [`/challenges`](#post-challengespassportidanswer) routes need `PINATA_JWT`,
+because an answer is pinned. The five `/claims` routes and the two `/platform/deliveries` routes are mounted
 with the `/platform` routes, and answer `503` `claims-unavailable` until the host has both
 `CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`. An unmounted route answers `404` like any other path that does not exist. The five
 `/recheck` routes, the two `/lookalikes` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
@@ -721,7 +722,10 @@ the caller already has them, and the answer has to sit in a browser's memory nex
     | { state: "found", passportId: `0x${string}`, title: string, registeredAt: number }
     | { state: "yours", passportId: `0x${string}` }
     | { state: "none", indexAt: number }
-    | { state: "unchecked" }
+    | { state: "unchecked" },
+  webCheck:                        // on every 200, public and sealed alike, see below
+    | { state: "found", count: number, pages: string[] }
+    | { state: "silent" }
 }
 ```
 
@@ -743,7 +747,42 @@ is strictly before the current second, so one registered in the same second neve
   or the creator's wallets could not be read within 5 seconds. A screen says so in words; it never
   draws this as nothing found.
 
-The warning never stops the prepare and never changes the pinned files: the person decides.
+The warning never stops the prepare: the person decides. When it says `found`, the pinned document
+records that passport's id as `seenEarlier`, see below.
+
+**The web check.** For a public upload, and only then, the service asks Google Cloud Vision's web
+detection whether the picture is already on other web pages. One rule decides what is sent: a studio
+upload, of kind Captured, not sealed. A sealed picture, a platform's picture and a picture Moolam's
+agent drew are never sent. What leaves is the picture's public thumbnail, the same bytes the
+passport publishes, and only after the token, the hourly limit and the day's prepare slot have let
+the caller through. The key travels in a request header, never in an address, and redirects are
+refused. Vision gets 10 seconds.
+
+- `found` carries `count`, how many distinct pages Google listed as showing the picture whole or in
+  part, and `pages`, the first ten of them. Each page is kept only as an `http` or `https` address
+  with a host, with its query, fragment and any user name dropped, and at most 256 characters; a
+  longer one is left out, never cut. They are text to read, never links to follow.
+- `silent` is every other outcome: no pages, a failed or unreadable answer, a timeout, a host with no
+  `GOOGLE_VISION_API_KEY`, `VISION_CHECKS_PER_DAY` spent or `0`, or a picture the rule never sends.
+  It never means "not online", and a screen must not say so.
+
+`VISION_CHECKS_PER_DAY` (default 300) bounds the pictures sent in one UTC day for everyone, kept in
+the data folder across restarts; `0` switches the check off without a deploy. By Google's own terms
+an online request's picture is held in memory only and is not used for training.
+
+**What the pinned document says in the creator's voice.** Every document this route pins, public or
+sealed, carries the sworn line the studio shows beside the sign button, with its version:
+
+```json
+"sworn": { "text": "I made this picture, or I hold the rights to register it.", "version": 1 }
+```
+
+With a `found` look-alike it also carries `"seenEarlier": "0x<passport id, lower case>"`, and with a
+`found` web check `"seenOnline": { "count": n, "pages": [...] }`, exactly the count and pages the
+answer shows. A sealed document never has `seenOnline`. All three are checked against their shape
+before the pin, and the creator's passkey signs the address of the document that holds them. They are
+the creator's own statements, never a fact the chain checked. Documents pinned by
+[`/generate`](#post-generate) and [`/edit`](#post-edit) carry the same sworn line.
 
 The browser adds its own wallet address and a deadline to those passport fields, reads
 `hashPassport` from the registry, signs that digest with the creator's passkey and sends `register`
@@ -819,6 +858,7 @@ and the byte check after signing looks only for text values held under place or 
 | `413` | `{ "error": "signed-file-too-large", "limit": 20971520, "reason": "..." }`. Signing re-encodes at quality 95 and adds the manifest store, so an upload under the cap can come out over it, and a registered file over it could never come back through `/verify` or `/unseal`. Refused before anything is pinned or handed back, and the day's slot is given back |
 | `415` | The file is not a JPEG, PNG or WebP, or is one the service cannot decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not. Any other format, an SVG above all, is refused by its file signature before anything renders it or takes a place at the shared decode gate |
 | `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The picture's own thumbnail lands more than 10 of 64 pHash bits from the picture, so its Chainlink re-check would read a mismatch and no copy of it could be matched. See [Fingerprints](../concepts/fingerprints). Nothing is pinned and the day's slot is given back |
+| `500` | `{ "error": "metadata-refused", "reason": "..." }` or, sealed, `sealed-metadata-refused`. The document's statements did not fit the shape they are checked against, which nothing a caller sends can cause. Nothing is registered |
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. A plain sealed prepare is held to the thumbnail an unseal would publish and is refused the same way, since that passport could never be unsealed; the `reason` says a public passport could never be re-checked and a sealed one could never be unsealed. With `privateRecheck` the private copy is held to the budget, and the `reason` says a private re-check could never open it. Nothing is pinned and the day's slot is given back |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
@@ -1693,9 +1733,10 @@ identifies and meters the platform and authorises nothing else.
 | `signature` | text | The agent owner's 65 byte EIP-712 signature over the PlatformPrepare below |
 | `training` | text | Optional. The AI-use terms as JSON, by the same rule as [`/prepare`](#post-prepare), with no space at either end of `constraintInfo` |
 | `creator`, `wallet`, `agentId` | text | Optional. In platform mode a body may repeat the creator wallet and agent id its key is listed with, and never name others. In co-sign mode it may name no creator or wallet at all |
+| `platformStatement` | text | Optional, platform mode only. The platform's own statement about the picture, written into the pinned document byte for byte as `platformStatement`, in place of the sworn line a person signs in the studio. One line of printable text, no space at either end, at most 1,000 bytes. Left out, the document carries no statement |
 | `deliverTo` | text | Optional, platform mode only. JSON of exactly `{ "email": string, "verifiedBy": "google" \| "email-code" \| "platform" }`, at most 2,048 bytes, for a passport that waits for that person's email at Moolam. The address is hashed under the service's claim pepper and goes into no answer, log line or error; see [Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email) |
 
-Those eleven names, `file` and the ten text parts, are the only ones read. Any other part name, or a
+Those twelve names, `file` and the eleven text parts, are the only ones read. Any other part name, or a
 part sent twice, is a `400`.
 
 The PlatformPrepare the agent's owner signs:
@@ -1775,7 +1816,9 @@ computed before the pin.
 ```
 
 `lookalike` is the warning described under [`/prepare`](#post-prepare), with the platform's own
-creator wallet as the creator: its earlier passports read `yours`.
+creator wallet as the creator: its earlier passports read `yours`. When it says `found`, the pinned
+document records `seenEarlier` as under `/prepare`. A platform's picture is never sent to the web
+check, so there is no `webCheck` here and no `seenOnline` in the document.
 
 With `deliverTo`, a ticket is written pending after the pins and opens once the chain shows the
 passport under the platform's wallet. `deliverNow` appears only when the person behind that address
@@ -1802,7 +1845,8 @@ signed (P6).
 ```
 
 In co-sign mode the creator is whoever opens the link, unknown at this point, so every earlier
-look-alike reads `found` and none reads `yours`.
+look-alike reads `found` and none reads `yours`. The frozen document carries the sworn line the
+person signs on the co-sign page, as under `/prepare`, and `seenEarlier` with a `found` look-alike.
 
 The service keeps only the handle's sha256. The person's link is `https://moolam.vercel.app/cosign#<handle>`.
 
@@ -1810,6 +1854,7 @@ The service keeps only the handle's sha256. The person's link is `https://moolam
 | --- | --- |
 | `200` | The fields, as above |
 | `400` | A missing or misnamed file, an unknown or repeated part, a mode, title, nonce or `issuedAt` out of shape, or terms the consent contract would refuse |
+| `400` | `platformStatement` sent in co-sign mode, or not one line of printable text with no space at either end and at most 1,000 bytes. Nothing is spent |
 | `400` | `deliverTo`: the field was sent in co-sign mode, or is not JSON of exactly an email and one of the three `verifiedBy` words, is over 2,048 bytes, or holds an address the service's one email rule refuses. Only the field's name comes back, never its value |
 | `401` | `unauthorized`: no key, or one no current entry holds. `agent-signature-required`: no `signature` part |
 | `403` | `platform-mismatch` with the `field`: the body named a creator, wallet or agent the key is not listed with |
@@ -1826,6 +1871,7 @@ The service keeps only the handle's sha256. The person's link is `https://moolam
 | `429` | `pending-full`: this platform's waiting co-signs already hold 100 MiB of frozen files |
 | `429` | `deliver-full`: with `deliverTo`, a ticket cap is reached: 20 tickets from this key for that address inside a ticket's 180 day life, whatever became of them, 1,000 of this key's tickets still waiting, or 20,000 tickets on the service |
 | `500` | `signed-file-refused`: the signed file did not hash to the passport id. Nothing was pinned |
+| `500` | `metadata-refused`: the document's statements did not fit their shape. Nothing was pinned |
 | `502` | `sign-failed` or `pin-failed` |
 | `503` | `claims-unavailable`: with `deliverTo`, the host's claim routes are closed (no `CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`), or the ticket file could not be read |
 | `503` | `chain-unreachable`, `busy`, `service-fault`, `cosign-unavailable` (nowhere to freeze files), `pending-full` (5,000 waiting co-signs on the service), `closed` (the replay memory could not be believed after a restart, so every prepare is refused for ten minutes) or `full` (the replay memory holds 20,000 entries) |
@@ -2130,6 +2176,102 @@ stops writing tickets (P26, P38).
 | `401` | `unauthorized` |
 | `409` | `record-refused` |
 | `429`, `502`, `503` | As in the order of checks above |
+
+## POST /challenges/:passportId/answer
+
+The holder of a challenged passport answers the challenge, once, with their wallet and no gas. The
+answer is pinned to IPFS and its address comes back; pages draw it beside the dispute it answers.
+
+Mounted on any host with `PINATA_JWT`. Under the service's 60 a minute per address, and 120 a minute
+for everyone together.
+
+**Request.** JSON, at most 32 KB:
+
+```ts
+{
+  text: string,       // the answer: 1 to 4,000 bytes of UTF-8, printable, one line, no control,
+                      // line-break or direction characters; never rewritten
+  deadline: number,   // unix seconds; the answer is refused after it, by chain time
+  signature: string   // 0x and 130 hex characters: a plain 65 byte wallet signature
+}
+```
+
+The holder's wallet signs this EIP-712 typed data:
+
+```ts
+{
+  domain: { name: "Moolam", version: "1", chainId: 143, verifyingContract: "<registry>" },
+  types: {
+    ChallengeAnswer: [
+      { name: "passportId", type: "bytes32" },
+      { name: "openedAt", type: "uint64" },     // getDispute(passportId).openedAt
+      { name: "challenger", type: "address" },  // getDispute(passportId).challenger
+      { name: "answerHash", type: "bytes32" },  // sha256 of the text's UTF-8 bytes
+      { name: "deadline", type: "uint64" },
+    ],
+  },
+  primaryType: "ChallengeAnswer",
+}
+```
+
+**What is checked, in one call.** The service reads `getDispute(passportId)` and `ownerOf` on the
+registry at one block and judges everything against that block's time. It accepts the answer only
+while that dispute is `Open`, no later than 14 days after its `openedAt`, no later than `deadline`,
+and only when the signature, recovered by the rules the registry's ECDSA applies (65 bytes, `v` of
+27 or 28, `s` in the lower half), is the holder's. Only a plain wallet signature counts: a contract
+wallet's ERC-1271 signature is not checked against its contract and is refused. The signature binds
+the passport, this very dispute and this text, so it cannot be carried to another passport, a later
+challenge or other words. One answer per dispute; a signature already used is refused.
+
+**The pinned document.**
+
+```ts
+{
+  kind: "moolam-challenge-answer",
+  version: 1,
+  chainId: 143,
+  registry: `0x${string}`,
+  passportId: `0x${string}`,   // lower case
+  openedAt: number,            // the dispute it answers
+  challenger: `0x${string}`,
+  holder: `0x${string}`,       // the wallet that signed, the holder at that block
+  text: string,
+  answerHash: `0x${string}`,
+  deadline: number,
+  signature: `0x${string}`,
+  note: string
+}
+```
+
+Anyone can check it against the chain and the holder's key without this service. It is the holder's
+own words: Moolam checks who signed it, which dispute it names, its size and that it is plain text,
+and judges nothing else. The text goes into no log line.
+
+| Code | When |
+| --- | --- |
+| `200` | `{ "answerURI": "ipfs://<cid>" }` |
+| `400` | A passport id that is not `0x` and 64 hex characters, a body of another shape, or a `text` that breaks the rule above. Nothing is read from the chain |
+| `403` | `not-the-holder`: the signature does not recover to the passport's holder for this text, this dispute and this deadline. `answer-expired` with `chainTime`: the deadline has passed |
+| `409` | `no-open-dispute`, `answer-window-closed` (more than 14 days after `openedAt`), `already-answered` with the `answerURI`, `signature-used`, `answering` (another answer for this dispute is being pinned now) or `no-holder` |
+| `429` | The service's per-address limit, or `route-limit` with `retry-after` |
+| `502` | `pin-failed`: nothing was kept, and the holder may send the same answer again |
+| `503` | `chain-unreachable`, or `answers-unavailable` when the answers file could not be believed after a restart |
+
+## GET /challenges/:passportId/answer
+
+The pinned answer for the dispute the chain holds for this passport now. The service reads
+`getDispute` and answers only the answer whose passport, `openedAt` and challenger match it, so an
+answer to an earlier challenge is never drawn beside a later one. 600 a minute for everyone together,
+on top of the per-address limit.
+
+| Code | When |
+| --- | --- |
+| `200` | `{ "answerURI": "ipfs://<cid>", "answer": { ...the document above } }` |
+| `400` | A passport id that is not `0x` and 64 hex characters |
+| `404` | `not-found`: no challenge, or no answer to the current one |
+| `503` | `chain-unreachable` or `answers-unavailable` |
+
+Both answers carry `Cache-Control: no-store`.
 
 ## POST /mcp
 

@@ -109,6 +109,13 @@ const DEFAULT_GLOBAL_PLATFORM_PREPARES_PER_DAY = "500";
 const DEFAULT_CLAIM_REQUESTS_PER_DAY = "20000";
 
 /**
+ * How many pictures the web check may send to Google Cloud Vision in a UTC day, for everyone. The
+ * first 1,000 a month are free and each one after costs about a third of a cent, so 300 a day keeps
+ * a month near 30 dollars at worst. Zero switches the web check off without a deploy.
+ */
+const DEFAULT_VISION_CHECKS_PER_DAY = "300";
+
+/**
  * What the hourly sweep of orphaned private copies does: nothing, log what it would delete, or
  * delete. Dry is the default so a new host only logs until an operator has read a few runs and
  * switches it on (ruling D5).
@@ -418,6 +425,13 @@ const schema = z
       /^0x(?!0{40}$)[0-9a-fA-F]{40}$/,
       "LOOKALIKE_RECEIVER must be MoolamLookalikes' address, 0x followed by 40 hex characters and not the zero address",
     ).transform((value) => value?.toLowerCase()),
+    // Held to the characters a Google API key is made of, so nothing that could break out of the
+    // header it travels in can be set here. The message never repeats the value.
+    GOOGLE_VISION_API_KEY: optionalPattern(
+      /^[A-Za-z0-9_-]{20,200}$/,
+      "GOOGLE_VISION_API_KEY must be a Google Cloud API key: 20 to 200 letters, digits, dashes or underscores",
+    ),
+    VISION_CHECKS_PER_DAY: dayCeiling("VISION_CHECKS_PER_DAY", DEFAULT_VISION_CHECKS_PER_DAY),
     NODE_ENV: optionalText(),
   })
   .superRefine((value, ctx) => {
@@ -714,6 +728,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     CLAIM_REQUESTS_PER_DAY: source.CLAIM_REQUESTS_PER_DAY,
     NETWORK_ACTIVATION_TIME: source.NETWORK_ACTIVATION_TIME,
     LOOKALIKE_RECEIVER: source.LOOKALIKE_RECEIVER,
+    GOOGLE_VISION_API_KEY: source.GOOGLE_VISION_API_KEY,
+    VISION_CHECKS_PER_DAY: source.VISION_CHECKS_PER_DAY,
     NODE_ENV: source.NODE_ENV,
   });
 

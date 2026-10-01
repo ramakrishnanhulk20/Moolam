@@ -17,6 +17,7 @@ import { lookalikeBeforeSigning, pairsOf, type LookalikeAnswer } from "../lookal
 import type { FingerprintPair } from "../lookalike/search.js";
 import { AGENT_IDENTITY_REGISTRY, AI_SOURCE_TYPE, FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import { safeReason } from "../net/errorText.js";
+import { StatementsRefused, registrantStatements, type RegistrantStatements } from "../statements.js";
 import { liveChain, type PlatformChain } from "../platform/chain.js";
 import { FILE_ROLES, buildFileSet, ipfsUri, pinFileSet, type FileEntry, type FileRole } from "../platform/files.js";
 import { platformForKey, looksLikePlatformKey } from "../platform/key.js";
@@ -147,6 +148,11 @@ export interface PlatformRouteOptions {
  * Both prepare answers carry `lookalike`, the same four states the studio's /prepare answers
  * (L19, L20), judged against the platform's own wallet in platform mode and against nobody in
  * co-sign mode, where the creator is not known until the link is opened.
+ *
+ * The document each prepare builds carries its registrant's statement (L21): in co-sign mode the
+ * sworn line the person signs on the co-sign page, in platform mode the platformStatement the kit
+ * sent, byte for byte, or none when it sent none; and `seenEarlier` when the look-alike answer was
+ * "found". A platform picture is never sent to the web check.
  */
 export async function platformRoutes(app: FastifyInstance, options: PlatformRouteOptions): Promise<void> {
   const chain: PlatformChain = liveChain();
@@ -418,12 +424,29 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
     // In platform mode the creator is the platform's own wallet, so its earlier passports are
     // "yours". In co-sign mode the creator is whoever opens the link, unknown here, so every
     // earlier match is somebody else's and the person sees the warning before they sign.
-    const lookalike: Promise<LookalikeAnswer> = lookalikeBeforeSigning(
+    const lookalike: LookalikeAnswer = await lookalikeBeforeSigning(
       app.verifier.snapshot(),
       pairs,
       { creators: async () => (upload.mode === "platform" ? [platform.creatorWallet] : []), titleOf },
       Math.floor(Date.now() / 1000),
     );
+    // Read before the file set is built, because its document carries what was found.
+    let statements: RegistrantStatements;
+    try {
+      statements = registrantStatements({
+        voice:
+          upload.mode === "cosign"
+            ? "sworn"
+            : upload.platformStatement === undefined
+              ? "none"
+              : { platformStatement: upload.platformStatement },
+        ...(lookalike.state === "found" ? { seenEarlier: lookalike.passportId } : {}),
+      });
+    } catch (error) {
+      if (!(error instanceof StatementsRefused)) throw error;
+      request.log.error({ reason: safeReason(error) }, "rejected: /platform/prepare statements refused");
+      return reply.code(500).send({ error: "metadata-refused", reason: "the document's statements did not fit the shape this service checks, so nothing was pinned" });
+    }
 
     const slug = fileSlug(upload.title, passportId);
     const set = buildFileSet({
@@ -441,6 +464,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
           agentId: platform.agentId,
           fingerprint: prepared.print,
           training: upload.training,
+          statements,
         }),
     });
     const fields: PassportFields = {
@@ -527,7 +551,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
         signedFile: file,
         ...shared,
         ...(deliverNow === undefined ? {} : { deliverNow }),
-        lookalike: await lookalike,
+        lookalike,
       });
     }
 
@@ -576,7 +600,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
       files: filesAnswer(set.entries),
       openBy: record.openBy,
       ...shared,
-      lookalike: await lookalike,
+      lookalike,
     });
   }
 
