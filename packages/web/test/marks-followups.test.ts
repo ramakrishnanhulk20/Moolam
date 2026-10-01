@@ -93,13 +93,17 @@ const art: Art = { title: "Nets", thumbnailUrl: "https://gateway.example/ipfs/x"
 const passport = { creator: CREATOR, generatorAgentId: 0n, registeredAt: 1_790_000_000n };
 
 describe("the three words, in all ten files", () => {
-  it("carries the second-print line with no number, and the two claim keys, English until the translators", () => {
+  it("carries the second-print line with no number, and the two claim keys, in every language", () => {
+    expect(ALL.en.mark.secondPrint).toBe(
+      "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
+    );
+    expect(ALL.en.claim.seenEarlier).toBe("Before signing, they were shown an earlier passport like this one.");
+    expect(ALL.en.claim.platformStatement).toBe("{platform}'s statement");
     for (const [locale, messages] of Object.entries(ALL)) {
-      expect(messages.mark.secondPrint, locale).toBe(
-        "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
-      );
-      expect(messages.claim.seenEarlier, locale).toBe("Before signing, they were shown an earlier passport like this one.");
-      expect(messages.claim.platformStatement, locale).toBe("{platform}'s statement");
+      // The chain keeps only the look distance, so no language may print a layout figure.
+      expect(messages.mark.secondPrint, locale).not.toMatch(/[0-9]/);
+      expect(messages.claim.seenEarlier.length, locale).toBeGreaterThan(0);
+      expect(messages.claim.platformStatement, locale).toContain("{platform}");
     }
   });
 });

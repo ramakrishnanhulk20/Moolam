@@ -134,9 +134,17 @@ describe("every word is in the message files", () => {
     expect(Object.keys(files.en.menu.items).sort()).toEqual(every.map(({ item }) => item.key).sort());
   });
 
-  it("carries the same menu block in all ten files until the translators reach it", () => {
+  it("carries every menu key in all ten files, each one worded", () => {
+    const paths = (block: Record<string, unknown>, prefix = ""): string[] =>
+      Object.entries(block).flatMap(([key, value]) =>
+        typeof value === "object" && value !== null ? paths(value as Record<string, unknown>, `${prefix}${key}.`) : [`${prefix}${key}`],
+      );
     for (const lang of LANGS) {
-      expect(files[lang].menu, lang).toEqual(files.en.menu);
+      expect(paths(files[lang].menu).sort(), lang).toEqual(paths(files.en.menu).sort());
+      for (const { item } of every) {
+        expect(files[lang].menu.items[item.key].name.length, `${lang} ${item.key}`).toBeGreaterThan(0);
+        expect(files[lang].menu.items[item.key].line, `${lang} ${item.key}`).not.toMatch(/\n/);
+      }
     }
   });
 
