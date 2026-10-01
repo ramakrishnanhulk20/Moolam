@@ -147,6 +147,12 @@ export interface RegisterState {
   /** The second send: the same statement, written to the consent register once the passport is on chain. */
   statement: Statement;
   steps: Record<Step, StepState>;
+  /**
+   * True while the run waits after prepare for the creator's go-ahead, because
+   * the answer named an earlier passport or pages on the web. Nothing is signed
+   * until they press again.
+   */
+  review: boolean;
   prepared: PrepareResponse | null;
   /** The agent's answer, whole: its signature, the model that drew, and the quota. Only on the agent path. */
   generated: GenerateResponse | null;
@@ -184,6 +190,8 @@ export type RegisterAction =
   | { type: "statementFailed"; failure: ConsentFailure }
   | { type: "start"; step: Step; unsponsored?: boolean }
   | { type: "prepared"; prepared: PrepareResponse }
+  /** The prepare answer needs the creator's go-ahead before the passkey opens. */
+  | { type: "review" }
   | { type: "drawn"; response: GenerateResponse }
   | { type: "signed"; digest: Hex }
   | { type: "sent"; txHash: Hex }
@@ -231,6 +239,7 @@ export const initialRegisterState: RegisterState = {
   sealed: NOTHING_SEALED,
   statement: NOTHING_SAID,
   steps: WAITING,
+  review: false,
   prepared: null,
   generated: null,
   quota: null,
@@ -313,11 +322,14 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         ...state,
         failure: null,
         confirming: false,
+        review: false,
         unsponsored: action.unsponsored ?? state.unsponsored,
         steps: { ...clearFailed(state.steps), [action.step]: "running" },
       };
     case "prepared":
       return { ...state, prepared: action.prepared, steps: { ...state.steps, prepare: "done" } };
+    case "review":
+      return { ...state, review: true };
     case "drawn":
       // One answer carries all three: the picture, the pins and the agent's
       // signature over the pinned bytes. They stamp together because that is
@@ -349,6 +361,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       return {
         ...state,
         confirming: false,
+        review: false,
         // A retry before the send draws a new picture on the agent path, so the
         // button that offers it is named for that. After the send there is
         // nothing to draw again, only a chain to ask.

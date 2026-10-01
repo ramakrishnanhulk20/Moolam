@@ -66,13 +66,23 @@ describe("the gate in front of the passkey prompt", () => {
    */
   it("is called before the passkey on both paths, and nothing signs before it", () => {
     const hook = source("lib/studio/useStudio.ts");
-    for (const flow of ["registerImage", "generateImage"]) {
+    const bodyOf = (flow: string) => {
       const from = hook.indexOf(`const ${flow} = useCallback`);
-      const to = hook.indexOf("}, [", from);
-      const body = hook.slice(from, to);
-      expect(body, flow).toContain("holdSealedFile");
-      expect(body.indexOf("holdSealedFile"), flow).toBeLessThan(body.indexOf("signDigest"));
-    }
+      return hook.slice(from, hook.indexOf("}, [", from));
+    };
+
+    const generate = bodyOf("generateImage");
+    expect(generate).toContain("holdSealedFile");
+    expect(generate.indexOf("holdSealedFile")).toBeLessThan(generate.indexOf("signDigest"));
+
+    // The upload path signs in signAndSend. Its one fresh call follows the
+    // gate, and the answer a paused run signs later is only ever held after it.
+    const register = bodyOf("registerImage");
+    expect(bodyOf("signAndSend")).toContain("signDigest");
+    expect(register).not.toContain("signDigest");
+    expect(register.indexOf("holdSealedFile")).toBeGreaterThan(-1);
+    expect(register.indexOf("holdSealedFile")).toBeLessThan(register.lastIndexOf("signAndSend(prepared)"));
+    expect(register.indexOf("holdSealedFile")).toBeLessThan(register.indexOf("reviewed.current = prepared"));
     // One place decides, so there is one place to read the rule from.
     expect(hook.split("decideSealed(").length - 1).toBe(1);
   });

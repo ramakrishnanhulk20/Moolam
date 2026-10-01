@@ -45,7 +45,9 @@ export function StatusBand({ state }: { state: RegisterState }) {
       : state.file === null
         ? ""
         : `${state.file.name} ${megabytes(state.file)}`;
-  const line = word(state, steps, model);
+  // Paused for the creator's go-ahead, nothing is running and nothing failed,
+  // so the band names the pause rather than the first step's waiting line.
+  const line = state.review ? t("lookalike.kicker") : word(state, steps, model);
 
   return (
     <div
@@ -68,7 +70,7 @@ export function StatusBand({ state }: { state: RegisterState }) {
         ) : (
           <span
             aria-hidden
-            className={`h-[9px] w-[9px] shrink-0 ${done ? "motif" : "motif animate-pulse"}`}
+            className={`h-[9px] w-[9px] shrink-0 ${done || state.review ? "motif" : "motif animate-pulse"}`}
           />
         )}
 

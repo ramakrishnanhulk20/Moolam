@@ -19,7 +19,10 @@ import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
+import { BeforeSigning } from "./BeforeSigning";
 import { StatusBand } from "./StatusBand";
+import { SwornLine } from "./SwornLine";
+import { WebCheckNotice } from "./WebCheckNotice";
 import { hasStarted, pressRefusal, useFoldFocus } from "./press";
 import { TitleNeeded, titleBorder } from "./TitleNeeded";
 import {
@@ -192,6 +195,8 @@ export function RegisterPanel({
             <Run
               state={state}
               wide
+              pressing={pressing}
+              onReset={onReset}
               onRegister={onRegister}
               onBind={onBind}
               onUnsponsored={onUnsponsored}
@@ -226,6 +231,8 @@ export function RegisterPanel({
         ) : (
           <Run
             state={state}
+            pressing={pressing}
+            onReset={onReset}
             onRegister={onRegister}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
@@ -359,6 +366,14 @@ export function RegisterPanel({
 
       {wide ? <div className="lg:hidden">{sealedChoice}</div> : sealedChoice}
 
+      {/* Said before the upload, and only for a picture the verify service's
+          rule would send: a public one. Sealing it takes the line away. */}
+      <WebCheckNotice mode={state.mode} sealed={state.sealed.on} className={`mt-8${wideOnly(wide, "lg:mt-6")}`} />
+
+      {/* This press is the signing one whenever the answer needs no go-ahead,
+          so the sentence it signs under sits straight above it. */}
+      <SwornLine className={`mt-8${wideOnly(wide, "lg:mt-6")}`} />
+
       {/* The press is answered here before anything else moves: the label turns
           into the first line of the run and the button goes quiet. The room for
           two lines is held from the start, because a button that grows under the
@@ -433,6 +448,8 @@ export function RegisterPanel({
 function Run({
   state,
   wide = false,
+  pressing = false,
+  onReset,
   onRegister,
   onBind,
   onUnsponsored,
@@ -443,6 +460,9 @@ function Run({
 }: {
   state: RegisterState;
   wide?: boolean;
+  pressing?: boolean;
+  /** Leaves this picture for another, from the pause before signing. */
+  onReset: () => void;
   onRegister: () => void;
   onBind: () => void;
   onUnsponsored: () => void;
@@ -458,6 +478,10 @@ function Run({
       transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
       className={`border border-line bg-bg-raised p-6 sm:p-9${wideOnly(wide, "max-lg:flex max-lg:flex-col")}`}
     >
+      {/* First in the card, which is where the button was: the finding is the
+          next thing read, before the passkey opens or the run goes on. */}
+      <BeforeSigning state={state} pressing={pressing} onSign={onRegister} onChooseAnother={onReset} />
+
       <ol className="space-y-px">
         {STEPS.map((step, index) => (
           <StepRow key={step} step={step} index={index} state={state} />

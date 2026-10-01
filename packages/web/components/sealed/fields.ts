@@ -17,10 +17,11 @@
 export type SealedFieldSource = "document" | "chain";
 
 /**
- * When a row applies: to every sealed registration, only to a drawn picture, or
- * only while the creator has asked for a private re-check.
+ * When a row applies: to every sealed registration, only to a drawn picture,
+ * only to the creator's own upload (the one path the look-alike search runs on),
+ * or only while the creator has asked for a private re-check.
  */
-export type SealedFieldWhen = "always" | "generated" | "privateRecheck";
+export type SealedFieldWhen = "always" | "generated" | "uploaded" | "privateRecheck";
 
 export interface SealedPublicField {
   /** The key in the sealed document, or the registry's own name for the value. */
@@ -119,6 +120,20 @@ export const SEALED_PUBLIC_FIELDS: SealedPublicField[] = [
     optional: true,
   },
   {
+    key: "sworn",
+    source: "document",
+    when: "always",
+    label: "The line you sign under",
+    line: "The sentence beside the sign button, word for word. It is your own statement, signed with the rest.",
+  },
+  {
+    key: "seenEarlier",
+    source: "document",
+    when: "uploaded",
+    label: "The earlier passport you were shown",
+    line: "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it.",
+  },
+  {
     key: "privateRecheck",
     source: "document",
     when: "privateRecheck",
@@ -138,7 +153,8 @@ export const SEALED_DOCUMENT_KEYS = SEALED_PUBLIC_FIELDS.filter((field) => field
  * A picture nobody drew has no agent, no model and no prompt, and a list that
  * showed them would be promising to publish three things that will not exist.
  * The private re-check's one word is listed only while it is asked for, for the
- * same reason.
+ * same reason. The earlier passport is listed only on an upload, because the
+ * agent's route never searches for one.
  */
 export function sealedFieldsFor({
   generated,
@@ -151,6 +167,7 @@ export function sealedFieldsFor({
     (field) =>
       field.when === "always" ||
       (field.when === "generated" && generated) ||
+      (field.when === "uploaded" && !generated) ||
       (field.when === "privateRecheck" && privateRecheck),
   );
 }

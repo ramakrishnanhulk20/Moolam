@@ -454,9 +454,16 @@ describe("the close, on the pages themselves", () => {
  * taken from the code before this order touched it.
  */
 describe("the full-size pages at 1440 are unchanged", () => {
+  // The sworn line beside the sign button (WO-284b) is the one addition, and it
+  // is taken out here so everything around it stays held to the old hashes.
   const structure = (html: string) =>
     createHash("sha256")
-      .update(html.replace(/ style="[^"]*"/g, "").replace(/>[^<]*</g, "><"))
+      .update(
+        html
+          .replace(/<figure data-sworn[^>]*>[\s\S]*?<\/figure>/g, "")
+          .replace(/ style="[^"]*"/g, "")
+          .replace(/>[^<]*</g, "><"),
+      )
       .digest("hex");
   const raw = (element: ReactElement) => renderToStaticMarkup(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, element));
 

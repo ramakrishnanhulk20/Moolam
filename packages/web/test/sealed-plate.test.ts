@@ -169,7 +169,7 @@ describe("the sealed poster's height on a phone", () => {
 describe("what the studio says becomes public", () => {
   it("lists every key of the sealed document the verify service pins, and no others", () => {
     const keys = schemaKeys();
-    expect(keys).toHaveLength(11);
+    expect(keys).toHaveLength(13);
     expect([...SEALED_DOCUMENT_KEYS].sort()).toEqual([...keys].sort());
   });
 

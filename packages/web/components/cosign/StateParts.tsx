@@ -9,6 +9,7 @@ import { MONAD_EXPLORER } from "@/lib/chain/client";
 import { canSign, failReason, pressFor, type CosignModel, type Press } from "@/lib/cosign/flow";
 import { Link } from "@/lib/i18n/routing";
 import { canPayOwnFee } from "@/lib/studio/problems";
+import { SwornLine } from "@/components/studio/SwornLine";
 import { QUIET } from "./Checkout";
 import { PRIMARY, SECONDARY, StateLine, shortAddress, type Tone } from "./Marks";
 
@@ -72,38 +73,44 @@ export function Actions({
 
   const disabled = (view === "ready" && !canSign(model)) || busy;
   const primaryClass = checkout ? `${PRIMARY} w-full justify-center` : PRIMARY;
+  // The document this button signs carries the sworn line, so the line is read
+  // beside the press that signs it and nowhere later.
+  const sworn = primary === "sign" ? <SwornLine className={checkout ? "mb-3" : "mt-8"} /> : null;
 
   return (
-    <div className={checkout ? "flex flex-col gap-1.5" : "mt-8 flex flex-wrap items-center gap-x-4 gap-y-3 pb-3"}>
-      {words.primary === undefined ? null : primaryHref !== null ? (
-        <Link href={primaryHref} className={primaryClass}>
-          <span aria-hidden className="motif h-[14px] w-[14px] bg-accent-ink" />
-          {words.primary}
-        </Link>
-      ) : primary === null ? null : (
-        <button
-          type="button"
-          data-press={primary}
-          disabled={disabled}
-          onClick={() => onPress(primary)}
-          className={primaryClass}
-        >
-          <span aria-hidden className="motif h-[14px] w-[14px] bg-accent-ink" />
-          {words.primary}
-        </button>
-      )}
-      {words.secondary === undefined || secondary === null ? null : (
-        <button
-          type="button"
-          data-press={secondary}
-          disabled={busy}
-          onClick={() => onPress(secondary)}
-          className={checkout ? QUIET : SECONDARY}
-        >
-          {words.secondary}
-        </button>
-      )}
-    </div>
+    <>
+      {sworn}
+      <div className={checkout ? "flex flex-col gap-1.5" : "mt-8 flex flex-wrap items-center gap-x-4 gap-y-3 pb-3"}>
+        {words.primary === undefined ? null : primaryHref !== null ? (
+          <Link href={primaryHref} className={primaryClass}>
+            <span aria-hidden className="motif h-[14px] w-[14px] bg-accent-ink" />
+            {words.primary}
+          </Link>
+        ) : primary === null ? null : (
+          <button
+            type="button"
+            data-press={primary}
+            disabled={disabled}
+            onClick={() => onPress(primary)}
+            className={primaryClass}
+          >
+            <span aria-hidden className="motif h-[14px] w-[14px] bg-accent-ink" />
+            {words.primary}
+          </button>
+        )}
+        {words.secondary === undefined || secondary === null ? null : (
+          <button
+            type="button"
+            data-press={secondary}
+            disabled={busy}
+            onClick={() => onPress(secondary)}
+            className={checkout ? QUIET : SECONDARY}
+          >
+            {words.secondary}
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 

@@ -41,6 +41,7 @@ import { checkPrompt } from "./generate";
 import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
 import { usePasskeyBinding, type Binding } from "./usePasskeyBinding";
+import { needsGoAhead } from "./warning";
 import { ensureMonad } from "./wallet";
 
 /**
@@ -206,6 +207,8 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
   const statement = useRef<{ wallet: Hex; passportId: Hex; sent: ConsentDraft; hash?: Hex; handedAt: number; tappedAt: number } | null>(
     null,
   );
+  /** A prepare answer held while the creator weighs what it found. Signed only on their next press. */
+  const reviewed = useRef<PrepareResponse | null>(null);
 
   // The signed bytes and the watches are the last account's too. A watch left
   // behind would answer the new account's first press with "ask Monad again"
@@ -220,6 +223,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       watching.current = null;
       stated.current = null;
       statement.current = null;
+      reviewed.current = null;
     }
     heldFor.current = wallet;
   }, [wallet]);
@@ -679,6 +683,47 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     [],
   );
 
+  /**
+   * The upload path from the passkey on: the creator signs the prepared fields
+   * on this device, and the one transaction goes out.
+   */
+  const signAndSend = useCallback(
+    async (prepared: PrepareResponse) => {
+      if (wallet === undefined || binding.passkey === null) {
+        return;
+      }
+      const rpId = window.location.hostname;
+      const origin = window.location.origin;
+      const onChain = binding.passkey;
+
+      dispatchRegister({ type: "start", step: "sign" });
+      let data: Hex;
+      try {
+        const input = passportInputFrom(prepared.passport, wallet, await deadlineFromChain(SIGNATURE_WINDOW_SECONDS));
+        // Built here, then checked against the registry's own answer. A
+        // disagreement means the two are not describing the same transaction,
+        // and it is caught before the passkey is touched rather than after.
+        const digest = localPassportDigest(input);
+        assertDigestMatches(digest, await hashPassport(input));
+
+        const signed = await signDigest({ rpId, digest, credentialId: binding.credentialId });
+        const check = await checkAuth(signed.auth, digest, onChain.qx, onChain.qy, { rpId, origin });
+        if (!check.ok) {
+          throw new AuthCheckFailed(check.problem, check.message);
+        }
+        data = registerCalldata(input, signed.auth, "0x");
+        pending.current = { kind: "register", data, exactHash: prepared.passport.exactHash };
+        dispatchRegister({ type: "signed", digest });
+      } catch (error) {
+        dispatchRegister({ type: "failed", failure: describeFailure(error, "sign", wallet), stage: "sign" });
+        return;
+      }
+
+      await sendRegister(data, prepared.passport.exactHash, false);
+    },
+    [binding, sendRegister, wallet],
+  );
+
   const registerImage = useCallback(async () => {
     if (embedded === undefined || wallet === undefined) {
       return;
@@ -698,6 +743,14 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       dispatchRegister({ type: "failed", failure: passkeyNotReady(binding), stage: "prepare" });
       return;
     }
+    // The creator has read what the prepare answer found and goes ahead: the
+    // fields already pinned are the ones signed, with no second prepare.
+    if (register.review && reviewed.current !== null) {
+      const held = reviewed.current;
+      reviewed.current = null;
+      await signAndSend(held);
+      return;
+    }
     // The last attempt was refused before anything left the wallet, and the
     // bytes are still signed. They go out as they are, with no second prompt.
     if (isResendable(register.failure) && pending.current?.kind === "register") {
@@ -712,10 +765,6 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       dispatchRegister({ type: "failed", failure: { key: "titleMissing" } });
       return;
     }
-
-    const rpId = window.location.hostname;
-    const origin = window.location.origin;
-    const onChain = binding.passkey;
 
     dispatchRegister({ type: "start", step: "prepare" });
     let prepared;
@@ -747,34 +796,17 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       return;
     }
 
-    dispatchRegister({ type: "start", step: "sign" });
-    let data: Hex;
-    try {
-      const input = passportInputFrom(
-        prepared.passport,
-        wallet,
-        await deadlineFromChain(SIGNATURE_WINDOW_SECONDS),
-      );
-      // Built here, then checked against the registry's own answer. A
-      // disagreement means the two are not describing the same transaction,
-      // and it is caught before the passkey is touched rather than after.
-      const digest = localPassportDigest(input);
-      assertDigestMatches(digest, await hashPassport(input));
-
-      const signed = await signDigest({ rpId, digest, credentialId: binding.credentialId });
-      const check = await checkAuth(signed.auth, digest, onChain.qx, onChain.qy, { rpId, origin });
-      if (!check.ok) {
-        throw new AuthCheckFailed(check.problem, check.message);
-      }
-      data = registerCalldata(input, signed.auth, "0x");
-      pending.current = { kind: "register", data, exactHash: prepared.passport.exactHash };
-      dispatchRegister({ type: "signed", digest });
-    } catch (error) {
-      dispatchRegister({ type: "failed", failure: describeFailure(error, "sign", wallet), stage: "sign" });
+    // An earlier passport or pages on the web are the creator's to weigh, so the
+    // run stops here and the next press signs. Any other answer is drawn first
+    // and the passkey opens a frame later, over a page that already says it.
+    if (needsGoAhead({ mode: "upload", prepared })) {
+      reviewed.current = prepared;
+      dispatchRegister({ type: "review" });
       return;
     }
+    await painted();
 
-    await sendRegister(data, prepared.passport.exactHash, false);
+    await signAndSend(prepared);
   }, [
     binding,
     embedded,
@@ -783,11 +815,13 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     register.consent,
     register.failure,
     register.file,
+    register.review,
     register.sealed.on,
     register.sealed.privateRecheck,
     register.title,
     register.unsponsored,
     sendRegister,
+    signAndSend,
     wallet,
   ]);
 
@@ -1005,6 +1039,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
           return;
         }
         stated.current = null;
+        reviewed.current = null;
         dispatchRegister({ type: "reset" });
       },
     },

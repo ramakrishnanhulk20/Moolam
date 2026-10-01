@@ -21,6 +21,7 @@ import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
+import { SwornLine } from "./SwornLine";
 import { hasStarted, pressRefusal, useFoldFocus } from "./press";
 import { TitleNeeded, titleBorder } from "./TitleNeeded";
 import {
@@ -304,6 +305,10 @@ export function GeneratePanel({
       <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
 
       {wide ? <div className="lg:hidden">{sealedChoice}</div> : sealedChoice}
+
+      {/* The agent's picture goes from this press to the passkey with no stop,
+          so the sentence the creator signs under sits straight above it. */}
+      <SwornLine className={`mt-8${wideOnly(wide, "lg:mt-6")}`} />
 
       {/* The press is answered here before anything else moves: the label turns
           into the first line of the run and the button goes quiet. The room for
