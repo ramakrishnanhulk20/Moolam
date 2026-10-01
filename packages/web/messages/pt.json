@@ -5,7 +5,7 @@
     "creator": "criador",
     "generatorAgent": "agente gerador",
     "verify": "verificar",
-    "attestation": "reconferência gravada na rede por alguém que não é o criador",
+    "attestation": "conferência gravada na rede por alguém que não é o criador",
     "editChain": "cadeia de edições",
     "dispute": "contestação",
     "passkey": "chave de acesso",
@@ -14,7 +14,7 @@
     "fingerprint": "impressão",
     "networkFee": "taxa de rede",
     "block": "bloco",
-    "recheck": "reconferência",
+    "recheck": "conferência; a palavra reconferência saiu do site",
     "chain": "rede",
     "prompt": "instrução",
     "holder": "quem a detém",
@@ -28,7 +28,13 @@
     "daySlider": "seletor de dia",
     "device": "aparelho",
     "brand": "a Moolam",
-    "address": "você; nunca a si, consigo nem lhe"
+    "address": "você; nunca a si, consigo nem lhe",
+    "trustMark": "selo de confiança; o selo diz Conferido pela Chainlink",
+    "lookalike": "imagem parecida",
+    "challenge": "contestação; contestar",
+    "sworn": "declaração jurada; no passaporte a frase fica no original em inglês",
+    "claim": "reivindicar o passaporte; alegação é o que alguém afirma",
+    "handOver": "entregar"
   },
   "meta": {
     "title": "Moolam",
@@ -79,19 +85,19 @@
         "title": "Verifique qualquer imagem",
         "line": "Envie uma imagem e a Moolam diz se ela tem passaporte na Monad e o que o criador permitiu.",
         "action": "Verificar uma imagem",
-        "elsewhere": "Fica na barra de cima no computador e na barra de baixo no celular."
+        "elsewhere": "No computador, fica em Para uso pessoal, no menu de cima. No celular, fica na barra de baixo."
       },
       "make": {
         "title": "Crie uma e receba o passaporte",
         "line": "Registre uma imagem no estúdio. Duas assinaturas, cerca de um segundo, e fica um registro que ninguém muda em silêncio.",
         "action": "Registrar uma imagem",
-        "elsewhere": "Fica na barra de cima no computador e é a aba do meio no celular."
+        "elsewhere": "No computador, fica em Para uso pessoal, no menu de cima. No celular, é a aba do meio."
       },
       "find": {
         "title": "Encontre as suas",
         "line": "Cada imagem que você registrou, em qualquer aparelho em que entrar, com passaporte e histórico.",
         "action": "Minhas imagens",
-        "elsewhere": "Fica ao lado das outras na barra de cima e na última aba no celular."
+        "elsewhere": "No computador, é Minha conta, no canto superior direito. No celular, é a última aba."
       }
     }
   },
@@ -141,11 +147,11 @@
     "kicker": "Explorar",
     "title": "O registro",
     "rail": "Cada passaporte na Monad",
-    "lede": "Cada imagem registrada na Monad, a mais recente primeiro, lida ao vivo do índice. Abra uma para ver a impressão, as Content Credentials e as reconferências.",
+    "lede": "Cada imagem registrada na Monad, a mais recente primeiro, lida ao vivo do índice. Abra uma para ver a impressão, as Content Credentials e as conferências.",
     "counts": {
       "total": "Passaportes",
       "generated": "Geradas",
-      "rechecked": "Reconferidas",
+      "rechecked": "Conferidas",
       "stated": "Com declaração sobre uso por IA"
     },
     "countsError": "Não foi possível ler os totais: {reason}.",
@@ -165,11 +171,11 @@
       "generated": "Geradas",
       "captured": "Fotografadas",
       "edits": "Edições",
-      "rechecked": "Reconferidas",
+      "rechecked": "Conferidas",
       "manifest": "Com Content Credentials",
       "disputed": "Contestação aceita",
-      "lookalike": "Registered after a look-alike",
-      "later": "Has later look-alikes"
+      "lookalike": "Registrado após uma imagem parecida",
+      "later": "Com imagens parecidas posteriores"
     },
     "ai": {
       "label": "Uso por IA",
@@ -189,17 +195,17 @@
     "clearAgent": "Remover o filtro de agente",
     "marks": {
       "manifest": "Traz Content Credentials",
-      "rechecked": "Reconferida na rede",
-      "chainlink": "Reconferida por um fluxo da Chainlink",
+      "rechecked": "Conferida na rede",
+      "chainlink": "Conferida por um fluxo da Chainlink",
       "disputed": "Contestação aceita",
-      "platform": "Drawn on {platform}"
+      "platform": "Desenhada em {platform}"
     },
     "legend": {
       "manifest": "Traz Content Credentials",
-      "rechecked": "Reconferida na rede",
+      "rechecked": "Conferida na rede",
       "disputed": "Contestação aceita, aqui ou na imagem a partir da qual esta foi editada",
       "consent": "Declaração sobre uso por IA, quatro marcas para os quatro usos",
-      "platform": "Drawn on a platform Moolam lists"
+      "platform": "Desenhada em uma plataforma listada pela Moolam"
     },
     "untitled": "Sem título",
     "noPicture": "Sem imagem no gateway",
@@ -231,7 +237,7 @@
     "kicker": "Agentes",
     "title": "Agentes",
     "lede": "Cada agente gerador que o índice viu assinar um passaporte, com tudo o que já contou para cada um. Os que mais assinam vêm primeiro.",
-    "scoreMeaning": "Uma nota de confiança de 0 a 100: quantas vezes as reconferências da Chainlink bateram com o que este agente assinou. As contestações aceitas pesam em dobro contra ele.",
+    "scoreMeaning": "Uma nota de confiança de 0 a 100: quantas vezes as conferências da Chainlink bateram com o que este agente assinou. As contestações aceitas pesam em dobro contra ele.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "Como a nota é calculada",
     "formulaDoc": "Onde o índice conta isso",
@@ -241,13 +247,13 @@
     "since": "Visto pela primeira vez em {when}",
     "trustScore": "Nota de confiança",
     "passports": "Passaportes",
-    "matched": "Reconferências que bateram",
-    "mismatched": "Reconferências que não bateram",
+    "matched": "Conferências que bateram",
+    "mismatched": "Conferências que não bateram",
     "upheld": "Contestações aceitas",
     "seeWorks": "Ver os passaportes dele",
     "empty": "O índice ainda não viu nenhum agente assinar um passaporte.",
     "error": "Não foi possível ler o índice: {reason}.",
-    "formulaPlain": "Cada reconferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50.",
+    "formulaPlain": "Cada conferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50.",
     "strip": {
       "label": "Imagens mais recentes que este agente assinou"
     }
@@ -279,11 +285,11 @@
       "verdictFigure": "{count} de 64",
       "verdictSame": "bits de diferença: a mesma imagem.",
       "verdictMissed": "bits de diferença, e o serviço de verificação não a encontrou.",
-      "recheckOn": "A Chainlink reconferiu a própria imagem registrada em {date}:",
+      "recheckOn": "Um fluxo da Chainlink conferiu a própria imagem registrada em {date}:",
       "recheckBits": "{count} de 64 bits de diferença do registro dela",
       "recheckMissed": "não bateu, {bits}",
       "chainlink": "Chainlink:",
-      "recheckNone": "ainda não há reconferência gravada da imagem registrada",
+      "recheckNone": "ainda não há conferência gravada da imagem registrada",
       "statedOn": "Uso por IA segundo quem a detém, {date}:",
       "aiUse": "Uso por IA:",
       "openPassport": "Abrir o passaporte: {title}",
@@ -291,7 +297,7 @@
       "billing": {
         "monad": "Na Monad mainnet",
         "privy": "Chaves de acesso da Privy",
-        "chainlink": "Reconferido pela Chainlink",
+        "chainlink": "Conferido pela Chainlink",
         "envio": "Indexado pela Envio"
       },
       "unstarted": "A conferência não começou. Recarregue a página e toque de novo."
@@ -301,35 +307,35 @@
     "title": "Moolam",
     "chapter": {
       "kicker": "O filme",
-      "title": "Como funciona um passaporte"
+      "title": "Como uma imagem ganha o seu passaporte"
     },
     "scrollCue": "Role",
     "noWebgl": "Este navegador não consegue exibir o filme em 3D, então a história está aqui como página. Cada número dela é lido ao vivo, como no filme.",
     "sealed": {
       "kicker": "Assinada",
-      "title": "A chave de acesso do criador assinou.",
-      "body": "A Monad anotou no bloco {block}. Duas assinaturas, um registro, cerca de um segundo.",
-      "bodyNoBlock": "A Monad anotou. Duas assinaturas, um registro, cerca de um segundo.",
+      "title": "A chave de acesso da pessoa assinou. A Monad anotou.",
+      "body": "Bloco {block}. Um registro em cerca de um segundo, e ninguém pode editá-lo.",
+      "bodyNoBlock": "Um registro em cerca de um segundo, e ninguém pode editá-lo.",
       "readout": "Passaporte {passport}, registrado em {date}",
       "unread": "Este passaporte não pôde ser lido no registro.",
-      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
+      "readoutSworn": "Assinada sob a frase: Eu fiz esta imagem, ou tenho os direitos para registrá-la."
     },
     "stated": {
-      "kicker": "Declarada",
+      "kicker": "Termos",
       "title": "{summary}.",
-      "body": "A palavra de quem a criou sobre o uso por IA ficou na Monad ao lado do passaporte, com a data. Pergunte à rede por qualquer dia desde então e ela responde por aquele dia.",
-      "readout": "Declaração escrita na Monad em {written}, e em vigor desde então",
+      "body": "Os termos da pessoa para a IA foram para a Monad ao lado do passaporte, com a data. Ela pode mudá-los, e o histórico fica.",
+      "readout": "Termos escritos na Monad em {written}, em vigor desde então.",
       "registered": "Registrado em {when}",
       "today": "Hoje"
     },
     "shared": {
       "kicker": "Compartilhada",
-      "title": "As plataformas apagam a credencial no upload.",
+      "title": "As plataformas apagam o rótulo no upload.",
       "body": "As cópias seguem viajando assim mesmo: recomprimidas, reduzidas a um décimo, giradas, espelhadas, passadas por uma rede social. Todas perderam o arquivo que dizia de onde vieram."
     },
     "verified": {
-      "kicker": "Verificada",
-      "title": "Toda cópia ainda encontra o registro dela.",
+      "kicker": "Encontrada",
+      "title": "Toda cópia ainda encontra o seu passaporte.",
       "match": "correspondência",
       "copies": {
         "rotate-90": "uma cópia girada um quarto de volta",
@@ -342,8 +348,8 @@
       "similarity": "{value} de 64 bits de diferença: {result}",
       "matched": "bateu",
       "notMatched": "não bateu",
-      "attestation": "Um fluxo CRE da Chainlink conferiu de novo e gravou a resposta na rede: {result}, a {distance} bits de distância.",
-      "noAttestation": "Nenhuma reconferência foi gravada para este passaporte ainda.",
+      "attestation": "Um fluxo da Chainlink conferiu a imagem e gravou a resposta na rede: {result}, a {distance} bits de distância.",
+      "noAttestation": "Nenhuma conferência foi gravada para este passaporte ainda.",
       "provenance": "Números da escada medidos pelo serviço de verificação da Moolam em outra imagem registrada, passaporte {passport}, {date}.",
       "provenanceSelf": "Números medidos pelo serviço de verificação da Moolam neste mesmo passaporte, {date}."
     },
@@ -365,20 +371,20 @@
       "noMatchBody": "Nenhum passaporte do registro bate com esta imagem. Um arquivo recém-saído de um gerador que nunca foi registrado é exatamente assim.",
       "noManifest": "Não sobraram Content Credentials neste arquivo. Mesmo assim, ele foi encontrado no registro.",
       "openPassport": "Abrir o passaporte dela",
-      "titleTouch": "Check any copy of any image"
+      "titleTouch": "Confira qualquer cópia de qualquer imagem"
     },
     "close": {
       "kicker": "Moolam",
       "title": "Registre uma vez. Reconhecida em qualquer lugar.",
-      "body": "Um passaporte para cada imagem gerada, gravado na Monad no instante em que ela nasce, conferido de novo por um fluxo da Chainlink e localizável a partir de qualquer cópia que sobreviva à internet.",
+      "body": "Um passaporte para cada imagem, assinado pela pessoa que a fez, gravado na Monad e encontrado de novo a partir de qualquer cópia. A Chainlink confere.",
       "verify": "Verificar uma imagem",
       "proof": "Ver as provas",
       "passports": "Passaportes",
-      "attestations": "Reconferências na rede",
+      "attestations": "Conferências da Chainlink na Monad",
       "chain": "na Monad, rede {chainId}",
       "unread": "não lido",
       "error": "Não foi possível ler o índice agora. Recarregue a página daqui a pouco.",
-      "checked": "Checked by Chainlink"
+      "checked": "Conferido pela Chainlink"
     },
     "skip": "Pular o filme",
     "failed": {
@@ -386,54 +392,54 @@
       "retry": "Tentar de novo"
     },
     "imagined": {
-      "kicker": "Imagined",
-      "title": "A person imagined this.",
-      "body": "Agent {agent} drew it. The credit goes to the person, never the tool.",
-      "bodyPlatform": "Drawn by {platform}'s agent. The credit goes to the person, never the tool.",
-      "tag": "Imagined by {creator}",
-      "titlePhoto": "A person took this.",
-      "bodyPhoto": "No agent touched it. They registered it themselves.",
-      "titleHeld": "Imagined on {platform}.",
-      "bodyHeld": "{platform} holds it until the person who imagined it claims it."
+      "kicker": "Imaginada",
+      "title": "Uma pessoa imaginou isto.",
+      "body": "O agente {agent} desenhou. O crédito vai para a pessoa, nunca para a ferramenta.",
+      "bodyPlatform": "Desenhada pelo agente de {platform}. O crédito vai para a pessoa, nunca para a ferramenta.",
+      "tag": "Imaginada por {creator}",
+      "titlePhoto": "Uma pessoa tirou esta foto.",
+      "bodyPhoto": "Nenhum agente tocou nela. A própria pessoa a registrou.",
+      "titleHeld": "Imaginada em {platform}.",
+      "bodyHeld": "{platform} a detém até que a pessoa que a imaginou a reivindique."
     },
     "asked": {
-      "kicker": "Asked",
-      "question": "May I train on this?",
-      "title": "Any AI can ask first.",
-      "body": "An AI agent asks Moolam's server and gets the holder's terms back, read from Monad. It cannot say it did not know.",
-      "readout": "Answered from the same register through Moolam's MCP server, get_ai_use_terms."
+      "kicker": "Consultada",
+      "question": "Posso treinar com isto?",
+      "title": "Qualquer IA pode perguntar antes.",
+      "body": "Um agente de IA pergunta ao servidor da Moolam e recebe de volta os termos de quem detém a imagem, lidos da Monad. Ele não pode dizer que não sabia.",
+      "readout": "Respondido a partir do mesmo registro, pelo servidor MCP da Moolam, get_ai_use_terms."
     },
     "checked": {
-      "kicker": "Checked",
-      "mark": "Checked by Chainlink",
-      "title": "Chainlink checks it. We do not.",
-      "body": "Chainlink's network fetches the picture, measures it again, and its nodes must agree. Only their verdict turns this mark on.",
-      "readout": "Checked by Chainlink on {date}: {result}, {distance} of 64 bits apart.",
-      "score": "Agent {agent}'s score: {score}",
-      "testTitle": "Chainlink measured it again.",
-      "testBody": "A Chainlink workflow fetched the picture, measured it and wrote the answer on Monad: {result}, {distance} bits apart. This run was a test on one machine."
+      "kicker": "Conferida",
+      "mark": "Conferido pela Chainlink",
+      "title": "A Chainlink confere. Nós não.",
+      "body": "A rede da Chainlink baixa a imagem, mede de novo, e os nós dela precisam concordar. Só o veredito deles acende este selo.",
+      "readout": "Conferido pela Chainlink em {date}: {result}, {distance} de 64 bits de diferença.",
+      "score": "Nota do agente {agent}: {score}",
+      "testTitle": "A Chainlink mediu de novo.",
+      "testBody": "Um fluxo da Chainlink baixou a imagem, mediu e gravou a resposta na Monad: {result}, a {distance} bits de distância. Esta execução foi um teste em uma única máquina."
     },
     "lookalike": {
-      "kicker": "Look-alike",
-      "title": "Register a copy, and you are second.",
-      "body": "If someone registers a copy of a picture already here, Chainlink finds the earlier passport and marks the new one as later. Anyone can challenge it.",
-      "readout": "{later} was registered {gap} after {earlier}. {bits} of 64 bits apart, found by Chainlink on {date}.",
-      "aside": "Two other passports, not the one this film follows."
+      "kicker": "Parecida",
+      "title": "Registre uma cópia, e você fica em segundo.",
+      "body": "Se alguém registra uma cópia de uma imagem que já está aqui, a Chainlink encontra o passaporte anterior e marca o novo como posterior. Qualquer pessoa pode contestá-lo.",
+      "readout": "{later} entrou no registro {gap} depois de {earlier}. A Chainlink encontrou a semelhança em {date}, a {bits} de 64 bits de diferença.",
+      "aside": "Dois outros passaportes, não o que este filme acompanha."
     },
     "yourself": {
-      "kicker": "Sign it yourself",
-      "label": "Drawn on {platform}",
-      "tag": "Imagined by {person}",
-      "title": "Made on another AI site? Sign it yourself.",
-      "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
-      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+      "kicker": "Assine você mesmo",
+      "label": "Desenhada em {platform}",
+      "tag": "Imaginada por {person}",
+      "title": "Fez em outro site de IA? Assine você mesmo.",
+      "body": "Sites de imagens podem entrar na Moolam. O agente deles assina pela ferramenta, você assina como criador com um toque, e o crédito é seu desde o primeiro bloco.",
+      "readout": "{count, plural, =1 {# imagem desenhada} other {# imagens desenhadas}} em {platforms, plural, =1 {# plataforma} other {# plataformas}}. Esta: {title}."
     },
     "waiting": {
-      "kicker": "Waiting for you",
-      "tag": "Waiting for you",
-      "title": "No Moolam account yet? It waits for you.",
-      "body": "A site can leave your passports under the email it verified. Sign in with Google or an emailed code, press These are mine, then Confirm, and they are yours.",
-      "readout": "No figure here, on purpose: who a picture is waiting for is private."
+      "kicker": "Esperando por você",
+      "tag": "Esperando por você",
+      "title": "Ainda não tem conta na Moolam? O passaporte espera por você.",
+      "body": "Um site pode deixar seus passaportes no e-mail que ele confirmou. Entre com o Google ou com um código por e-mail, toque em Estas são minhas, depois em Confirmar, e eles são seus.",
+      "readout": "Nenhum número aqui, de propósito: por quem uma imagem espera é privado."
     }
   },
   "verify": {
@@ -537,14 +543,14 @@
     "samples": "Ou experimente uma destas",
     "sampleFailed": "Essa imagem não voltou de nenhum gateway. Tente de novo ou escolha um arquivo seu.",
     "recheck": {
-      "label": "A segunda opinião",
+      "label": "A conferência da Chainlink",
       "never": "ainda não",
-      "count": "{count, plural, =1 {# reconferência} other {# reconferências}}",
-      "none": "Ainda não foi reconferida.",
+      "count": "{count, plural, =1 {# conferência} other {# conferências}}",
+      "none": "Ainda não foi conferida.",
       "noneNote": "Nenhum fluxo independente buscou esta imagem nem recalculou a impressão dela.",
-      "matched": "Reconferida pela Chainlink (um fluxo CRE) em {at}: ela baixou a imagem por conta própria, tirou a impressão de novo e bateu, {count} de 64 bits de diferença.",
-      "mismatched": "Reconferida pela Chainlink (um fluxo CRE) em {at}: ela baixou a imagem por conta própria, tirou a impressão de novo e não bateu, {count} de 64 bits de diferença.",
-      "link": "Ver a segunda opinião"
+      "matched": "Conferida por um fluxo CRE da Chainlink em {at}: ele baixou a imagem por conta própria, tirou a impressão de novo e bateu, {count} de 64 bits de diferença.",
+      "mismatched": "Conferida por um fluxo CRE da Chainlink em {at}: ele baixou a imagem por conta própria, tirou a impressão de novo e não bateu, {count} de 64 bits de diferença.",
+      "link": "Ver a conferência da Chainlink"
     },
     "dispute": {
       "none": "Não há nenhuma contestação aberta contra este passaporte.",
@@ -556,7 +562,7 @@
     "sealed": {
       "matched": "Corresponde a um passaporte lacrado. A imagem registrada não está publicada.",
       "label": "Lacrado",
-      "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada."
+      "recheck": "Sem cópia pública, a rede da Chainlink não tem o que conferir. Uma conferência precisa da imagem publicada."
     },
     "unsealed": {
       "matched": "Este passaporte foi registrado lacrado, e quem o detém publicou a imagem em {date}."
@@ -589,12 +595,12 @@
       "label": "Comparar sua cópia com a imagem registrada"
     },
     "first": {
-      "heading": "Registered earlier",
-      "lead": "First registered as {title} on {date}.",
-      "closest": "The file you checked is closest to {title}, registered {days, plural, =0 {the same day} =1 {# day later} other {# days later}}.",
-      "held": "Held by {holder}",
-      "aiUse": "AI use: {terms}",
-      "open": "Open the first registration"
+      "heading": "Registrada antes",
+      "lead": "Registrada primeiro como {title} em {date}.",
+      "closest": "O arquivo que você conferiu está mais perto de {title}, que entrou no registro {days, plural, =0 {no mesmo dia} =1 {# dia depois} other {# dias depois}}.",
+      "held": "Quem a detém: {holder}",
+      "aiUse": "Uso por IA: {terms}",
+      "open": "Abrir o primeiro registro"
     }
   },
   "passport": {
@@ -616,19 +622,19 @@
     "disputed": "Contestado",
     "attestations": {
       "heading": "Conferida de novo, por outra pessoa",
-      "empty": "Nenhuma reconferência foi gravada para este passaporte ainda. O fluxo da Chainlink grava uma quando reconfere a imagem.",
+      "empty": "Nenhuma conferência foi gravada para este passaporte ainda. O fluxo da Chainlink grava uma quando confere a imagem.",
       "matched": "bateu",
       "notMatched": "não bateu",
       "distance": "{distance} de 64 bits de diferença",
       "receiver": "Gravada na Monad pelo receptor Chainlink da Moolam",
       "at": "Em",
-      "kicker": "A segunda opinião",
+      "kicker": "A conferência da Chainlink",
       "body": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: o fluxo CRE da Chainlink baixou a imagem por conta própria, tirou a impressão de novo e gravou o resultado na Monad.",
       "distanceLabel": "O que a Chainlink informou",
-      "byChainlink": "Conferida de novo por um fluxo CRE da Chainlink",
+      "byChainlink": "Conferida por um fluxo CRE da Chainlink",
       "delivery": {
-        "simulation": "O simulador CRE da Chainlink fez esta reconferência em uma única máquina, não na rede da Chainlink.",
-        "network": "Várias máquinas independentes da Chainlink fizeram esta reconferência e concordaram na resposta."
+        "simulation": "O simulador CRE da Chainlink fez esta conferência em uma única máquina, não na rede da Chainlink.",
+        "network": "Várias máquinas independentes da Chainlink fizeram esta conferência e concordaram na resposta."
       },
       "openTx": "Transação {hash}",
       "noTransaction": "O link da transação ainda não está disponível para esta.",
@@ -636,11 +642,11 @@
       "recomputedGrid": "Impressão da Chainlink",
       "verdict": "Um fluxo CRE da Chainlink baixou esta imagem de novo e recalculou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
       "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou do arquivo que ele mesmo baixou. Cada célula diferente fica marcada.",
-      "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad. Ninguém pode gravar uma sobre a própria imagem.",
+      "whatIsRecheck": "Uma conferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad. Ninguém pode gravar uma sobre a própria imagem.",
       "private": {
-        "badge": "Reconferência privada",
-        "lead": "Reconferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guarda.",
-        "leadEarlier": "Reconferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guardava na época.",
+        "badge": "Conferência privada",
+        "lead": "Conferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guarda.",
+        "leadEarlier": "Conferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guardava na época.",
         "limit": "Rodou no simulador da Chainlink em uma única máquina, não dentro do hardware seguro da Chainlink.",
         "verdict": "Um fluxo confidencial da Chainlink abriu a cópia privada pequena que a Moolam guardava desta imagem e comparou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
         "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou da cópia privada pequena da Moolam. Cada célula diferente fica marcada."
@@ -733,9 +739,9 @@
         "offline": "O serviço de verificação não respondeu, então nada foi enviado.",
         "signedOut": "Esta sessão está desconectada, então o serviço não aceitou a edição.",
         "tooLarge": "Esse arquivo passa do limite de 20 MB. Escolha uma cópia menor.",
-        "fingerprintUnstable": "Esta edição muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias, então a reconferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem enviado. Uma edição com mais detalhes na largura será registrada.",
+        "fingerprintUnstable": "Esta edição muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias, então a conferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem enviado. Uma edição com mais detalhes na largura será registrada.",
         "signedFileTooLarge": "Adicionar a assinatura do passaporte faria esse arquivo passar de 20 MB, o máximo que uma verificação consegue ler de volta. Exporte menor e tente de novo. Nada foi fixado nem enviado.",
-        "thumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a reconferência da Chainlink baixar, então o passaporte dela nunca poderia ser reconferido. Nada foi fixado nem enviado.",
+        "thumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a conferência da Chainlink baixar, então o passaporte dela nunca poderia ser conferido. Nada foi fixado nem enviado.",
         "notAnImage": "Isso não é um arquivo de imagem. Escolha um JPEG, PNG ou WebP.",
         "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
         "rateLimited": "Por ora são pedidos demais vindos daqui. Espere um momento e tente de novo.",
@@ -767,15 +773,15 @@
     "passkeyBound": "Uma chave vinculada à carteira deste criador assinou a impressão desta imagem na Monad.",
     "passkeyNone": "Nenhuma chave de acesso está vinculada à carteira deste criador.",
     "platform": {
-      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
-      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
-      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
-      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
-      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
-      "passedOn": "Imagined by {person}. Now held by {holder}.",
-      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
-      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
+      "held": "Imaginada em {platform}. {platform} detém este passaporte até que a pessoa que imaginou a imagem o reivindique.",
+      "heldNote": "O agente de {platform} desenhou a imagem, e a chave de servidor da plataforma a registrou no instante em que ela foi feita. A Moolam conferiu que {platform} detém as duas chaves, não quem é a empresa.",
+      "handed": "Desenhada em {platform} e entregue a {holder}, que ainda não confirmou.",
+      "handedNote": "Ninguém recebe o crédito até que a pessoa que recebeu o passaporte declare os próprios termos de uso por IA.",
+      "confirmed": "Imaginada por {person}. Desenhada em {platform}, que entregou o passaporte a essa pessoa. Ela confirmou em {date}.",
+      "confirmedNote": "O crédito se apoia na palavra de {platform} de que esta conta pediu a imagem e na confirmação da própria pessoa. A chave dela não assinou a imagem.",
+      "passedOn": "Imaginada por {person}. Agora quem a detém é {holder}.",
+      "cosigned": "Imaginada por {person}. Desenhada pelo agente de {platform}.",
+      "cosignedNote": "Uma chave vinculada à própria carteira dessa pessoa aprovou esta imagem exata antes que o registro a gravasse.",
       "outsideKit": "Esta carteira está listada como {platform}, mas esta imagem foi registrada fora do kit da Moolam para plataformas."
     },
     "agentListed": "Listado pela Moolam como agente de {platform}",
@@ -788,15 +794,15 @@
     "about": "Sobre",
     "prompt": "Instrução",
     "fingerprints": "As impressões",
-    "fingerprintsBody": "Qualquer pessoa pode baixar a imagem, tirar a impressão de novo e comparar com estas. A reconferência da Chainlink faz exatamente isso. Nada aqui depende do nome do arquivo nem do que os metadados afirmam.",
+    "fingerprintsBody": "Qualquer pessoa pode baixar a imagem, tirar a impressão de novo e comparar com estas. A conferência da Chainlink faz exatamente isso. Nada aqui depende do nome do arquivo nem do que os metadados afirmam.",
     "exactHash": "Impressão exata do arquivo (SHA-256)",
     "passportId": "Id do passaporte",
     "tokenId": "Este passaporte também é um NFT na Monad, com o mesmo id",
     "standing": {
-      "verified": "Reconferida na rede, e bateu",
-      "mismatched": "Uma reconferência não bateu",
+      "verified": "Conferida na rede, e bateu",
+      "mismatched": "Uma conferência não bateu",
       "disputed": "Contestado",
-      "unverified": "Ainda não reconferida"
+      "unverified": "Ainda não conferida"
     },
     "check": {
       "kicker": "Confira uma cópia",
@@ -841,8 +847,8 @@
         "link": "Contestar este passaporte",
         "close": "Fechar",
         "heading": "Coloque uma caução por trás da sua acusação",
-        "what": "Uma contestação custa uma caução de {bond} MON. Quem decide é o árbitro que a política indica: se ele der razão a você, a caução é creditada de volta para você. Se não, ela vai para a tesouraria.",
-        "whatUnknown": "Uma contestação exige uma caução, e o contrato de política define quanto. Quem decide é o árbitro que a política indica: se ele der razão a você, a caução é creditada de volta para você. Se não, ela vai para a tesouraria.",
+        "what": "Uma contestação custa uma caução de {bond} MON. Quem decide é o árbitro que a política indica, e se ele der razão a você, a caução é creditada de volta para você.",
+        "whatUnknown": "Uma contestação exige uma caução, e o contrato de política define quanto. Quem decide é o árbitro que a política indica, e se ele der razão a você, a caução é creditada de volta para você.",
         "bondLabel": "A caução",
         "balanceLabel": "Sua conta",
         "mon": "{amount} MON",
@@ -904,7 +910,7 @@
           "signIn": "Entrar"
         }
       },
-      "bodySettled": "Someone put a bond behind a claim that this record was wrong, and the resolver named by the policy has settled it."
+      "bodySettled": "Alguém colocou uma caução por trás da alegação de que este registro estava errado, e o árbitro que a política indica já resolveu a contestação."
     },
     "elsewhere": "Onde mais este registro existe",
     "openTransaction": "Transação de registro",
@@ -1047,23 +1053,23 @@
     "sealed": {
       "label": "Lacrado",
       "posterLine": "Registrado em {date}. A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
-      "posterLinePrivate": "Registrado em {date}. A imagem não está publicada. A Moolam guarda só uma cópia privada pequena, para a reconferência privada.",
+      "posterLinePrivate": "Registrado em {date}. A imagem não está publicada. A Moolam guarda só uma cópia privada pequena, para a conferência privada.",
       "standing": "Lacrado, então não há cópia pública",
       "commitmentLabel": "O compromisso",
       "commitmentAlgorithm": "Impressão tirada com {algorithm}, uma impressão de arquivo padrão",
       "commitmentLine": "Quem tem o arquivo pode calcular o hash dele e comparar com o identificador do passaporte.",
-      "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada.",
+      "recheck": "Sem cópia pública, a rede da Chainlink não tem o que conferir. Uma conferência precisa da imagem publicada.",
       "privateCopy": {
-        "kept": "Uma reconferência privada pode rodar na cópia pequena que a Moolam guarda.",
-        "gone": "A cópia privada da Moolam foi apagada, então nenhuma reconferência privada pode rodar.",
+        "kept": "Uma conferência privada pode rodar na cópia pequena que a Moolam guarda.",
+        "gone": "A cópia privada da Moolam foi apagada, então nenhuma conferência privada pode rodar.",
         "unknown": "A Moolam não conseguiu ler agora o estado da cópia privada."
       },
       "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada.",
       "about": {
         "noCopy": "Registrado lacrado: a imagem nunca foi publicada, e a Moolam não guardou nenhuma cópia dela. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "kept": "Registrado lacrado: a imagem nunca foi publicada. A pedido de quem a criou, a Moolam guarda uma cópia privada pequena, usada só para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "deleted": "Registrado lacrado: a imagem nunca foi publicada. A Moolam guardou uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink, e essa cópia já foi apagada. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "asked": "Registrado lacrado: a imagem nunca foi publicada. Quem a criou pediu à Moolam que guardasse uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "kept": "Registrado lacrado: a imagem nunca foi publicada. A pedido de quem a criou, a Moolam guarda uma cópia privada pequena, usada só para uma conferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "deleted": "Registrado lacrado: a imagem nunca foi publicada. A Moolam guardou uma cópia privada pequena para uma conferência privada por um fluxo da Chainlink, e essa cópia já foi apagada. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "asked": "Registrado lacrado: a imagem nunca foi publicada. Quem a criou pediu à Moolam que guardasse uma cópia privada pequena para uma conferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
         "published": "Registrado lacrado, sem imagem publicada, e publicada por quem o detém em {date}. O identificador do passaporte é o SHA-256 do arquivo, então qualquer um pode calcular o hash da imagem publicada e comparar."
       }
     },
@@ -1097,7 +1103,7 @@
         "noPassport": "O registro não tem nenhum passaporte com este identificador.",
         "notSealed": "A imagem deste passaporte já é pública, não sobrou nada para publicar.",
         "alreadyUnsealed": "Este passaporte já foi publicado. Abra a página de novo para ver a imagem.",
-        "thumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a reconferência da Chainlink baixar, então publicá-la deixaria um passaporte que ninguém jamais poderia reconferir. Nada foi fixado.",
+        "thumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a conferência da Chainlink baixar, então publicá-la deixaria um passaporte que ninguém jamais poderia conferir. Nada foi fixado.",
         "quota": "São {used} de {limit} para hoje. A cota volta às {at}.",
         "todayFull": "O orçamento de publicações de hoje, que é de todo mundo, acabou. Nada foi fixado e nada foi gasto. Tente amanhã.",
         "pinFailed": "A imagem não pôde ser fixada no IPFS, então nada foi publicado.",
@@ -1119,7 +1125,7 @@
         "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto.",
         "unsealInProgress": "Esta imagem já está sendo publicada em outra aba ou outro aparelho. Espere um pouco e depois recarregue o passaporte.",
         "thumbnailHeldPrivately": "Nada foi publicado. Uma cópia privada desta mesma imagem, guardada para outro passaporte, está no caminho da cópia pública. Tente de novo mais tarde.",
-        "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias, então a cópia pública nunca passaria na reconferência da Chainlink. Nada foi publicado."
+        "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias, então a cópia pública nunca passaria na conferência da Chainlink. Nada foi publicado."
       },
       "actions": {
         "again": "Tentar de novo",
@@ -1132,9 +1138,9 @@
     "privateCopy": {
       "kicker": "Apagar é com você",
       "heading": "A cópia privada da Moolam",
-      "body": "A Moolam guarda uma cópia pequena desta imagem, com 512 pixels no lado maior, para que um fluxo confidencial da Chainlink possa reconferi-la. Só você pode apagá-la.",
+      "body": "A Moolam guarda uma cópia pequena desta imagem, com 512 pixels no lado maior, para que um fluxo confidencial da Chainlink possa conferi-la em privado. Só você pode apagá-la.",
       "delete": "Apagar a cópia privada da Moolam",
-      "confirm": "Isto não tem volta. Sem a cópia nenhuma reconferência privada pode rodar de novo, e o passaporte continuará lacrado.",
+      "confirm": "Isto não tem volta. Sem a cópia nenhuma conferência privada pode rodar de novo, e o passaporte continuará lacrado.",
       "confirmDelete": "Apagar",
       "keep": "Manter",
       "sending": "Apagando a cópia privada",
@@ -1165,7 +1171,7 @@
       "madeBy": "Feita por",
       "drawnBy": "Desenhada por",
       "aiUse": "Uso por IA",
-      "rechecked": "Reconferida",
+      "rechecked": "Conferida",
       "nothingStated": "Sem declaração",
       "notYet": "Ainda não",
       "unread": "Não foi possível ler",
@@ -1173,10 +1179,10 @@
       "chainlink": "Chainlink",
       "unknownWriter": "Autor desconhecido",
       "cardNamed": "{agent}, nome dado pelo próprio cartão",
-      "unclaimed": "Not claimed yet",
-      "heldBy": "{platform} holds it",
+      "unclaimed": "Ainda não reivindicada",
+      "heldBy": "em poder de {platform}",
       "via": "via {platform}",
-      "handedBy": "handed by {platform}, not confirmed"
+      "handedBy": "entregue por {platform}, sem confirmação"
     },
     "ownerHint": "Criou esta imagem? Entre para gerenciá-la.",
     "share": {
@@ -1197,9 +1203,9 @@
       "heading": "Feedback no quadro público de avaliações de agentes (ERC-8004)",
       "empty": "Nenhum feedback registrado para este agente ainda. A Moolam publica feedback aqui manualmente, não depois de cada conferência.",
       "error": "O registro de reputação não pôde ser lido: {reason}.",
-      "body": "O feedback fica no quadro público de avaliações de agentes da Monad (o registro de reputação ERC-8004), onde a Moolam o publica manualmente. Esta página lê o resumo. A nota de confiança ao lado conta as reconferências da Chainlink, então as duas nunca são somadas.",
+      "body": "O feedback fica no quadro público de avaliações de agentes da Monad (o registro de reputação ERC-8004), onde a Moolam o publica manualmente. Esta página lê o resumo. A nota de confiança ao lado conta as conferências da Chainlink, então as duas nunca são somadas.",
       "registry": "Registro {address}",
-      "secondary": "Feedback publicado na rede manualmente, à parte da nota das reconferências",
+      "secondary": "Feedback publicado na rede manualmente, à parte da nota das conferências",
       "entries": "{count, plural, =1 {# entrada} other {# entradas}}",
       "latest": "Último valor"
     },
@@ -1209,17 +1215,17 @@
     "index": {
       "heading": "O que o índice contou",
       "trustScore": "Nota de confiança",
-      "trustScoreBody": "De 0 a 100, a partir das reconferências que bateram, das que não bateram e de qualquer contestação aceita. É suavizada, então uma conferência de sorte não chega a 100.",
+      "trustScoreBody": "De 0 a 100, a partir das conferências que bateram, das que não bateram e de qualquer contestação aceita. É suavizada, então uma conferência de sorte não chega a 100.",
       "passportCount": "Passaportes",
-      "matchedCount": "Reconferências que bateram",
-      "mismatchedCount": "Reconferências que não bateram",
+      "matchedCount": "Conferências que bateram",
+      "mismatchedCount": "Conferências que não bateram",
       "disputesUpheld": "Contestações aceitas",
       "since": "Visto pela primeira vez {when}",
       "empty": "O índice ainda não viu este agente assinar um passaporte.",
       "error": "O índice não pôde ser lido: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "Como a nota é calculada",
-      "formulaPlain": "Cada reconferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50."
+      "formulaPlain": "Cada conferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50."
     },
     "signs": {
       "heading": "Como este agente assina",
@@ -1521,8 +1527,8 @@
         "leftOut": "Fica de fora",
         "promptLabel": "Incluir a instrução",
         "promptNote": "A instrução fica privada enquanto você não a incluir.",
-        "privateLabel": "Deixar a Chainlink reconferir esta imagem em privado",
-        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para reconferir a impressão e grava só o veredito na Monad.",
+        "privateLabel": "Deixar a Chainlink conferir esta imagem em privado",
+        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para conferir a impressão e grava só o veredito na Monad.",
         "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Por enquanto o fluxo roda no simulador da Chainlink, não dentro do hardware seguro da Chainlink. Você pode apagar a cópia pela página do passaporte quando quiser."
       },
       "fields": {
@@ -1571,16 +1577,16 @@
           "line": "São palavras que descrevem a imagem, então ela fica fora do arquivo a menos que você a inclua."
         },
         "privateRecheck": {
-          "label": "Que você pediu uma reconferência privada",
+          "label": "Que você pediu uma conferência privada",
           "line": "Uma palavra no arquivo fixado, para que a página do passaporte possa dizer isso. O endereço da cópia nunca aparece nele."
         },
         "sworn": {
-          "label": "The line you sign under",
-          "line": "The sentence beside the sign button, word for word. It is your own statement, signed with the rest."
+          "label": "A frase que você assina",
+          "line": "O original em inglês da frase ao lado do botão de assinar. É a sua própria declaração, assinada com o resto."
         },
         "seenEarlier": {
-          "label": "The earlier passport you were shown",
-          "line": "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it."
+          "label": "O passaporte anterior que você viu",
+          "line": "Só quando a Moolam mostrou a você um passaporte anterior parecido com este e você seguiu em frente: o id dele, para que a página possa dizer que você o viu."
         }
       },
       "plate": {
@@ -1611,9 +1617,9 @@
         "detailPrivate": "A imagem não está publicada. A Moolam guarda só a cópia privada pequena que você pediu.",
         "fingerprintDetail": "Tirada do arquivo assinado, que nunca saiu deste navegador. Content Credentials (C2PA) adicionadas: {manifest}.",
         "privateLabel": "Cópia privada guardada",
-        "privateDetail": "Para a reconferência privada da Chainlink. <page>Apague-a pela página do passaporte quando quiser.</page>",
+        "privateDetail": "Para a conferência privada da Chainlink. <page>Apague-a pela página do passaporte quando quiser.</page>",
         "noPrivateLabel": "Nenhuma cópia privada",
-        "noPrivateDetail": "Você pediu uma reconferência privada e o serviço não guardou nenhuma cópia, então este passaporte não tem nenhuma. Ele está lacrado e nada dele foi guardado."
+        "noPrivateDetail": "Você pediu uma conferência privada e o serviço não guardou nenhuma cópia, então este passaporte não tem nenhuma. Ele está lacrado e nada dele foi guardado."
       }
     },
     "receipt": {
@@ -1713,10 +1719,10 @@
       "sealedRecordRefused": "O serviço de verificação recusou publicar este registro lacrado, então nada foi fixado nem registrado. Tente de novo.",
       "sealedFileRefused": "O serviço de verificação não conseguiu devolver um arquivo correspondente a este passaporte, então nada foi fixado nem registrado. Tente de novo.",
       "privateRecheckNeedsSealed": "O serviço de verificação não guarda cópia privada de uma imagem que não está lacrada, então nada foi fixado nem registrado. Recarregue o estúdio e tente de novo.",
-      "privateCopyNotPrivate": "O provedor de armazenamento não manteve a cópia pequena privada, então a Moolam parou e nada foi fixado nem registrado. Desligue a reconferência privada para registrar esta imagem lacrada sem ela.",
+      "privateCopyNotPrivate": "O provedor de armazenamento não manteve a cópia pequena privada, então a Moolam parou e nada foi fixado nem registrado. Desligue a conferência privada para registrar esta imagem lacrada sem ela.",
       "privateChainUnreachable": "A Moolam não conseguiu alcançar a Monad para conferir se esta imagem é nova, então não guardou cópia privada e não registrou nada. Tente de novo daqui a pouco.",
-      "privateThumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a reconferência da Chainlink baixar, então o passaporte dela nunca poderia ser reconferido, e um passaporte lacrado nunca poderia ser publicado depois. Nada foi fixado.",
-      "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias: até a própria cópia pequena parece outra imagem, então a reconferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem registrado. Uma imagem com mais detalhes na largura será registrada.",
+      "privateThumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a conferência da Chainlink baixar, então o passaporte dela nunca poderia ser conferido, e um passaporte lacrado nunca poderia ser publicado depois. Nada foi fixado.",
+      "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias: até a própria cópia pequena parece outra imagem, então a conferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem registrado. Uma imagem com mais detalhes na largura será registrada.",
       "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto."
     },
     "actions": {
@@ -1733,29 +1739,29 @@
     "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe.",
     "titleNeeded": "Dê um título à imagem.",
     "lookalike": {
-      "kicker": "Before you sign",
+      "kicker": "Antes de assinar",
       "found": {
-        "heading": "A picture like this is already registered",
-        "line": "{title} was registered by someone else on {date}. If it is yours too, carry on. If it is not, stop here: your passport would show it came later, and anyone can challenge it.",
-        "note": "If you go ahead, your passport records that you were shown this one."
+        "heading": "Uma imagem parecida com esta já está registrada",
+        "line": "Outra pessoa registrou {title} em {date}. Se essa imagem também é sua, siga em frente. Se não é, pare aqui: seu passaporte mostraria que veio depois, e qualquer pessoa pode contestá-lo.",
+        "note": "Se você seguir em frente, seu passaporte registra que este foi mostrado a você."
       },
       "yours": {
-        "heading": "You registered a picture like this before",
-        "line": "If this is a new version, register it as an edit of that passport, so the two stay linked."
+        "heading": "Você já registrou uma imagem parecida com esta",
+        "line": "Se esta é uma versão nova, registre-a como uma edição daquele passaporte, para que os dois fiquem ligados."
       },
-      "none": "Moolam's search found no earlier passport like this one, as of {time}.",
-      "unchecked": "Moolam could not search for earlier passports just now, so this picture was not compared with them. You can still register it.",
-      "open": "Open that passport",
-      "untitled": "An untitled passport"
+      "none": "A busca da Moolam não encontrou nenhum passaporte anterior parecido com este, até {time}.",
+      "unchecked": "A Moolam não conseguiu procurar passaportes anteriores agora, então esta imagem não foi comparada com eles. Você ainda pode registrá-la.",
+      "open": "Abrir aquele passaporte",
+      "untitled": "Um passaporte sem título"
     },
     "webCheck": {
-      "notice": "A public photo is checked against the web. Moolam sends its small public copy to Google, which looks for the same picture on web pages. Sealed pictures and pictures the agent draws are never sent.",
+      "notice": "Uma foto pública é comparada com a web. A Moolam envia a cópia pequena e pública dela ao Google, que procura a mesma imagem em páginas da web. Imagens lacradas e imagens que o agente desenha nunca são enviadas.",
       "found": {
-        "heading": "Already on the web",
-        "line": "Google found this picture on {count, plural, =1 {# web page} other {# web pages}} when Moolam looked. If you go ahead, your passport lists them.",
-        "more": "{count, plural, =1 {# more page} other {# more pages}} counted, not listed."
+        "heading": "Já está na web",
+        "line": "O Google encontrou esta imagem em {count, plural, =1 {# página da web} other {# páginas da web}} quando a Moolam procurou. Se você seguir em frente, seu passaporte lista essas páginas.",
+        "more": "{count, plural, =1 {Mais # página foi contada, mas não está na lista.} other {Mais # páginas foram contadas, mas não estão na lista.}}"
       },
-      "passport": "Already on the web: the registrant's web check found this picture on {count, plural, =1 {# page} other {# pages}} before it was registered."
+      "passport": "Já estava na web: a busca na web de quem registrou encontrou esta imagem em {count, plural, =1 {# página} other {# páginas}} antes do registro."
     }
   },
   "docs": {
@@ -1857,7 +1863,7 @@
     "stopped": "Continua sem resposta. O registro está na Monad e as páginas de passaporte o leem diretamente."
   },
   "recheck": {
-    "button": "Pedir uma reconferência",
+    "button": "Pedir à Chainlink que confira",
     "again": "Tentar de novo",
     "checkNow": "Olhar de novo",
     "note": "Gratuito. O fluxo da Chainlink busca a imagem de novo e grava o veredito dele na Monad. O veredito costuma chegar à rede em poucos minutos.",
@@ -1867,8 +1873,8 @@
     "already": "Já estava pedida em {at}. Posição {position} na fila.",
     "alreadyWaiting": "Já estava pedida em {at}. Esperando na fila.",
     "running": "Rodando agora: o fluxo está buscando a imagem e calculando a impressão de novo.",
-    "done": "Pronto: reconferida em {at}.",
-    "doneNoTime": "Pronto: esta imagem já foi reconferida.",
+    "done": "Pronto: conferida em {at}.",
+    "doneNoTime": "Pronto: esta imagem já foi conferida.",
     "failed": "Não deu para rodar: {reason}",
     "failedNoReason": "Não deu para rodar. Ninguém disse por quê.",
     "stopped": "Esta página parou de olhar depois de meia hora. Toque para olhar de novo.",
@@ -1881,7 +1887,7 @@
       "pending": "Pendente"
     },
     "failure": {
-      "noPassport": "O serviço de verificação não conhece este passaporte, então não há o que reconferir.",
+      "noPassport": "O serviço de verificação não conhece este passaporte, então não há o que conferir.",
       "sealed": "A imagem deste passaporte nunca foi publicada, então o fluxo não tem o que buscar.",
       "queueFull": "A fila está cheia de pedidos que ninguém rodou ainda. Tente mais tarde.",
       "rateLimited": "Pedidos demais daqui, espere um minuto.",
@@ -1890,7 +1896,7 @@
     },
     "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. O veredito costuma chegar à rede em poucos minutos.",
     "runningPrivate": "Rodando agora: o fluxo está abrindo a cópia privada e comparando a impressão.",
-    "recheckedOn": "Reconferida em {date}",
+    "recheckedOn": "Conferida em {date}",
     "confirming": "A fila diz que esta conferência terminou. Ela aparece como pronta quando o veredito puder ser lido na Monad."
   },
   "mine": {
@@ -1912,8 +1918,8 @@
     "showcaseCaption": "Um passaporte real na Monad. Os seus vão aparecer aqui como este.",
     "makeFirst": "Registrar sua primeira imagem",
     "signedInAs": "Você entrou como {account}",
-    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
-    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
+    "confirmedLine": "Desenhada em {platform}, que entregou o passaporte a você. Você confirmou em {date}.",
+    "handedLine": "Entregue a você por {platform}. Declare os termos de uso por IA na página do passaporte para confirmar que ela é sua.",
     "held": {
       "heading": "Na sua conta, feito por outros",
       "label": "Na sua conta, não feita por você",
@@ -1958,10 +1964,10 @@
         "label": "Desenhada por um agente, autodeclarado"
       },
       "platform": {
-        "label": "Drawn on",
-        "listed": "Drawn on, listed by Moolam",
-        "withheld": "Drawn on, badge withheld",
-        "unlisted": "Drawn on, not listed by Moolam",
+        "label": "Desenhada em",
+        "listed": "Desenhada em, plataforma listada pela Moolam",
+        "withheld": "Desenhada em, selo retido",
+        "unlisted": "Desenhada em, plataforma fora da lista da Moolam",
         "reading": "Conferida com a lista da Moolam assim que o pedido for lido."
       },
       "terms": {
@@ -1987,7 +1993,7 @@
       "unchecked": "A Moolam não conferiu a empresa por trás deste nome."
     },
     "platform": {
-      "listedLine": "Incluída na lista com assinaturas do dono do agente {agent} e da carteira da própria plataforma.",
+      "listedLine": "Incluída na lista com assinaturas do dono do agente {agent} e da carteira com que a plataforma registra as imagens.",
       "withheldName": "Nome retido",
       "withheldLine": "O agente {agent} mudou de dono desde que a plataforma dele foi listada, então a Moolam não garante esse vínculo e não diz o nome da plataforma.",
       "unlistedName": "Fora da lista da Moolam",
@@ -2165,7 +2171,7 @@
     "listedLabel": "Listado pela Moolam",
     "unlistedLabel": "Fora da lista da Moolam",
     "unlistedName": "Site não listado",
-    "listedLine": "Incluído na lista com assinaturas do dono do agente do site e da carteira do próprio site.",
+    "listedLine": "Incluído na lista com assinaturas do dono do agente do site e da carteira com que o site registra as imagens.",
     "unlistedLine": "A Moolam não sabe nada sobre este site. Só compartilhe se você chegou aqui vindo dele.",
     "usesListed": "{name} usa o endereço para entregar a você os passaportes das imagens feitas para você. Um endereço permite que um site dê coisas a você. Ele não serve para assinar por você nem para gastar da sua conta.",
     "usesUnlisted": "O site usa o endereço para entregar a você os passaportes das imagens feitas para você. Um endereço permite que um site dê coisas a você. Ele não serve para assinar por você nem para gastar da sua conta.",
@@ -2183,589 +2189,589 @@
     "invalidLine": "O link que abriu esta página não indica nenhum site https, então não há para onde mandar um endereço. Nada foi compartilhado."
   },
   "checkout": {
-    "lockListed": "Sent by {platform}, listed by Moolam",
-    "lockUnnamed": "Sent by a site Moolam does not name",
-    "more": "See everything you are signing",
-    "doneListed": "Done. Taking you back to {platform}.",
-    "doneUnlisted": "Done. Taking you back to the site that sent you.",
-    "close": "Close this window"
+    "lockListed": "Enviado por {platform}, que está na lista da Moolam",
+    "lockUnnamed": "Enviado por um site que a Moolam não nomeia",
+    "more": "Ver tudo o que você está assinando",
+    "doneListed": "Pronto. Levando você de volta para {platform}.",
+    "doneUnlisted": "Pronto. Levando você de volta ao site que mandou você até aqui.",
+    "close": "Fechar esta janela"
   },
   "claims": {
-    "heading": "Waiting for you",
-    "line": "Platforms you used are holding these pictures for your email. Say which are yours.",
-    "count": "{count, plural, one {# picture} other {# pictures}}",
-    "holding": "{platform} is holding {count, plural, one {# picture} other {# pictures}} for {email}",
-    "yourEmail": "your email",
+    "heading": "Esperando por você",
+    "line": "Plataformas que você usou estão guardando estas imagens para o seu e-mail. Diga quais são suas.",
+    "count": "{count, plural, one {# imagem} other {# imagens}}",
+    "holding": "{platform} está guardando {count, plural, one {# imagem} other {# imagens}} para {email}",
+    "yourEmail": "seu e-mail",
     "verifiedBy": {
-      "google": "{platform} says it checked this address with a Google sign-in.",
-      "emailCode": "{platform} says it checked this address with a code sent to it.",
-      "platform": "{platform} says it checked this address in its own way."
+      "google": "{platform} diz que confirmou este endereço pela conta do Google.",
+      "emailCode": "{platform} diz que confirmou este endereço com um código enviado para ele.",
+      "platform": "{platform} diz que confirmou este endereço do próprio jeito."
     },
-    "noPreview": "No preview",
-    "termsLabel": "AI use for these pictures",
-    "sendFuture": "Send my future {platform} pictures straight to my account",
-    "mine": "These are mine",
-    "notMine": "Not mine",
-    "notMineNote": "Not mine also stops {platform} offering you pictures. You can allow it again here.",
-    "saving": "Saving your answer",
-    "handingOver": "Waiting for {platform} to hand them over",
-    "handoverNote": "This page looks again on its own",
-    "lookAgain": "Look again",
-    "readFailed": "We could not check whether platforms are holding pictures for you.",
-    "handoverFailed": "{platform} could not hand {count, plural, one {this picture} other {these pictures}} over. Ask {platform} to send {count, plural, one {it} other {them}} again.",
+    "noPreview": "Sem prévia",
+    "termsLabel": "Uso por IA destas imagens",
+    "sendFuture": "Enviar minhas próximas imagens de {platform} direto para a minha conta",
+    "mine": "Estas são minhas",
+    "notMine": "Não são minhas",
+    "notMineNote": "Não são minhas também faz {platform} parar de oferecer imagens a você. Você pode permitir de novo aqui.",
+    "saving": "Salvando sua resposta",
+    "handingOver": "Esperando {platform} entregar as imagens",
+    "handoverNote": "Esta página olha de novo sozinha",
+    "lookAgain": "Olhar de novo",
+    "readFailed": "Não conseguimos conferir se alguma plataforma está guardando imagens para você.",
+    "handoverFailed": "{platform} não conseguiu entregar {count, plural, one {esta imagem} other {estas imagens}}. Peça a {platform} que {count, plural, one {a envie} other {as envie}} de novo.",
     "confirm": {
-      "heading": "Confirm these as yours",
-      "line": "One press writes these AI-use terms from your own wallet, and Moolam pays the fee. Until then the passports say the platform handed them to you, not that you made them.",
-      "termsLabel": "The terms you chose",
-      "byUse": "Your own answer for each use",
-      "conditions": "Conditions",
-      "button": "{count, plural, one {Confirm it} other {Confirm all #}}",
-      "checking": "Checking your wallet holds them",
-      "sending": "Sending from your wallet",
-      "confirming": "Waiting for Monad to show it",
-      "done": "Confirmed. They now name you as the person who imagined them.",
-      "receipt": "See the transaction",
-      "changed": "These pictures moved since this page read them, so nothing was sent. Read them again before you confirm.",
-      "unreadable": "Monad did not answer, so this page cannot tell yet which of these your wallet holds.",
-      "readAgain": "Read them again",
-      "again": "Try again",
-      "recheck": "Look again"
+      "heading": "Confirme que estas são suas",
+      "line": "Um toque grava estes termos de uso por IA a partir da sua própria carteira, e a Moolam paga a taxa. Até lá, os passaportes dizem que a plataforma os entregou a você, não que você fez as imagens.",
+      "termsLabel": "Os termos que você escolheu",
+      "byUse": "Sua própria resposta para cada uso",
+      "conditions": "Condições",
+      "button": "{count, plural, one {Confirmar esta} other {Confirmar todas as #}}",
+      "checking": "Conferindo se a sua carteira as detém",
+      "sending": "Enviando da sua carteira",
+      "confirming": "Esperando a Monad mostrar",
+      "done": "Confirmado. Agora os passaportes indicam você como a pessoa que imaginou as imagens.",
+      "receipt": "Ver a transação",
+      "changed": "Estas imagens mudaram de lugar desde que esta página as leu, então nada foi enviado. Leia de novo antes de confirmar.",
+      "unreadable": "A Monad não respondeu, então esta página ainda não sabe quais destas a sua carteira detém.",
+      "readAgain": "Ler de novo",
+      "again": "Tentar de novo",
+      "recheck": "Olhar de novo"
     },
     "settings": {
-      "heading": "Your platform choices",
-      "standing": "Future {platform} pictures go straight to you",
-      "stop": "Stop",
-      "muted": "You said no to {platform}",
-      "allow": "Allow again"
+      "heading": "Suas escolhas de plataformas",
+      "standing": "As próximas imagens de {platform} vão direto para você",
+      "stop": "Parar",
+      "muted": "Você disse não a {platform}",
+      "allow": "Permitir de novo"
     },
     "refusal": {
-      "unavailable": "Moolam cannot look up waiting pictures right now. Nothing was changed.",
-      "signIn": "Your sign-in has run out, so Moolam cannot tell this is you.",
-      "limit": "You have asked about waiting pictures many times today. It opens again tomorrow.",
-      "globalLimit": "Moolam has reached today's limit for everyone. It opens again at midnight UTC.",
-      "privy": "Moolam could not read your sign-in details just now. Nothing was changed.",
-      "noWallet": "Your account has no Moolam wallet yet, so there is nowhere to send these. Sign in again and it is made for you.",
-      "destination": "Moolam will not send these to this account's wallet, because the platform or Moolam itself uses that address.",
-      "notFound": "Some of these pictures are no longer waiting for you.",
-      "notOpen": "Some of these were already answered, here or in another window.",
-      "full": "Your list of platform choices is full. Stop or allow one of them first.",
-      "recordRefused": "Moolam could not save that answer. Nothing was changed.",
-      "badRequest": "Moolam could not read that request. Nothing was changed.",
-      "offline": "Moolam's verify service did not answer. Nothing was changed.",
-      "badResponse": "Moolam's verify service answered in a way this page does not understand."
+      "unavailable": "A Moolam não consegue consultar as imagens à sua espera agora. Nada foi alterado.",
+      "signIn": "Sua sessão expirou, então a Moolam não consegue saber se é você.",
+      "limit": "Você já perguntou muitas vezes hoje sobre imagens à sua espera. Abre de novo amanhã.",
+      "globalLimit": "A Moolam chegou ao limite de hoje para todo mundo. Abre de novo à meia-noite UTC.",
+      "privy": "A Moolam não conseguiu ler agora os dados da sua conta. Nada foi alterado.",
+      "noWallet": "Sua conta ainda não tem carteira na Moolam, então não há para onde enviar estas imagens. Entre de novo e ela é criada para você.",
+      "destination": "A Moolam não vai enviar estas imagens para a carteira desta conta, porque a plataforma ou a própria Moolam usa esse endereço.",
+      "notFound": "Algumas destas imagens não estão mais esperando por você.",
+      "notOpen": "Algumas destas já foram respondidas, aqui ou em outra janela.",
+      "full": "Sua lista de escolhas de plataformas está cheia. Primeiro, pare ou permita de novo uma delas.",
+      "recordRefused": "A Moolam não conseguiu salvar essa resposta. Nada foi alterado.",
+      "badRequest": "A Moolam não conseguiu ler esse pedido. Nada foi alterado.",
+      "offline": "O serviço de verificação da Moolam não respondeu. Nada foi alterado.",
+      "badResponse": "O serviço de verificação da Moolam respondeu de um jeito que esta página não entende."
     },
     "next": {
-      "again": "Try again",
-      "signIn": "Sign in again",
-      "reload": "Read the list again"
+      "again": "Tentar de novo",
+      "signIn": "Entrar de novo",
+      "reload": "Ler a lista de novo"
     }
   },
   "business": {
     "meta": {
-      "title": "Passports for AI picture platforms",
-      "description": "Every picture made on your AI picture site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey. Free during early access."
+      "title": "Passaportes para plataformas de imagens de IA",
+      "description": "Cada imagem feita no seu site de imagens de IA pode sair com um passaporte na Monad que indica a pessoa que a imaginou, assinado com a própria chave de acesso dela. Grátis durante o acesso antecipado."
     },
     "hero": {
-      "kicker": "Moolam for platforms",
-      "headline": "Your users imagined it.",
-      "tail": "Let them sign it.",
-      "promise": "Every picture made on your site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey.",
-      "guide": "Read the integration guide",
-      "live": "See it live on Dreamloom",
+      "kicker": "Moolam para plataformas",
+      "headline": "Seus usuários imaginaram.",
+      "tail": "Deixe que eles assinem.",
+      "promise": "Cada imagem feita no seu site pode sair com um passaporte na Monad que indica a pessoa que a imaginou, assinado com a própria chave de acesso dela.",
+      "guide": "Ler o guia de integração",
+      "live": "Ver ao vivo na Dreamloom",
       "meta": {
-        "audience": "For AI picture platforms",
+        "audience": "Para plataformas de imagens de IA",
         "chain": "Monad mainnet",
-        "tap": "One passkey tap"
+        "tap": "Um toque na chave de acesso"
       }
     },
     "demo": {
-      "illustration": "Illustration",
-      "label": "Illustration: a person makes a picture on Dreamloom, signs it as the creator with one passkey tap in a small Moolam window, and the passport lands naming them, then Chainlink checks it.",
+      "illustration": "Ilustração",
+      "label": "Ilustração: uma pessoa faz uma imagem na Dreamloom, assina como criadora com um toque na chave de acesso numa pequena janela da Moolam, e o passaporte chega com o nome dela. Depois, a Chainlink confere a imagem.",
       "address": "dreamloom",
-      "draw": "Draw",
-      "drawing": "Drawing…",
-      "prompt": "A human standing alone on the moon",
-      "press": "Sign it as the creator",
+      "draw": "Desenhar",
+      "drawing": "Desenhando…",
+      "prompt": "Uma pessoa sozinha, de pé na lua",
+      "press": "Assinar como criador",
       "brand": "Moolam",
-      "window": "Sign as the creator",
-      "windowLine": "Dreamloom's agent drew it. You imagined it.",
-      "passkey": "Sign with passkey",
-      "passkeyWaiting": "Passkey",
-      "passport": "Passport on Monad",
-      "credit": "Imagined by Ram. Drawn on Dreamloom.",
-      "checked": "Checked by Chainlink",
-      "pause": "Pause the illustration",
-      "play": "Play the illustration",
-      "pauseShort": "Pause",
-      "playShort": "Play",
-      "step": "Step {number}: {label}",
+      "window": "Assine como criador",
+      "windowLine": "O agente da Dreamloom desenhou. Você imaginou.",
+      "passkey": "Assinar com chave de acesso",
+      "passkeyWaiting": "Chave de acesso",
+      "passport": "Passaporte na Monad",
+      "credit": "Imaginada por Ram. Desenhada na Dreamloom.",
+      "checked": "Conferido pela Chainlink",
+      "pause": "Pausar a ilustração",
+      "play": "Reproduzir a ilustração",
+      "pauseShort": "Pausar",
+      "playShort": "Reproduzir",
+      "step": "Passo {number}: {label}",
       "stages": {
         "prompt": {
-          "label": "Prompt",
-          "line": "A person types what they imagine on Dreamloom."
+          "label": "Instrução",
+          "line": "Uma pessoa escreve o que imagina na Dreamloom."
         },
         "picture": {
-          "label": "Picture",
-          "line": "Dreamloom's agent draws the picture."
+          "label": "Imagem",
+          "line": "O agente da Dreamloom desenha a imagem."
         },
         "press": {
-          "label": "Press",
-          "line": "They press Sign it as the creator."
+          "label": "Toque",
+          "line": "A pessoa toca em Assinar como criador."
         },
         "window": {
-          "label": "Window",
-          "line": "A small Moolam window opens over Dreamloom's page."
+          "label": "Janela",
+          "line": "Uma pequena janela da Moolam abre sobre a página da Dreamloom."
         },
         "passkey": {
-          "label": "Passkey",
-          "line": "One passkey tap approves this exact picture."
+          "label": "Chave de acesso",
+          "line": "Um toque na chave de acesso aprova esta imagem exata."
         },
         "passport": {
-          "label": "Passport",
-          "line": "The passport lands, naming them."
+          "label": "Passaporte",
+          "line": "O passaporte chega, com o nome da pessoa."
         },
         "chainlink": {
           "label": "Chainlink",
-          "line": "Chainlink checks the picture on its own."
+          "line": "A Chainlink confere a imagem por conta própria."
         }
       }
     },
     "why": {
-      "kicker": "Why platforms add it",
-      "title": "Three reasons your users will ask for it",
+      "kicker": "Por que as plataformas usam a Moolam",
+      "title": "Três motivos para seus usuários pedirem isso",
       "reasons": {
         "credit": {
-          "title": "Credit your users can prove",
-          "body": "The person's own passkey approves the picture before Monad records it. The credit rests on their key, not on your word, so nobody can argue with it later.",
-          "proof": "How the credit reads"
+          "title": "Crédito que seus usuários podem provar",
+          "body": "A própria chave de acesso da pessoa aprova a imagem antes que a Monad a registre. O crédito se apoia na chave dela, não na sua palavra, então ninguém pode discutir depois.",
+          "proof": "Como o crédito aparece"
         },
         "name": {
-          "title": "Your name travels with every copy",
-          "body": "Each passport says where the picture was drawn. Strip it, shrink it or screenshot it: the fingerprint still finds the passport, and your name with it.",
-          "proof": "How copies are found"
+          "title": "Seu nome viaja com cada cópia",
+          "body": "Cada passaporte diz onde a imagem foi desenhada. Sem metadados, reduzida ou em captura de tela: a impressão ainda encontra o passaporte, e o seu nome junto.",
+          "proof": "Como as cópias são encontradas"
         },
         "terms": {
-          "title": "AI-use terms that answer for themselves",
-          "body": "The person states on Monad whether AI may train on the picture. Any AI agent can read that answer through Moolam's MCP server before it uses the picture.",
-          "proof": "The MCP server"
+          "title": "Termos de uso por IA que respondem por si",
+          "body": "A pessoa declara na Monad se a IA pode treinar com a imagem. Qualquer agente de IA pode ler essa resposta pelo servidor MCP da Moolam antes de usar a imagem.",
+          "proof": "O servidor MCP"
         }
       }
     },
     "ways": {
-      "kicker": "Three ways to hand it over",
-      "title": "Pick how the passport reaches your user",
+      "kicker": "Três jeitos de entregar",
+      "title": "Escolha como o passaporte chega ao seu usuário",
       "rows": {
-        "person": "What the person does",
-        "credit": "When they are credited",
-        "cost": "What it costs you on Monad",
-        "build": "What you build"
+        "person": "O que a pessoa faz",
+        "credit": "Quando recebe o crédito",
+        "cost": "Quanto custa para você na Monad",
+        "build": "O que você constrói"
       },
-      "recommended": "Recommended",
-      "next": "Coming with the next release",
+      "recommended": "Recomendado",
+      "next": "Chega na próxima versão",
       "items": {
         "cosign": {
-          "name": "Sign it yourself",
-          "person": "Presses Sign it as the creator, signs in to Moolam the first time, and taps their passkey. After that, one tap a picture.",
-          "credit": "From the first block. Their own key approved the picture.",
-          "cost": "Nothing. Moolam pays their fee.",
-          "build": "Open one link in a small window."
+          "name": "Assine você mesmo",
+          "person": "Toca em Assinar como criador, entra na Moolam na primeira vez e toca na chave de acesso. Depois disso, um toque por imagem.",
+          "credit": "Desde o primeiro bloco. A própria chave da pessoa aprovou a imagem.",
+          "cost": "Nada. A Moolam paga a taxa da pessoa.",
+          "build": "Abrir um link numa janela pequena."
         },
         "email": {
-          "name": "Leave it for their email",
-          "person": "Signs in to Moolam with the email you verified, presses These are mine, picks their AI-use terms, then confirms.",
-          "credit": "When they confirm from their own wallet, after your hand-over.",
-          "cost": "About 0.063 MON a picture: register, terms, hand-over.",
-          "build": "One field on registerAsPlatform, and a delivery worker."
+          "name": "Deixar no e-mail da pessoa",
+          "person": "Entra na Moolam com o e-mail que você confirmou, toca em Estas são minhas, escolhe os termos de uso por IA e confirma.",
+          "credit": "Quando confirma pela própria carteira, depois da sua entrega.",
+          "cost": "Cerca de 0,063 MON por imagem: registro, termos, entrega.",
+          "build": "Um campo em registerAsPlatform e um processo de entrega."
         },
         "connect": {
-          "name": "Connect once",
-          "person": "Opens Moolam's connect page once and sends you their Moolam address. Later pictures reach them with no step.",
-          "credit": "When they state their own terms on a passport you handed them.",
-          "cost": "About 0.063 MON a picture, the same three transactions.",
-          "build": "A button that opens the connect page, and a place to keep each address."
+          "name": "Conectar uma vez",
+          "person": "Abre uma vez a página de conexão da Moolam e envia a você o próprio endereço na Moolam. As próximas imagens chegam sem nenhum passo.",
+          "credit": "Quando declara os próprios termos em um passaporte que você entregou.",
+          "cost": "Cerca de 0,063 MON por imagem, as mesmas três transações.",
+          "build": "Um botão que abre a página de conexão e um lugar para guardar cada endereço."
         }
       },
-      "whyTitle": "Why we recommend sign it yourself",
-      "why": "It is the only way that puts the person's own key on the picture: their passkey approves this exact picture before Monad records it. It costs you nothing on chain, because Moolam pays their fee.",
-      "proof": "Compare the three in the guide"
+      "whyTitle": "Por que recomendamos o Assine você mesmo",
+      "why": "É o único jeito que põe a própria chave da pessoa na imagem: a chave de acesso dela aprova esta imagem exata antes que a Monad a registre. Não custa nada para você na rede, porque a Moolam paga a taxa da pessoa.",
+      "proof": "Compare os três no guia"
     },
     "person": {
-      "kicker": "What your user does",
-      "title": "Every step, in the recommended way",
+      "kicker": "O que o seu usuário faz",
+      "title": "Cada passo, do jeito recomendado",
       "steps": {
         "make": {
-          "title": "Makes a picture on your site",
-          "body": "They type a prompt and your agent draws it, exactly as today."
+          "title": "Faz uma imagem no seu site",
+          "body": "A pessoa escreve uma instrução e o seu agente desenha, igual a hoje."
         },
         "press": {
-          "title": "Presses Sign it as the creator",
-          "body": "One button beside the picture. Nothing else on your page changes."
+          "title": "Toca em Assinar como criador",
+          "body": "Um botão ao lado da imagem. Nada mais muda na sua página."
         },
         "window": {
-          "title": "Sees a small Moolam window",
-          "body": "It opens over your page like a checkout, and names your platform from Moolam's signed list."
+          "title": "Vê uma pequena janela da Moolam",
+          "body": "Ela abre sobre a sua página como uma tela de pagamento e mostra o nome da sua plataforma a partir da lista assinada da Moolam."
         },
         "signIn": {
-          "title": "Signs in, the first time only",
-          "body": "A Moolam account and a passkey, made once on that device."
+          "title": "Entra na conta, só na primeira vez",
+          "body": "Uma conta na Moolam e uma chave de acesso, criadas uma vez naquele aparelho."
         },
         "passkey": {
-          "title": "Taps their passkey",
-          "body": "Face, fingerprint or screen lock approves this exact picture. Moolam pays the Monad fee."
+          "title": "Toca na chave de acesso",
+          "body": "Rosto, digital ou bloqueio de tela aprova esta imagem exata. A Moolam paga a taxa da Monad."
         },
         "passport": {
-          "title": "Has the passport",
-          "body": "The window closes. Monad holds a passport naming them, and the picture waits on their My pictures."
+          "title": "Tem o passaporte",
+          "body": "A janela fecha. A Monad guarda um passaporte com o nome da pessoa, e a imagem espera em Minhas imagens."
         }
       }
     },
     "build": {
-      "kicker": "Build it",
-      "title": "Three calls on your server",
-      "before": "Before the first picture: register an ERC-8004 agent on Monad and join Moolam's list. You get a Moolam key that identifies your platform.",
-      "beforeLink": "Joining the list",
-      "package": "The kit is a TypeScript package for your server, @moolam/platform. It is not on npm yet.",
-      "step": "Step {number}",
-      "codeLabel": "Code for step {number}: {title}",
+      "kicker": "Construa",
+      "title": "Três chamadas no seu servidor",
+      "before": "Antes da primeira imagem: registre um agente ERC-8004 na Monad e entre na lista da Moolam. Você recebe uma chave da Moolam que identifica a sua plataforma.",
+      "beforeLink": "Como entrar na lista",
+      "package": "O kit é um pacote TypeScript para o seu servidor, @moolam/platform. Ele ainda não está no npm.",
+      "step": "Passo {number}",
+      "codeLabel": "Código do passo {number}: {title}",
       "steps": {
         "start": {
-          "title": "Start the co-sign",
-          "body": "Your server hands Moolam the picture. Moolam signs its Content Credentials, fingerprints it and gives back a link for your user."
+          "title": "Comece a coassinatura",
+          "body": "Seu servidor entrega a imagem à Moolam. A Moolam assina as Content Credentials dela, tira a impressão e devolve um link para o seu usuário."
         },
         "send": {
-          "title": "Send the link, sign as your agent",
-          "body": "Open the link in a small window. Once your user has signed in, your agent signs the same picture."
+          "title": "Envie o link, assine como seu agente",
+          "body": "Abra o link numa janela pequena. Assim que o seu usuário entrar, o seu agente assina a mesma imagem."
         },
         "wait": {
-          "title": "Wait for the passport",
-          "body": "It returns once Monad holds this passport with your user as its creator and your agent as its maker."
+          "title": "Espere o passaporte",
+          "body": "A chamada retorna quando a Monad tem este passaporte, com o seu usuário como criador e o seu agente como quem desenhou."
         }
       },
       "mcp": {
-        "title": "For AI agents",
-        "body": "One line connects Claude, or any client that speaks MCP, to Moolam's read-only server: check a picture, read its passport and its AI-use terms.",
-        "codeLabel": "Command that adds Moolam's MCP server to Claude Code"
+        "title": "Para agentes de IA",
+        "body": "Uma linha conecta o Claude, ou qualquer cliente que fale MCP, ao servidor somente leitura da Moolam: conferir uma imagem, ler o passaporte dela e os termos de uso por IA.",
+        "codeLabel": "Comando que adiciona o servidor MCP da Moolam ao Claude Code"
       },
-      "guide": "The full integration guide"
+      "guide": "O guia de integração completo"
     },
     "live": {
-      "kicker": "Live today",
-      "title": "Dreamloom runs it on Monad mainnet",
-      "body": "Dreamloom is a demo AI picture site built to show the kit. It is on Moolam's signed list, its agent signs every picture it draws, and its passports are real.",
+      "kicker": "No ar hoje",
+      "title": "A Dreamloom roda o kit na Monad mainnet",
+      "body": "A Dreamloom é um site de imagens de IA de demonstração, feito para mostrar o kit. Ela está na lista assinada da Moolam, o agente dela assina cada imagem que desenha, e os passaportes dela são reais.",
       "figures": {
-        "platformPassports": "passports signed by {platform}'s agent",
-        "totalPassports": "passports on Moolam",
-        "stated": "carry their holder's AI-use terms",
-        "platforms": "{count, plural, =1 {platform on Moolam's signed list} other {platforms on Moolam's signed list}}"
+        "platformPassports": "passaportes assinados pelo agente de {platform}",
+        "totalPassports": "passaportes na Moolam",
+        "stated": "trazem os termos de uso por IA de quem os detém",
+        "platforms": "{count, plural, =1 {plataforma na lista assinada da Moolam} other {plataformas na lista assinada da Moolam}}"
       },
-      "source": "Read from Moolam's index and its signed list, held for a minute.",
-      "unread": "Not read just now",
-      "now": "Live now: the platform routes and the MCP server on Moolam's verify service, and Dreamloom.",
-      "next": "Coming with the next release: leave it for their email, and the co-sign and connect windows on moolam.vercel.app.",
-      "agent": "Agent {id}",
-      "pictureAlt": "{title}, a picture drawn on {platform} with its passport on Monad",
-      "pictureAltUntitled": "A picture drawn on {platform} with its passport on Monad",
-      "open": "Open Dreamloom"
+      "source": "Números lidos do índice da Moolam e da lista assinada dela, guardados por um minuto.",
+      "unread": "Não lido agora",
+      "now": "No ar agora: as rotas para plataformas e o servidor MCP no serviço de verificação da Moolam, e a Dreamloom.",
+      "next": "Chega na próxima versão: deixar no e-mail da pessoa, e as janelas de coassinatura e de conexão em moolam.vercel.app.",
+      "agent": "Agente {id}",
+      "pictureAlt": "{title}, uma imagem desenhada em {platform} com o passaporte na Monad",
+      "pictureAltUntitled": "Uma imagem desenhada em {platform} com o passaporte na Monad",
+      "open": "Abrir a Dreamloom"
     },
     "pricing": {
-      "kicker": "Pricing",
-      "title": "Free while you find out",
-      "banner": "Free during early access. Paid plans start only when Moolam has real demand, with 30 days' notice.",
+      "kicker": "Preços",
+      "title": "Grátis enquanto você descobre",
+      "banner": "Grátis durante o acesso antecipado. Os planos pagos só começam quando a Moolam tiver demanda real, com 30 dias de aviso.",
       "plans": {
         "free": {
-          "name": "Free",
-          "price": "$0",
-          "unit": "a month",
-          "body": "The first 1,000 passports every month."
+          "name": "Grátis",
+          "price": "US$ 0",
+          "unit": "por mês",
+          "body": "Os primeiros 1.000 passaportes de cada mês."
         },
         "payg": {
-          "name": "Pay as you go",
-          "price": "$0.005",
-          "unit": "a passport",
-          "body": "Half a cent a passport after the first 1,000."
+          "name": "Pague pelo uso",
+          "price": "US$ 0,005",
+          "unit": "por passaporte",
+          "body": "Meio centavo de dólar por passaporte depois dos primeiros 1.000."
         },
         "monthly": {
-          "name": "Monthly",
-          "price": "$99",
-          "unit": "a month",
-          "body": "Up to 50,000 passports a month."
+          "name": "Mensal",
+          "price": "US$ 99",
+          "unit": "por mês",
+          "body": "Até 50.000 passaportes por mês."
         }
       },
-      "fee": "Moolam pays the Monad fee for every passport a person signs, about 0.07 MON today.",
-      "proof": "Measured costs on mainnet"
+      "fee": "A Moolam paga a taxa da Monad de cada passaporte que uma pessoa assina, cerca de 0,07 MON hoje.",
+      "proof": "Custos medidos na mainnet"
     },
     "security": {
-      "kicker": "Security and proof",
-      "title": "We tried to break it first",
-      "lead": "Every promise the kit, the MCP server and Dreamloom make was attacked from outside, against the live services.",
-      "attacks": "attacks sent",
-      "refused": "refused",
-      "controls": "controls passed",
-      "findings": "got through",
-      "honest": "Self-audited: Moolam ran this pass itself, and no outside firm has audited the kit yet. The kit checks your key and your agent owner's signature on chain at that moment. It does not check who the company behind an agent is.",
-      "unread": "The attack transcript could not be read just now.",
-      "threat": "Read the threat model",
-      "transcript": "The full attack transcript"
+      "kicker": "Segurança e provas",
+      "title": "Nós tentamos quebrar primeiro",
+      "lead": "Cada promessa do kit, do servidor MCP e da Dreamloom foi atacada de fora, contra os serviços no ar.",
+      "attacks": "ataques enviados",
+      "refused": "recusados",
+      "controls": "controles aprovados",
+      "findings": "passaram",
+      "honest": "Autoauditado: a própria Moolam fez esta rodada, e nenhuma empresa de fora auditou o kit ainda. O kit confere a sua chave e a assinatura do dono do seu agente na rede naquele momento. Ele não confere quem é a empresa por trás de um agente.",
+      "unread": "Não foi possível ler a transcrição dos ataques agora.",
+      "threat": "Ler o modelo de ameaças",
+      "transcript": "A transcrição completa dos ataques"
     },
     "call": {
-      "kicker": "Join",
-      "title": "Put your platform on the list",
-      "body": "Send Moolam your platform's name, your ERC-8004 agent and your site's address, sign the entry, and your users can sign their first picture.",
-      "primary": "How to join the list",
-      "secondary": "See it live on Dreamloom"
+      "kicker": "Entre",
+      "title": "Coloque sua plataforma na lista",
+      "body": "Envie à Moolam o nome da sua plataforma, o seu agente ERC-8004 e o endereço do seu site, assine a inscrição, e seus usuários já podem assinar a primeira imagem.",
+      "primary": "Como entrar na lista",
+      "secondary": "Ver ao vivo na Dreamloom"
     }
   },
   "menu": {
     "label": "Menu",
     "sides": {
-      "personal": "For personal",
-      "business": "For business"
+      "personal": "Para uso pessoal",
+      "business": "Para empresas"
     },
     "items": {
       "verify": {
-        "name": "Verify an image",
-        "line": "Drop in any picture and see who made it."
+        "name": "Verificar uma imagem",
+        "line": "Solte qualquer imagem e veja quem a fez."
       },
       "studio": {
-        "name": "Register an image",
-        "line": "Make a picture and give it a passport on Monad."
+        "name": "Registrar uma imagem",
+        "line": "Faça uma imagem e dê a ela um passaporte na Monad."
       },
       "mine": {
-        "name": "My pictures",
-        "line": "Every passport you hold, and what you allow."
+        "name": "Minhas imagens",
+        "line": "Cada passaporte que você detém, e o que você permite."
       },
       "explore": {
-        "name": "Explore",
-        "line": "Every passport ever registered, newest first."
+        "name": "Explorar",
+        "line": "Cada passaporte já registrado, o mais recente primeiro."
       },
       "how": {
-        "name": "How it works",
-        "line": "One passport, from first pixel to proof."
+        "name": "Como funciona",
+        "line": "Um passaporte, do primeiro pixel à prova."
       },
       "business": {
-        "name": "Moolam for business",
-        "line": "Credit the person behind every picture your site makes."
+        "name": "Moolam para empresas",
+        "line": "Dê o crédito à pessoa por trás de cada imagem que o seu site faz."
       },
       "kit": {
-        "name": "Platform kit",
-        "line": "One package and four routes on your server."
+        "name": "Kit para plataformas",
+        "line": "Um pacote e quatro rotas no seu servidor."
       },
       "mcp": {
-        "name": "AI agents and MCP",
-        "line": "Let Claude or any agent read a passport."
+        "name": "Agentes de IA e MCP",
+        "line": "Deixe o Claude ou qualquer agente ler um passaporte."
       },
       "agents": {
-        "name": "Agents board",
-        "line": "Every image agent, ranked by its record."
+        "name": "Quadro de agentes",
+        "line": "Cada agente de imagens, em ordem pelo histórico."
       },
       "pricing": {
-        "name": "Pricing",
-        "line": "What a passport costs you on Monad mainnet."
+        "name": "Preços",
+        "line": "Quanto um passaporte custa para você na Monad mainnet."
       },
       "dreamloom": {
-        "name": "Live demo: Dreamloom",
-        "line": "A real picture site running the kit today."
+        "name": "Demonstração ao vivo: Dreamloom",
+        "line": "Um site de imagens de verdade, rodando o kit hoje."
       },
       "security": {
-        "name": "Security and proof",
-        "line": "What the code defends, and the attacks we ran."
+        "name": "Segurança e provas",
+        "line": "O que o código defende, e os ataques que fizemos."
       }
     },
-    "here": "You are here",
-    "open": "Open",
-    "arrows": "Arrows move",
-    "escape": "Esc closes",
-    "close": "Close the menu",
-    "account": "My account"
+    "here": "Você está aqui",
+    "open": "Abrir",
+    "arrows": "Setas navegam",
+    "escape": "Esc fecha",
+    "close": "Fechar o menu",
+    "account": "Minha conta"
   },
   "mark": {
-    "label": "Trust mark",
+    "label": "Selo de confiança",
     "states": {
       "upheld": {
-        "word": "Challenge upheld",
-        "line": "Moolam upheld a challenge against this record. Treat it, and its AI-use terms, as wrong."
+        "word": "Contestação aceita",
+        "line": "A Moolam aceitou uma contestação contra este registro. Trate o registro, e os termos de uso por IA dele, como errados."
       },
       "mismatch": {
-        "word": "Does not match",
-        "line": "Chainlink's network fetched the picture this passport points to, and it is not the picture that was registered."
+        "word": "Não bate",
+        "line": "A rede da Chainlink baixou a imagem para a qual este passaporte aponta, e ela não é a imagem que foi registrada."
       },
       "lookalike": {
-        "word": "Registered after a look-alike",
-        "line": "An earlier passport, {title}, looks like the same picture. It was registered on {date}, before this one."
+        "word": "Registrado após uma imagem parecida",
+        "line": "Um passaporte anterior, {title}, parece ser a mesma imagem. Ele foi registrado em {date}, antes deste."
       },
       "challenged": {
-        "word": "Challenged",
-        "line": "Someone put {bond} MON behind a claim that this record is wrong. The holder can answer until {date}."
+        "word": "Contestado",
+        "line": "Alguém colocou {bond} MON por trás da alegação de que este registro está errado. Quem detém o passaporte pode responder até {date}."
       },
       "waiting": {
-        "word": "Waiting for Chainlink",
-        "line": "Registered {when}. Chainlink's network checks every new public passport, and has not checked this one yet."
+        "word": "Esperando a Chainlink",
+        "line": "Registrado em {when}. A rede da Chainlink confere cada passaporte público novo, e ainda não conferiu este."
       },
       "checked": {
-        "word": "Checked by Chainlink",
-        "line": "Chainlink's network fetched this picture itself, measured it again, and it matches its passport: {bits} of 64 bits apart. Written on Monad on {date}."
+        "word": "Conferido pela Chainlink",
+        "line": "A rede da Chainlink baixou esta imagem por conta própria, mediu de novo, e ela bate com o passaporte: {bits} de 64 bits de diferença. Resultado gravado na Monad em {date}."
       },
       "sealed": {
-        "word": "Sealed",
-        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+        "word": "Lacrado",
+        "line": "A imagem nunca foi publicada, então a rede da Chainlink não pode conferi-la. As impressões dela são públicas, e uma cópia ainda a encontra em Verificar."
       },
       "nothing": {
-        "word": "Nothing to check",
-        "line": "This passport names no picture, so Chainlink has nothing to fetch."
+        "word": "Nada a conferir",
+        "line": "Este passaporte não indica nenhuma imagem, então a Chainlink não tem o que baixar."
       }
     },
-    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
+    "secondPrint": "A rede da Chainlink viu que a impressão da aparência bate e a impressão da composição não. As duas precisam bater, então este passaporte não passa.",
     "simulator": {
-      "word": "Test run",
-      "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
+      "word": "Execução de teste",
+      "line": "Uma execução de teste em uma única máquina, no simulador da Chainlink. Ela fica no registro e nunca acende o selo."
     },
-    "unread": "The mark could not be read just now, so none is shown. Try again in a moment.",
-    "readDecision": "Read the decision",
-    "openEarlier": "Open the earlier passport"
+    "unread": "Não foi possível ler o selo agora, então nenhum aparece. Tente de novo daqui a pouco.",
+    "readDecision": "Ler a decisão",
+    "openEarlier": "Abrir o passaporte anterior"
   },
   "claim": {
-    "label": "Where the claim comes from",
-    "studio": "Made in Moolam's studio. The agent signed the picture the moment it was drawn.",
-    "platform": "Drawn on {platform}. Its agent signed the picture the moment it was made.",
-    "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
-    "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
-    "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
-    "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
-    "seenEarlier": "Before signing, they were shown an earlier passport like this one.",
-    "platformStatement": "{platform}'s statement"
+    "label": "De onde vem a alegação",
+    "studio": "Feita no estúdio da Moolam. O agente assinou a imagem no instante em que ela foi desenhada.",
+    "platform": "Desenhada em {platform}. O agente da plataforma assinou a imagem no instante em que ela foi feita.",
+    "camera": "Uma câmera assinou esta imagem quando a foto foi tirada. Isso identifica uma câmera, não uma pessoa.",
+    "self": "Enviada por {address} em {date}. É a alegação dessa pessoa, aberta a contestação até {until}.",
+    "selfLater": "Enviada por {address} em {date}. É a alegação dessa pessoa, e qualquer um ainda pode contestá-la com provas.",
+    "outside": "Registrada fora do estúdio da Moolam: sem declaração jurada, sem busca na web.",
+    "seenEarlier": "Antes de assinar, essa pessoa viu um passaporte anterior parecido com este.",
+    "platformStatement": "Declaração de {platform}"
   },
   "lookalike": {
     "found": {
-      "heading": "Earlier passport found",
-      "line": "Chainlink's network measured this picture itself and found {title}, registered on {date}, {bits} of 64 bits apart. Written on Monad on {at}."
+      "heading": "Passaporte anterior encontrado",
+      "line": "A rede da Chainlink mediu esta imagem por conta própria e encontrou {title}, que entrou no registro em {date}, a {bits} de 64 bits de diferença. Resultado gravado na Monad em {at}."
     },
     "searching": {
-      "heading": "Earlier passport, not confirmed yet",
-      "line": "Moolam's search found an earlier passport like this: {title}, registered on {date}. Chainlink has not confirmed it yet."
+      "heading": "Passaporte anterior, ainda sem confirmação",
+      "line": "A busca da Moolam encontrou um passaporte anterior parecido com este: {title}, registrado em {date}. A Chainlink ainda não confirmou."
     },
-    "order": "Registered first is not the same as made first. Anyone can challenge either passport with evidence.",
+    "order": "Ser registrado primeiro não é o mesmo que ser feito primeiro. Qualquer pessoa pode contestar qualquer um dos dois passaportes com provas.",
     "later": {
-      "line": "A later passport looks the same: {title}, registered on {date}.",
-      "count": "{count, plural, =1 {# later passport looks} other {# later passports look}} the same."
+      "line": "Um passaporte posterior parece igual: {title}, registrado em {date}.",
+      "count": "{count, plural, =1 {# passaporte posterior parece igual.} other {# passaportes posteriores parecem iguais.}}"
     },
-    "none": "Chainlink found no earlier look-alike among the candidates Moolam's search proposed.",
-    "sealed": "An earlier sealed passport carries a fingerprint like this picture's. Its picture was never shown, so nobody can compare the two."
+    "none": "A Chainlink não encontrou nenhuma imagem parecida anterior entre as candidatas que a busca da Moolam propôs.",
+    "sealed": "Um passaporte lacrado anterior tem uma impressão parecida com a desta imagem. A imagem dele nunca foi mostrada, então ninguém pode comparar as duas."
   },
   "sworn": {
-    "label": "By signing, you state",
-    "line": "I made this picture, or I hold the rights to register it.",
-    "note": "This line goes into the passport you sign, for anyone to read."
+    "label": "Ao assinar, você declara",
+    "line": "Eu fiz esta imagem, ou tenho os direitos para registrá-la.",
+    "note": "Esta frase entra no passaporte que você assina, no original em inglês, para qualquer pessoa ler."
   },
   "challenge": {
     "rules": {
-      "heading": "What a challenge needs",
-      "earlier": "The earlier work: the picture you say this passport copies.",
-      "proof": "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier passport.",
-      "verify": "A Verify answer that shows it is the same picture.",
-      "licensed": "That it is not a copy you licensed to them.",
-      "burden": "The challenger carries the burden. Without this evidence, the record stands."
+      "heading": "Do que uma contestação precisa",
+      "earlier": "A obra anterior: a imagem que, segundo você, este passaporte copia.",
+      "proof": "Prova de que ela existia ou foi mostrada antes: uma postagem com data, o arquivo original da câmera ou um passaporte anterior.",
+      "verify": "Uma resposta da página Verificar que mostre que é a mesma imagem.",
+      "licensed": "Que não é uma cópia que você licenciou para essa pessoa.",
+      "burden": "O ônus é de quem contesta. Sem essas provas, o registro continua valendo."
     },
     "decider": {
-      "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
-      "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
-      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way.",
-      "heading": "Who decides",
-      "treasury": "A rejected challenge's bond is credited to the treasury the policy names, {treasury}."
+      "who": "Hoje é a Moolam quem decide as contestações, por estas regras, e publica cada decisão com os motivos. A Moolam é uma empresa, não um tribunal.",
+      "seat": "Quem decide é um único endereço indicado na Monad. Trocá-lo exige uma espera pública de 24 horas.",
+      "bond": "A caução de uma contestação recusada é queimada, então a Moolam não ganha nada em nenhum dos casos.",
+      "heading": "Quem decide",
+      "treasury": "A caução de uma contestação recusada é creditada à tesouraria que a política indica, {treasury}."
     },
     "answer": {
-      "heading": "Answer this challenge",
-      "prompt": "Someone has challenged your passport. You have until {date} to answer before Moolam decides. Say why the record is right, and how someone else could check it.",
-      "placeholder": "What you know, and how someone else could check it.",
-      "left": "{left} left",
-      "hint": "Up to 4,000 bytes. Your wallet signs it, and it is pinned for good where anyone can read it.",
-      "button": "Sign and send my answer",
+      "heading": "Responda a esta contestação",
+      "prompt": "Alguém contestou o seu passaporte. Você tem até {date} para responder antes que a Moolam decida. Diga por que o registro está certo, e como outra pessoa poderia conferir.",
+      "placeholder": "O que você sabe, e como outra pessoa poderia conferir.",
+      "left": "faltam {left}",
+      "hint": "Até 4.000 bytes. Sua carteira assina, e a resposta fica fixada para sempre onde qualquer pessoa pode lê-la.",
+      "button": "Assinar e enviar minha resposta",
       "states": {
-        "signing": "Waiting for your wallet to sign",
-        "sending": "Sending your answer",
-        "done": "Your answer is pinned and shown on this passport."
+        "signing": "Esperando sua carteira assinar",
+        "sending": "Enviando sua resposta",
+        "done": "Sua resposta está fixada e aparece neste passaporte."
       },
       "shown": {
-        "label": "The holder's answer",
-        "by": "Signed by {holder}",
-        "none": "The holder has not answered yet. They have until {date}.",
-        "missed": "The holder did not answer within the 14 days.",
-        "unread": "The holder's answer could not be read just now. Try again in a moment."
+        "label": "A resposta de quem detém o passaporte",
+        "by": "Assinada por {holder}",
+        "none": "Quem detém o passaporte ainda não respondeu. O prazo vai até {date}.",
+        "missed": "Quem detém o passaporte não respondeu dentro dos 14 dias.",
+        "unread": "Não foi possível ler agora a resposta de quem detém o passaporte. Tente de novo daqui a pouco."
       },
       "refusals": {
-        "noOpenDispute": "There is no open challenge on this passport to answer.",
-        "windowClosed": "The 14 days to answer this challenge have passed.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "noHolder": "Monad shows no holder for this passport, so nobody can answer for it.",
-        "notHolder": "This wallet does not hold this passport, so it cannot answer for it.",
-        "signatureUsed": "That signature was already used. Sign again.",
-        "alreadyAnswered": "This challenge already has its answer. Each challenge takes one.",
-        "answering": "An answer to this challenge is being sent from another window. Look again in a moment.",
-        "unavailable": "Moolam cannot take answers right now. Nothing was sent. Try again later.",
-        "chainUnreachable": "Moolam could not read Monad just now. Nothing was sent. Try again in a moment.",
-        "pinFailed": "Your answer could not be pinned, so nothing was saved. Try again.",
-        "busy": "Too many answers are arriving right now. Wait a minute and try again.",
-        "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
-        "empty": "Write your answer first.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "declined": "You closed the wallet prompt, so nothing was signed.",
-        "unknown": "The answer did not go through."
+        "noOpenDispute": "Não há contestação aberta neste passaporte para responder.",
+        "windowClosed": "Os 14 dias para responder a esta contestação já passaram.",
+        "expired": "Sua assinatura expirou antes de chegar. Assine de novo.",
+        "noHolder": "A Monad não mostra ninguém que detenha este passaporte, então ninguém pode responder por ele.",
+        "notHolder": "Esta carteira não detém este passaporte, então não pode responder por ele.",
+        "signatureUsed": "Essa assinatura já foi usada. Assine de novo.",
+        "alreadyAnswered": "Esta contestação já tem a sua resposta. Cada contestação recebe só uma.",
+        "answering": "Uma resposta a esta contestação está sendo enviada de outra janela. Olhe de novo daqui a pouco.",
+        "unavailable": "A Moolam não consegue receber respostas agora. Nada foi enviado. Tente mais tarde.",
+        "chainUnreachable": "A Moolam não conseguiu ler a Monad agora. Nada foi enviado. Tente de novo daqui a pouco.",
+        "pinFailed": "Sua resposta não pôde ser fixada, então nada foi salvo. Tente de novo.",
+        "busy": "Estão chegando respostas demais agora. Espere um minuto e tente de novo.",
+        "tooLong": "Sua resposta passa de 4.000 bytes. Encurte e assine de novo.",
+        "empty": "Escreva sua resposta primeiro.",
+        "notPrintable": "Caracteres ocultos não podem ser enviados. Tire-os e assine de novo.",
+        "declined": "Você fechou a janela da carteira, então nada foi assinado.",
+        "unknown": "A resposta não passou."
       }
     },
     "decision": {
-      "heading": "The decision",
-      "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
-      "rejected": "Rejected on {date}. The record stands.",
-      "reasons": "Read the reasons",
-      "noReasons": "No reasons were published with this decision.",
-      "upheldUndated": "Upheld. Moolam agreed with the challenge.",
-      "rejectedUndated": "Rejected. The record stands.",
-      "unread": "The published reasons could not be read just now. Try again in a moment."
+      "heading": "A decisão",
+      "upheld": "Aceita em {date}. A Moolam deu razão à contestação.",
+      "rejected": "Recusada em {date}. O registro continua valendo.",
+      "reasons": "Ler os motivos",
+      "noReasons": "Nenhum motivo foi publicado com esta decisão.",
+      "upheldUndated": "Aceita. A Moolam deu razão à contestação.",
+      "rejectedUndated": "Recusada. O registro continua valendo.",
+      "unread": "Não foi possível ler os motivos publicados agora. Tente de novo daqui a pouco."
     },
     "held": {
-      "heading": "{count, plural, =1 {A picture you hold is challenged} other {# pictures you hold are challenged}}",
-      "opened": "Challenged on {date}"
+      "heading": "{count, plural, =1 {Uma imagem que você detém está sob contestação} other {# imagens que você detém estão sob contestação}}",
+      "opened": "Contestada em {date}"
     },
     "publish": {
-      "kicker": "Publish the reasons",
-      "label": "The reasons",
-      "placeholder": "What the evidence showed, which rule decided it, and how anyone can check it.",
-      "left": "{left} left",
-      "hint": "Up to 8,000 bytes, line breaks kept. Your wallet signs them, and they are pinned for good where anyone can read them.",
-      "button": "Sign and publish, one more transaction",
-      "why": "Settling wrote the outcome on Monad, not the reasons. Publishing them is one more transaction from this wallet: it writes the pinned reasons' address beside this decision, so anyone who opens the passport can read why.",
+      "kicker": "Publique os motivos",
+      "label": "Os motivos",
+      "placeholder": "O que as provas mostraram, qual regra decidiu, e como qualquer pessoa pode conferir.",
+      "left": "faltam {left}",
+      "hint": "Até 8.000 bytes, com as quebras de linha. Sua carteira assina os motivos, e eles ficam fixados para sempre onde qualquer pessoa pode lê-los.",
+      "button": "Assinar e publicar, mais uma transação",
+      "why": "Resolver a contestação gravou o resultado na Monad, não os motivos. Publicá-los é mais uma transação desta carteira: ela grava o endereço dos motivos fixados ao lado desta decisão, para que quem abrir o passaporte possa ler o porquê.",
       "states": {
-        "signing": "Waiting for your wallet to sign the reasons",
-        "pinning": "Pinning the reasons",
-        "sending": "Sending the publish transaction",
-        "confirming": "Waiting for Monad's receipt",
-        "pending": "The publish went out and no receipt shows it yet. It may still land, so it must not be sent again."
+        "signing": "Esperando sua carteira assinar os motivos",
+        "pinning": "Fixando os motivos",
+        "sending": "Enviando a transação de publicação",
+        "confirming": "Esperando o recibo da Monad",
+        "pending": "A publicação saiu e nenhum recibo a mostra ainda. Ela ainda pode entrar, então não deve ser enviada de novo."
       },
-      "recheck": "Ask Monad again",
-      "done": "Published. Monad's receipt carries this decision's reasons, and the passport page links them.",
-      "openReasons": "Read the reasons",
-      "openTx": "Transaction {hash}",
+      "recheck": "Perguntar à Monad de novo",
+      "done": "Publicados. O recibo da Monad traz os motivos desta decisão, e a página do passaporte tem o link para eles.",
+      "openReasons": "Ler os motivos",
+      "openTx": "Transação {hash}",
       "owed": {
-        "heading": "Decisions waiting for their reasons",
-        "line": "{outcome, select, upheld {Upheld} other {Rejected}} on {date}"
+        "heading": "Decisões esperando os motivos",
+        "line": "{outcome, select, upheld {Aceita} other {Recusada}} em {date}"
       },
       "refusals": {
-        "empty": "Write the reasons first.",
-        "tooLong": "The reasons are over 8,000 bytes. Shorten them and sign again.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "notResolver": "This wallet is not the resolver the policy names, so nothing was pinned or sent.",
-        "notSettled": "Monad does not show this dispute settled, so it has no decision to explain yet.",
-        "mismatch": "Monad shows this dispute settled another way or opened at another time. Reload the desk and look again.",
-        "alreadyPublished": "The reasons for this decision are already published.",
-        "pinning": "These reasons are being pinned from another window. Look again in a moment.",
-        "busy": "Too many reasons were pinned today, or too many requests came at once. Try again later.",
-        "pinFailed": "The reasons could not be pinned, so nothing was published. Send them again.",
-        "unavailable": "Moolam cannot pin reasons right now. Nothing was published. Try again later.",
-        "chainUnreachable": "Monad could not be read just now. Nothing was sent. Try again in a moment.",
-        "declined": "You closed the wallet prompt, so nothing was signed or sent.",
-        "invalidAddress": "MoolamDecisions would not take this address, so nothing was sent.",
-        "reverted": "Monad mined the publish and its receipt does not carry these reasons. Nothing was published.",
-        "unknown": "The publish did not go through."
+        "empty": "Escreva os motivos primeiro.",
+        "tooLong": "Os motivos passam de 8.000 bytes. Encurte e assine de novo.",
+        "notPrintable": "Caracteres ocultos não podem ser enviados. Tire-os e assine de novo.",
+        "expired": "Sua assinatura expirou antes de chegar. Assine de novo.",
+        "notResolver": "Esta carteira não é o árbitro que a política indica, então nada foi fixado nem enviado.",
+        "notSettled": "A Monad não mostra esta contestação como resolvida, então ainda não há decisão para explicar.",
+        "mismatch": "A Monad mostra esta contestação resolvida de outro jeito ou aberta em outro momento. Recarregue o painel e olhe de novo.",
+        "alreadyPublished": "Os motivos desta decisão já estão publicados.",
+        "pinning": "Estes motivos estão sendo fixados de outra janela. Olhe de novo daqui a pouco.",
+        "busy": "Motivos demais foram fixados hoje, ou chegaram pedidos demais ao mesmo tempo. Tente mais tarde.",
+        "pinFailed": "Os motivos não puderam ser fixados, então nada foi publicado. Envie de novo.",
+        "unavailable": "A Moolam não consegue fixar motivos agora. Nada foi publicado. Tente mais tarde.",
+        "chainUnreachable": "Não foi possível ler a Monad agora. Nada foi enviado. Tente de novo daqui a pouco.",
+        "declined": "Você fechou a janela da carteira, então nada foi assinado nem enviado.",
+        "invalidAddress": "O MoolamDecisions não aceitou este endereço, então nada foi enviado.",
+        "reverted": "A Monad processou a publicação e o recibo não traz estes motivos. Nada foi publicado.",
+        "unknown": "A publicação não passou."
       }
     }
   }
