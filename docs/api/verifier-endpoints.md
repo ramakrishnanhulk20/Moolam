@@ -2327,6 +2327,16 @@ wallet's ERC-1271 signature is refused; the dispute is settled with this `opened
 (`Upheld` for `true`, `Rejected` for `false`); its reasons are not yet published; and the reasons
 pass the text rule above. Only then is the document pinned.
 
+**A stranger costs no chain read.** Before that one-block read, the service recovers the signer and
+compares it with the resolver it last read. A signer that matches goes on to the full check above.
+For any other signer, the service reads `resolver()` again only when a minute or more has passed
+since its last attempt, whether that attempt was answered or failed, so a flood of strangers costs
+at most one read a minute even while the chain is down. Every request arriving during a read shares
+it. Inside the minute after an answered read, any other signer is refused `403 not-the-resolver`;
+inside the minute after a failed read, any signer but the held resolver gets `503
+chain-unreachable`, never a pass. A newly named resolver passes within a minute, and the old one is
+refused by the one-block check meanwhile.
+
 **The pinned document.**
 
 ```ts
@@ -2527,7 +2537,8 @@ here while `ok` and `records` still look healthy. `version` is
 the package version. `routes` is what this host actually mounted, which is where a deploy missing a
 key becomes visible from outside: a host without `PINATA_JWT` still boots and still verifies, and
 `prepare` is simply not in the list. It is read on every call, so `generate` appears once the
-registry check has read the chain and agreed.
+registry check has read the chain and agreed. A host with `PINATA_JWT` lists `decisions/reasons`
+there, for [POST /decisions/reasons](#post-decisionsreasons).
 
 `off` names each route of a mounted family that is off right now, as `POST /prepare`, with a plain
 reason. There are three kinds today: `POST /prepare`, `POST /generate` and `POST /edit` when the

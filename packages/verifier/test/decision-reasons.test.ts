@@ -6,7 +6,8 @@
 // 65 byte signature, for a dispute settled with that openedAt and that outcome, not yet published,
 // with 1 to 8,000 bytes of printable reasons whose only control character is the line break. The
 // address it answers fits MoolamDecisions.publish, and the same reasons answer the same address
-// without a second pin, under a daily ceiling of the route's own.
+// without a second pin, under a daily ceiling of the route's own. A stranger is refused before any
+// chain read, by a gate that reads the policy's resolver at most once a minute (WO-275d).
 // Does NOT cover the live Monad read (a stand-in answers for one block), a real pin (a stand-in
 // computes the content id Pinata would give the bytes), the resolver console that signs, or the
 // publish transaction itself, which packages/contracts/test/MoolamDecisions.t.sol covers.
@@ -28,7 +29,7 @@ import {
 import { ReasonsStore } from "../src/challenges/reasonsStore.js";
 import { env } from "../src/env.js";
 import { contentIdOf } from "../src/ipfs/pinata.js";
-import { decisionRoutes, type DecisionRouteOptions } from "../src/routes/decisions.js";
+import { RESOLVER_REFRESH_MS, decisionRoutes, type DecisionRouteOptions } from "../src/routes/decisions.js";
 import { buildServer } from "../src/server.js";
 import { idFrom } from "./helpers.js";
 
@@ -38,6 +39,7 @@ const UPHELD = 2;
 const REJECTED = 3;
 const resolver = privateKeyToAccount(`0x${"61".repeat(32)}`);
 const stranger = privateKeyToAccount(`0x${"62".repeat(32)}`);
+const successor = privateKeyToAccount(`0x${"63".repeat(32)}`);
 
 /** The one block the stand-in chain answers for. */
 const world: { now: bigint; resolver: Address; status: number; openedAt: bigint; published: boolean; fail: boolean } = {
@@ -63,6 +65,7 @@ const chain: DecisionChain = {
       published: world.published,
     };
   },
+  resolverNow: async () => world.resolver,
 };
 
 /** Pins as Pinata would: the content id of the very bytes pinJson sends. */
@@ -387,6 +390,162 @@ describe("the route's own daily ceiling", () => {
       expect(Number(second.headers["retry-after"])).toBeGreaterThan(0);
     } finally {
       await bare.close();
+    }
+  });
+});
+
+describe("the resolver gate in front of the chain read", () => {
+  /** A host of its own with a policy it can change, a fake clock, and a count of every chain read. */
+  async function gatedHost() {
+    const policy = { resolver: resolver.address as Address, failRead: false };
+    const calls = { decisionAt: 0, resolverNow: 0 };
+    const clock = { ms: 1_790_100_000_000 };
+    const counted: DecisionChain = {
+      decisionAt: async (): Promise<DecisionAtBlock> => {
+        calls.decisionAt += 1;
+        return { now: world.now, resolver: policy.resolver, dispute: { status: world.status, openedAt: world.openedAt }, published: world.published };
+      },
+      resolverNow: async () => {
+        calls.resolverNow += 1;
+        // Slow enough that callers arriving together find the read still in flight.
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        if (policy.failRead) throw new Error("rpc refused the read");
+        return policy.resolver;
+      },
+    };
+    const host = Fastify({ logger: false });
+    await host.register(decisionRoutes, { chain: counted, store: new ReasonsStore(undefined), pin: standInPin, perDay: 1_000, clock: () => clock.ms });
+    await host.ready();
+    return { host, policy, calls, clock };
+  }
+
+  it("a stranger's 100 requests make zero decisionAt calls and at most one resolverNow call per 60 seconds of a fake clock", async () => {
+    const { host, calls, clock } = await gatedHost();
+    try {
+      const started = clock.ms;
+      const passportId = freshPassport();
+      for (let batch = 0; batch < 10; batch += 1) {
+        const bodies = await Promise.all(Array.from({ length: 10 }, async (_, i) => await signedBody(passportId, `Reasons ${batch}.${i}`, true, { signer: stranger })));
+        const answers = await Promise.all(bodies.map(async (body) => await post(host, body)));
+        for (const answer of answers) expect(answer).toMatchObject({ status: 403, json: { error: "not-the-resolver" } });
+        clock.ms += 10_000;
+      }
+
+      expect(calls.decisionAt).toBe(0);
+      // Reads at the start and at 60 seconds, over 100 seconds of fake clock.
+      expect(calls.resolverNow).toBe(Math.floor((clock.ms - 10_000 - started) / RESOLVER_REFRESH_MS) + 1);
+      expect(calls.resolverNow).toBe(2);
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("the resolver still pins as before", async () => {
+    const { host, calls } = await gatedHost();
+    try {
+      const before = pinned.length;
+      const first = await post(host, await signedBody(freshPassport(), "The frame was posted earlier."));
+      const second = await post(host, await signedBody(freshPassport(), "Another decision."));
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect(pinned.length).toBe(before + 2);
+      expect(calls.decisionAt).toBe(2);
+      // The second request matched the held resolver and read nothing for the gate.
+      expect(calls.resolverNow).toBe(1);
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("after the policy names a new resolver, the new one passes within 60 seconds and the old one is refused by the one-block check even while the gate still holds it", async () => {
+    const { host, policy, calls, clock } = await gatedHost();
+    try {
+      expect((await post(host, await signedBody(freshPassport(), "Before the change."))).status).toBe(200);
+      policy.resolver = successor.address;
+      clock.ms += 30_000;
+
+      const reads = calls.decisionAt;
+      const oldOne = await post(host, await signedBody(freshPassport(), "After the change."));
+      expect(oldOne).toMatchObject({ status: 403, json: { error: "not-the-resolver" } });
+      // It got past the gate and was stopped by the resolver read at the dispute's block.
+      expect(calls.decisionAt).toBe(reads + 1);
+
+      const early = await post(host, await signedBody(freshPassport(), "Too early.", true, { signer: successor }));
+      expect(early).toMatchObject({ status: 403, json: { error: "not-the-resolver" } });
+      expect(calls.decisionAt).toBe(reads + 1);
+
+      clock.ms += RESOLVER_REFRESH_MS - 30_000;
+      const newOne = await post(host, await signedBody(freshPassport(), "The new resolver.", true, { signer: successor }));
+      expect(newOne.status).toBe(200);
+      expect(pinned.at(-1)?.resolver).toBe(successor.address);
+
+      const afterRefresh = calls.decisionAt;
+      expect((await post(host, await signedBody(freshPassport(), "Old again."))).json.error).toBe("not-the-resolver");
+      expect(calls.decisionAt).toBe(afterRefresh);
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("a failed resolverNow answers 503", async () => {
+    const { host, policy, calls } = await gatedHost();
+    try {
+      policy.failRead = true;
+      const before = pinned.length;
+
+      const response = await post(host, await signedBody(freshPassport(), "Reasons."));
+
+      expect(response).toMatchObject({ status: 503, json: { error: "chain-unreachable" } });
+      expect(calls.resolverNow).toBe(1);
+      expect(calls.decisionAt).toBe(0);
+      expect(pinned.length).toBe(before);
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("with resolverNow failing, 100 stranger requests over 100 fake seconds make exactly 2 resolverNow calls and every answer is 503, and the resolver passes on its first request after the window once it recovers", async () => {
+    const { host, policy, calls, clock } = await gatedHost();
+    try {
+      policy.failRead = true;
+      const started = clock.ms;
+      const passportId = freshPassport();
+      for (let batch = 0; batch < 10; batch += 1) {
+        const bodies = await Promise.all(Array.from({ length: 10 }, async (_, i) => await signedBody(passportId, `Reasons ${batch}.${i}`, true, { signer: stranger })));
+        const answers = await Promise.all(bodies.map(async (body) => await post(host, body)));
+        for (const answer of answers) expect(answer).toMatchObject({ status: 503, json: { error: "chain-unreachable" } });
+        clock.ms += 10_000;
+      }
+      expect(calls.resolverNow).toBe(2);
+      expect(calls.decisionAt).toBe(0);
+
+      policy.failRead = false;
+      // The last failed attempt was at 60 seconds, so its window closes at 120.
+      clock.ms = started + 2 * RESOLVER_REFRESH_MS;
+      const recovered = await post(host, await signedBody(freshPassport(), "Back after the outage."));
+      expect(recovered.status).toBe(200);
+      expect(calls.resolverNow).toBe(3);
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("a repeat of pinned reasons still returns the same address without a second pin", async () => {
+    const { host, calls } = await gatedHost();
+    try {
+      const passportId = freshPassport();
+      const first = await post(host, await signedBody(passportId, "Pinned once."));
+      const pins = pinned.length;
+
+      const again = await post(host, await signedBody(passportId, "Pinned once.", true, { deadline: world.now + 900n }));
+
+      expect(first.status).toBe(200);
+      expect(again).toMatchObject({ status: 200, json: first.json });
+      expect(pinned.length).toBe(pins);
+      expect(calls.resolverNow).toBe(1);
+    } finally {
+      await host.close();
     }
   });
 });

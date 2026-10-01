@@ -53,13 +53,34 @@ export interface DecisionAtBlock {
  */
 export interface DecisionChain {
   decisionAt: (passportId: Hex, openedAt: bigint) => Promise<DecisionAtBlock>;
+  /**
+   * The resolver the policy names at the latest block, in one read. The route's gate uses it to turn
+   * strangers away before decisionAt; it never stands in for the resolver decisionAt reads.
+   */
+  resolverNow: () => Promise<Hex>;
 }
 
 /** The live read, through the service's one Monad transport. */
 export function liveDecisionChain(decisions: Hex = MOOLAM_DECISIONS): DecisionChain {
   const client = readClient();
   const registry = getAddress(env.MOOLAM_REGISTRY_ADDRESS);
+  // POLICY is immutable in MoolamDecisions, so once read it is kept, and resolverNow costs one read.
+  let policyAddress: Promise<Address> | undefined;
+  const policyOf = (): Promise<Address> => {
+    policyAddress ??= client
+      .readContract({ address: decisions, abi: decisionsAbi, functionName: "POLICY" })
+      .then((policy) => getAddress(policy))
+      .catch((error: unknown) => {
+        policyAddress = undefined;
+        throw error;
+      });
+    return policyAddress;
+  };
   return {
+    resolverNow: async () => {
+      const resolver = await client.readContract({ address: await policyOf(), abi: policyAbi, functionName: "resolver", blockTag: "latest" });
+      return getAddress(resolver);
+    },
     decisionAt: async (passportId, openedAt) => {
       const block = await client.getBlock({ blockTag: "latest" });
       const blockNumber = block.number;
@@ -88,6 +109,9 @@ export function liveDecisionChain(decisions: Hex = MOOLAM_DECISIONS): DecisionCh
 export function offlineDecisionChain(): DecisionChain {
   return {
     decisionAt: async () => {
+      throw new Error("no chain under a test runner");
+    },
+    resolverNow: async () => {
       throw new Error("no chain under a test runner");
     },
   };
