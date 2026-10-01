@@ -32,14 +32,18 @@ import { consentForChoice } from "@/components/consent/draft";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** The session stood in for: the token Privy hands over (null when the sign-in ran out) and its sign-in prompt. */
+/**
+ * The session stood in for: the token Privy hands over (null when the sign-in
+ * ran out), its sign-in prompt, and the user object Privy replaces when a
+ * sign-in completes.
+ */
 const privy = vi.hoisted(() => {
-  const session = { token: "privy-token" as string | null, login: vi.fn() };
+  const session = { token: "privy-token" as string | null, login: vi.fn(), user: { email: { address: "ram@example.com" } } as object };
   return { session, getAccessToken: async () => session.token };
 });
 
 vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({ getAccessToken: privy.getAccessToken, user: { email: { address: "ram@example.com" } }, login: privy.session.login }),
+  usePrivy: () => ({ getAccessToken: privy.getAccessToken, user: privy.session.user, login: privy.session.login, authenticated: true }),
   useWallets: () => ({ wallets: [] }),
   useSendTransaction: () => ({ sendTransaction: async () => ({ hash: "0x" }) }),
 }));
@@ -302,6 +306,7 @@ describe("a list that could not be read", () => {
   beforeEach(() => {
     privy.session.token = "privy-token";
     privy.session.login.mockClear();
+    privy.session.user = { email: { address: "ram@example.com" } };
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: false,
       media: query,
@@ -332,14 +337,18 @@ describe("a list that could not be read", () => {
     document.body.innerHTML = "";
   });
 
-  /** Answers the verify service's routes in order, one answer per call, and keeps what was asked. */
-  function service(...answers: [number, unknown][]) {
+  /**
+   * Answers the verify service's routes in order, one answer per call, and
+   * keeps what was asked. An answer with a gate is held until the gate opens.
+   */
+  function service(...answers: [number, unknown, Promise<void>?][]) {
     const asked: { url: string; method: string }[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init: RequestInit) => {
         asked.push({ url, method: String(init.method) });
-        const [status, body] = answers[Math.min(asked.length - 1, answers.length - 1)];
+        const [status, body, gate] = answers[Math.min(asked.length - 1, answers.length - 1)];
+        await gate;
         return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
       }),
     );
@@ -354,13 +363,29 @@ describe("a list that could not be read", () => {
     }
   }
 
+  /** Draws the section, or draws it again over the same root the way a Privy update does. */
   async function mount() {
     const Provider = NextIntlClientProvider as unknown as FunctionComponent<{ locale: string; messages: unknown; timeZone: string }>;
     await act(async () => {
-      root = createRoot(host);
+      root ??= createRoot(host);
       root.render(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, createElement(ClaimsSection, { wallet: WALLET })));
     });
     await settle();
+  }
+
+  /** A gate a held answer waits on, and the hand that opens it. */
+  function gate(): { held: Promise<void>; open: () => Promise<void> } {
+    let release = () => undefined as void;
+    const held = new Promise<void>((done) => {
+      release = done;
+    });
+    return {
+      held,
+      open: async () => {
+        release();
+        await settle();
+      },
+    };
   }
 
   async function press(selector: string, within: ParentNode = host) {
@@ -461,6 +486,124 @@ describe("a list that could not be read", () => {
     expect(card().querySelector('[data-claims-refusal="notFound"]')).toBeNull();
     expect(row().querySelector('[data-claims-refusal="notOpen"]')).toBeNull();
     expect(row().querySelector('[data-claims-refusal="notFound"]')).not.toBeNull();
+  });
+
+  /** What a person sees of one place: its words, and which of its buttons can be pressed. */
+  function face(place: HTMLElement) {
+    return { words: place.textContent, buttons: [...place.querySelectorAll("button")].map((button) => `${button.textContent}:${button.disabled}`) };
+  }
+
+  const BOTH: ClaimsAnswer = {
+    ...EMPTY,
+    offers: [ANSWER.offers[0]],
+    standing: [{ platform: { name: "Dreamloom", keyHash: KEY_A }, destination: WALLET }],
+  };
+  const card = () => host.querySelector(`[data-claims-platform="${KEY_A}"]`) as HTMLElement;
+  const row = () => host.querySelector('[data-claims-setting="standing"]') as HTMLElement;
+
+  it("shows a Stop's waiting state on its row only, and leaves the card's buttons enabled and its words unchanged", async () => {
+    const stop = gate();
+    const asked = service([200, BOTH], [200, { ok: true }, stop.held], [200, { ...BOTH, standing: [] }]);
+    await mount();
+    const before = face(card());
+    expect(before.buttons.some((one) => one.endsWith(":true"))).toBe(false);
+
+    await press("button", row());
+    await settle();
+    expect(asked[1].method).toBe("DELETE");
+    expect(row().textContent).toContain(en.claims.saving);
+    expect(face(card())).toEqual(before);
+    expect(card().textContent).not.toContain(en.claims.saving);
+    await stop.open();
+  });
+
+  it("shows a Not mine's waiting state on its card only, and leaves the row's button enabled and its words unchanged", async () => {
+    const refuse = gate();
+    const asked = service([200, BOTH], [200, { refused: [ANSWER.offers[0].ticketId] }, refuse.held], [200, BOTH]);
+    await mount();
+    const before = face(row());
+    expect(before.buttons).toEqual([`${en.claims.settings.stop}:false`]);
+
+    await press("[data-claims-not-mine]", card());
+    await settle();
+    expect(asked[1].url).toMatch(/\/claims\/refuse$/);
+    expect(card().textContent).toContain(en.claims.saving);
+    expect(card().querySelector<HTMLButtonElement>("[data-claims-not-mine]")?.disabled).toBe(true);
+    expect(face(row())).toEqual(before);
+    await refuse.open();
+  });
+
+  it("holds a press on the other place of a busy platform until the first is done, saying so where it was pressed", async () => {
+    const stop = gate();
+    const asked = service(
+      [200, BOTH],
+      [200, { ok: true }, stop.held],
+      [200, { ...BOTH, standing: [] }],
+      [200, { refused: [ANSWER.offers[0].ticketId] }],
+      [200, EMPTY],
+    );
+    await mount();
+
+    await press("button", row());
+    await press("[data-claims-not-mine]", card());
+    await settle();
+    // The Stop is still out, so the refuse has not been sent; each place says it is saving.
+    expect(asked.map((one) => one.method)).toEqual(["GET", "DELETE"]);
+    expect(card().textContent).toContain(en.claims.saving);
+    expect(row().textContent).toContain(en.claims.saving);
+
+    await stop.open();
+    await settle();
+    expect(asked.map((one) => `${one.method} ${one.url.replace(/^.*?\/claims/, "/claims")}`)).toEqual([
+      "GET /claims",
+      `DELETE /claims/standing/${KEY_A}`,
+      "GET /claims",
+      "POST /claims/refuse",
+      "GET /claims",
+    ]);
+    expect(host.innerHTML).toBe("");
+  });
+
+  it("reads the list once more after the person signs in again, and the sign-in line goes", async () => {
+    privy.session.token = null;
+    const asked = service([200, BOTH]);
+    await mount();
+    expect(asked).toHaveLength(0);
+    expect(host.querySelector('[data-claims-unread="signIn"]')).not.toBeNull();
+
+    await press('[data-claims-refusal="signIn"] button');
+    expect(privy.session.login).toHaveBeenCalledTimes(1);
+    // Privy's prompt is still open: no token yet, so nothing is read.
+    await mount();
+    expect(asked).toHaveLength(0);
+
+    // The sign-in completes: Privy has a token and a new user object, and draws the page again.
+    privy.session.token = "privy-token";
+    privy.session.user = { email: { address: "ram@example.com" } };
+    await mount();
+    expect(asked.map((one) => one.method)).toEqual(["GET"]);
+    expect(host.querySelector('[data-claims-unread="signIn"]')).toBeNull();
+    expect(card()).not.toBeNull();
+
+    // Once: later redraws read nothing more.
+    privy.session.user = { email: { address: "ram@example.com" } };
+    await mount();
+    expect(asked).toHaveLength(1);
+  });
+
+  it("clears a sign-in line under a pressed control once the list is read after the sign-in", async () => {
+    const asked = service([200, BOTH], [401, { error: "unauthorized" }], [200, BOTH], [200, BOTH]);
+    await mount();
+    await press("[data-claims-not-mine]", card());
+    await settle();
+    expect(card().querySelector('[data-claims-refusal="signIn"]')).not.toBeNull();
+    expect(asked).toHaveLength(3);
+
+    await press('[data-claims-refusal="signIn"] button', card());
+    privy.session.user = { email: { address: "ram@example.com" } };
+    await mount();
+    expect(asked).toHaveLength(4);
+    expect(card().querySelector('[data-claims-refusal="signIn"]')).toBeNull();
   });
 
   it("keys the two places apart in the view as well", () => {

@@ -128,7 +128,7 @@ export function ClaimsView(props: ClaimsViewProps) {
               key={group.platform.keyHash}
               group={group}
               emails={props.emails}
-              busy={props.busy[group.platform.keyHash]}
+              busy={props.busy[failureKey("offer", group.platform.keyHash)]}
               failure={props.failures[failureKey("offer", group.platform.keyHash)]}
               index={index}
               onMine={props.onMine}

@@ -24,8 +24,8 @@ const ClaimConfirm = dynamic(() => import("./ClaimConfirm").then((module) => mod
  * platform sent here must not meet a silent blank.
  */
 export function ClaimsSection({ wallet }: { wallet: Hex }) {
-  const { getAccessToken, user, login } = usePrivy();
-  const claims = useClaims({ getToken: getAccessToken, signIn: login });
+  const { getAccessToken, user, login, authenticated } = usePrivy();
+  const claims = useClaims({ getToken: getAccessToken, signIn: login, signedIn: authenticated, account: user });
   const pending = usePendingConfirm(claims.answer, wallet);
   const [confirmedNow, setConfirmedNow] = useState<ConfirmedNow[]>([]);
 

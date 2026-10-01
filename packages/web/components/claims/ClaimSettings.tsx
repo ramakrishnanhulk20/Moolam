@@ -53,8 +53,9 @@ export function ClaimSettings({
       <ul className="mt-4 divide-y divide-line border-y border-line">
         {rows.map((row, index) => {
           const key = row.platform.keyHash;
-          const working = busy[key] === "stop" || busy[key] === "unmute";
-          const failure = failures[failureKey("setting", key)];
+          const place = failureKey("setting", key);
+          const working = busy[place] !== undefined;
+          const failure = failures[place];
           return (
             <motion.li
               key={`${row.kind}-${key}`}
@@ -82,7 +83,7 @@ export function ClaimSettings({
                 ) : (
                   <button
                     type="button"
-                    disabled={busy[key] !== undefined}
+                    disabled={working}
                     onClick={() => (row.kind === "standing" ? onStop(key) : onUnmute(key))}
                     className="tap shrink-0 rounded-[8px] border border-line-strong px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
                   >
