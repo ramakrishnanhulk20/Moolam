@@ -41,6 +41,7 @@ import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { challengeRoutes, type ChallengeRouteOptions } from "./routes/challenges.js";
 import { claimRoutes } from "./routes/claims.js";
+import { decisionRoutes, type DecisionRouteOptions } from "./routes/decisions.js";
 import { healthRoutes } from "./routes/health.js";
 import { lookalikeRoutes } from "./routes/lookalikes.js";
 import { mcpRoutes, type McpRouteOptions } from "./routes/mcp.js";
@@ -553,7 +554,8 @@ export function sourceFromEnv(): PassportSource {
  *
  * The challenge answer routes are mounted on any host with PINATA_JWT, since an answer is pinned,
  * or when a caller hands in its own options. Under a test runner their chain read is off and both
- * answer 503 unless a test hands in its own.
+ * answer 503 unless a test hands in its own. POST /decisions/reasons, which pins the resolver's
+ * reasons for a decision, is mounted on the same terms and answers 503 the same way under a test runner.
  *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
@@ -635,6 +637,8 @@ export async function buildServer(
     };
     /** Mounts the challenge answer routes with this chain, store, pin and ceilings, for tests. */
     challenges?: ChallengeRouteOptions;
+    /** Mounts the decision reasons route with this chain, store, pin and ceiling, for tests. */
+    decisions?: DecisionRouteOptions;
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -921,6 +925,8 @@ export async function buildServer(
   let platformMounted = false;
   // The holder's answer pins its document, so it rides on the one variable a pin needs.
   const canAnswer = options.challenges !== undefined || env.PINATA_JWT !== undefined;
+  // The resolver's reasons are pinned through the same one Pinata key, never a second copy of it.
+  const canPublishReasons = options.decisions !== undefined || env.PINATA_JWT !== undefined;
   // Set with them: the claim service the prepare's deliverTo, the deliveries and the person routes share.
   let claims: ClaimSetup | undefined;
 
@@ -1004,6 +1010,7 @@ export async function buildServer(
         ...(platformMounted ? ["platform/prepare", "platform/record", "platform/sign", "platform/status"] : []),
         ...(platformMounted && claims?.open === true ? ["platform/deliveries", "claims"] : []),
         ...(canAnswer ? ["challenges/answer"] : []),
+        ...(canPublishReasons ? ["decisions/reasons"] : []),
         "health",
       ];
     },
@@ -1141,6 +1148,12 @@ export async function buildServer(
     await app.register(challengeRoutes, options.challenges ?? {});
   } else {
     app.log.info("challenge answer routes off: they pin the holder's answer, which needs PINATA_JWT, and this host has none");
+  }
+
+  if (canPublishReasons) {
+    await app.register(decisionRoutes, options.decisions ?? {});
+  } else {
+    app.log.info("decision reasons route off: it pins the resolver's reasons, which needs PINATA_JWT, and this host has none");
   }
 
   // Mounted only on a list whose every entry's signatures check out: a refused list is no platform

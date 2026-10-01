@@ -2189,8 +2189,10 @@ for everyone together.
 
 ```ts
 {
-  text: string,       // the answer: 1 to 4,000 bytes of UTF-8, printable, one line, no control,
-                      // line-break or direction characters; never rewritten
+  text: string,       // the answer: 1 to 4,000 bytes of UTF-8, printable; line breaks (\n, or
+                      // \r\n read as one) are allowed so it can have paragraphs; a lone \r, a tab,
+                      // every other control character and direction characters are refused;
+                      // never rewritten
   deadline: number,   // unix seconds; the answer is refused after it, by chain time
   signature: string   // 0x and 130 hex characters: a plain 65 byte wallet signature
 }
@@ -2272,6 +2274,94 @@ on top of the per-address limit.
 | `503` | `chain-unreachable` or `answers-unavailable` |
 
 Both answers carry `Cache-Control: no-store`.
+
+## POST /decisions/reasons
+
+Moolam's resolver pins the written reasons for a challenge it has settled, then names their address
+in `MoolamDecisions.publish` (`0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F`). Only the resolver can
+pin through this route: the proof is the resolver's own wallet signature, and the service holds no
+key of its own for it. The Pinata key is the same one every other pin here uses.
+
+Mounted on any host with `PINATA_JWT`. Under the service's 60 a minute per address, and its own
+ceiling of 20 pins a day for everyone; a repeat of reasons already pinned takes no slot.
+
+**Request.** JSON, at most 64 KB:
+
+```ts
+{
+  passportId: string, // 0x and 64 hex characters
+  openedAt: number,   // getDispute(passportId).openedAt of the settled dispute, unix seconds
+  upheld: boolean,    // true when the challenge stood (Upheld), false when it was Rejected
+  reasons: string,    // 1 to 8,000 bytes of UTF-8, printable; line breaks (\n, or \r\n read as
+                      // one) allowed; a lone \r, a tab, every other control character and
+                      // direction characters are refused; never rewritten
+  deadline: number,   // unix seconds; refused after it, by chain time
+  signature: string   // 0x and 130 hex characters: a plain 65 byte wallet signature
+}
+```
+
+The resolver's wallet signs this EIP-712 typed data, in the same domain as the holder's answer:
+
+```ts
+{
+  domain: { name: "Moolam", version: "1", chainId: 143, verifyingContract: "<registry>" },
+  types: {
+    DecisionReasons: [
+      { name: "passportId", type: "bytes32" },
+      { name: "openedAt", type: "uint64" },
+      { name: "upheld", type: "bool" },
+      { name: "reasonsHash", type: "bytes32" },  // sha256 of the reasons' UTF-8 bytes
+      { name: "deadline", type: "uint64" },
+    ],
+  },
+  primaryType: "DecisionReasons",
+}
+```
+
+**What is checked, in one call and in this order.** The service reads, at one block, the resolver
+from the policy `MoolamDecisions` reads, `getDispute(passportId)` on the registry and
+`MoolamDecisions.published(passportId, openedAt)`. Then: the body has exactly the shape above; the
+deadline has not passed by that block's time; the signature, recovered by the rules the registry's
+ECDSA applies (65 bytes, `v` of 27 or 28, `s` in the lower half), is that resolver's, so a contract
+wallet's ERC-1271 signature is refused; the dispute is settled with this `openedAt` and this outcome
+(`Upheld` for `true`, `Rejected` for `false`); its reasons are not yet published; and the reasons
+pass the text rule above. Only then is the document pinned.
+
+**The pinned document.**
+
+```ts
+{
+  kind: "moolam-decision-reasons",
+  version: 1,
+  chainId: 143,
+  registry: `0x${string}`,
+  passportId: `0x${string}`,   // lower case
+  openedAt: number,            // the dispute it explains
+  upheld: boolean,
+  resolver: `0x${string}`,     // the wallet that signed, the resolver at that block
+  reasons: string,
+  reasonsHash: `0x${string}`,
+  note: string
+}
+```
+
+It carries no signature and no deadline, so the same reasons for the same decision are the same
+bytes and the same address: sending them again, even under a fresh signature, answers the address
+already pinned without a second pin. The address always fits `MoolamDecisions.publish`: `ipfs://`
+then letters and digits only, at least 46 of them, at most 128 bytes in all; a pin whose address
+would not fit is refused and nothing is kept. The reasons go into no log line.
+
+| Code | When |
+| --- | --- |
+| `200` | `{ "reasonsURI": "ipfs://<cid>" }`, the same address again for the same reasons |
+| `400` | A body of another shape (nothing is read from the chain), or `reasons` that break the rule above |
+| `403` | `reasons-expired` with `chainTime`: the deadline has passed. `not-the-resolver`: the signature does not recover to the policy's resolver for these reasons, this decision and this deadline |
+| `409` | `dispute-not-settled` (never challenged, or still open), `dispute-mismatch` (settled with another `openedAt` or the other outcome), `already-published`, or `pinning` (the same reasons are being pinned now) |
+| `429` | The service's per-address limit, or `global-limit` with `retry-after` when today's 20 pins are spent |
+| `502` | `pin-failed` or `address-unfit`: nothing was kept, and the resolver may send the same body again |
+| `503` | `chain-unreachable`, or `reasons-unavailable` when the reasons file could not be believed after a restart |
+
+The answer carries `Cache-Control: no-store`.
 
 ## POST /mcp
 

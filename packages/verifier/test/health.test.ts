@@ -72,6 +72,7 @@ describe("GET /health", () => {
       "platform/sign",
       "platform/status",
       "challenges/answer",
+      "decisions/reasons",
       "health",
     ]);
   });

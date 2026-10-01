@@ -35,6 +35,8 @@ const { DAY_ACTIONS, fileDayStore, globalDay } = await import("../src/limits/glo
 const { dailyQuota, fileQuotaStore } = await import("../src/generate/quota.js");
 const { AnswerStore } = await import("../src/challenges/store.js");
 const { answerDocument } = await import("../src/challenges/answer.js");
+const { ReasonsStore, reasonsKey } = await import("../src/challenges/reasonsStore.js");
+const { reasonsDocument } = await import("../src/challenges/reasons.js");
 type DayAction = import("../src/limits/globalDay.js").DayAction;
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -165,6 +167,30 @@ const restarts: Record<keyof typeof STATE_FILES | "queue", (dir: string) => void
     const after = new AnswerStore(file);
     expect(after.answerFor(PASSPORT, 1_790_000_000)?.answerURI).toBe("ipfs://bafkreianswer");
     expect(after.usedDigest(digest)).toBe(true);
+  },
+  decisionReasons: (dir) => {
+    const file = path.join(dir, STATE_FILES.decisionReasons);
+    const document = reasonsDocument({
+      registry: "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
+      passportId: PASSPORT,
+      openedAt: 1_790_000_000n,
+      upheld: true,
+      resolver: "0x4444444444444444444444444444444444444444",
+      reasons: "The earlier post is the same picture.\nThe challenge stands.",
+    });
+    const reasonsURI = `ipfs://bafkrei${"a".repeat(52)}`;
+    new ReasonsStore(file).add({ reasonsURI, document });
+
+    expect(new ReasonsStore(file).find(reasonsKey(document))?.reasonsURI).toBe(reasonsURI);
+  },
+  decisionReasonsDay: (dir) => {
+    const file = path.join(dir, STATE_FILES.decisionReasonsDay);
+    const shut = { generations: 0, edits: 0, unseals: 0, links: 0 };
+    const before = globalDay({ prepares: 1, ...shut }, () => NOW, { store: fileDayStore(file) });
+    expect(before.tryTake("prepares").ok).toBe(true);
+
+    const after = globalDay({ prepares: 1, ...shut }, () => NOW + 60_000, { store: fileDayStore(file) });
+    expect(after.tryTake("prepares").ok).toBe(false);
   },
 };
 

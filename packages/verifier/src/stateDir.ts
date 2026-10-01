@@ -15,6 +15,8 @@ export const STATE_FILES = {
   unsealQuota: "quota-unseal.json",
   webCheckDay: "web-check-day.json",
   challengeAnswers: "challenge-answers.json",
+  decisionReasons: "decision-reasons.json",
+  decisionReasonsDay: "decision-reasons-day.json",
 } as const;
 
 /**

@@ -217,6 +217,7 @@ describe("V73: a signer that cannot load turns the signing routes off, not the s
         "unseal",
         "sealed",
         "challenges/answer",
+        "decisions/reasons",
         "health",
       ]);
       expect(health.off.map((off) => off.route)).toEqual(["POST /prepare", "POST /generate", "POST /edit"]);

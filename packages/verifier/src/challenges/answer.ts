@@ -63,6 +63,14 @@ export function answerHashOf(text: string): Hex {
 const PRINTABLE_TEXT = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \n]+$/u;
 
 /**
+ * Whether a non-empty text is printable Unicode whose only control character is the line break, a
+ * Windows \r\n read as one \n. Shared by the holder's answer and the resolver's reasons.
+ */
+export function isPrintableWithLineBreaks(text: string): boolean {
+  return PRINTABLE_TEXT.test(text.replace(/\r\n/g, "\n"));
+}
+
+/**
  * Why an answer's text is refused, or null when it may be pinned (L27): at least one character, at
  * most MAX_ANSWER_BYTES in UTF-8, printable Unicode whose only control character is the line break,
  * so an answer can have paragraphs. A Windows line break (\r\n) is read as one \n for this check,
@@ -72,7 +80,7 @@ const PRINTABLE_TEXT = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \n]+$/u;
 export function answerTextProblem(text: string): string | null {
   if (text.length === 0) return "the answer is empty";
   if (Buffer.byteLength(text, "utf8") > MAX_ANSWER_BYTES) return `the answer is over ${MAX_ANSWER_BYTES} bytes`;
-  if (!PRINTABLE_TEXT.test(text.replace(/\r\n/g, "\n"))) {
+  if (!isPrintableWithLineBreaks(text)) {
     return "the answer must be printable text, with line breaks as its only control characters and no direction characters";
   }
   return null;
