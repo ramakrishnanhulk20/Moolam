@@ -128,7 +128,8 @@ function Earlier({ earlier }: { earlier: EarlierPassport }) {
 
   switch (earlier.state) {
     case "found": {
-      const title = earlier.title === "" ? t("untitled") : earlier.title;
+      // A real title is quoted so it reads as a name inside the sentence; the untitled placeholder is not.
+      const title = earlier.title === "" ? t("untitled") : `“${earlier.title}”`;
       const date = format.dateTime(new Date(earlier.registeredAt * 1_000), { year: "numeric", month: "short", day: "numeric" });
       return (
         <div data-earlier="found">

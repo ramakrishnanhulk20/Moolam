@@ -182,7 +182,7 @@ describe("L19: the warning before signing is a read that succeeded, or it says i
   it("names the earlier passport when someone else registered one, and the edit when it is the creator's own", () => {
     const found = words(warning(signingState("found")));
     expect(found).toContain(lookalike.found.heading);
-    expect(found).toContain(`${EARLIER_TITLE} was registered by someone else on Sep 22, 2026.`);
+    expect(found).toContain(`“${EARLIER_TITLE}” was registered by someone else on Sep 22, 2026.`);
     expect(found).toContain(lookalike.found.note);
 
     const yours = words(warning(signingState("yours")));
