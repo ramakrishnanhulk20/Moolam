@@ -14,19 +14,27 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { RecheckRequest } from "@/components/passport/RecheckRequest";
 import { WarningMark } from "@/components/WarningMark";
+import { plainStatement } from "@/lib/chain/consent";
+import type { MatchConsent } from "@/lib/verifier/client";
 import { CompareSlider } from "./CompareSlider";
 import { DisputeLine } from "./DisputeLine";
 import { StaleIndex } from "./StaleIndex";
 import { SecondOpinion, hasSecondOpinion } from "./SecondOpinion";
 import { ShareAnswer } from "./ShareAnswer";
-import { agentChipId, percent, upheldAncestor, type Answer, type Problem } from "./answer";
-import type { MatchedPassport } from "./lookup";
+import { agentChipId, daysLater, percent, upheldAncestor, type Answer, type Problem } from "./answer";
+import type { FirstRegistration, MatchedPassport } from "./lookup";
 
 /** What the card is showing right now. The first two are its front, the last two its back. */
 export type Stage =
   | { kind: "idle" }
   | { kind: "checking"; name: string }
-  | { kind: "answer"; answer: Answer; passport: MatchedPassport | null }
+  | {
+      kind: "answer";
+      answer: Answer;
+      passport: MatchedPassport | null;
+      /** The earlier registration the answer leads with, when the service named one and the registry handed it over. */
+      first?: FirstRegistration | null;
+    }
   | { kind: "problem"; problem: Problem };
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -99,6 +107,7 @@ export function AnswerCard({
             <Result
               answer={stage.answer}
               passport={stage.passport}
+              first={stage.first ?? null}
               copy={copy}
               sampleId={sampleId}
               onChooseAnother={onChooseAnother}
@@ -237,12 +246,14 @@ function Checking({ name }: { name: string }) {
 function Result({
   answer,
   passport,
+  first,
   copy,
   sampleId,
   onChooseAnother,
 }: {
   answer: Answer;
   passport: MatchedPassport | null;
+  first: FirstRegistration | null;
   copy?: string;
   sampleId?: string;
   onChooseAnother?: () => void;
@@ -279,6 +290,9 @@ function Result({
   }
 
   const firstRegisteredId = answer.firstRegisteredId;
+  // The lead is drawn only for the passport the service named, read back
+  // from the registry. Without it the plain line further down keeps the link.
+  const leading = first !== null && firstRegisteredId !== undefined && first.id.toLowerCase() === firstRegisteredId.toLowerCase() ? first : null;
   const inheritedAncestor = upheldAncestor(answer.inheritedDispute);
   const manifestLine =
     answer.manifestCheck === "invalid"
@@ -294,6 +308,12 @@ function Result({
       <Still passport={passport} exact={answer.kind === "exact"} copy={copy} />
 
       <div className="p-7 sm:p-9">
+        {/* A copy can sit closer to a later registration than to the original.
+            When the service names an earlier registration, that one leads:
+            who registered this picture first, who holds it, what they allow,
+            and then the closest match and how much later it came. */}
+        {leading === null ? null : <FirstRegistered first={leading} closest={passport} consent={answer.firstConsent} />}
+
         {/* The plain answer first, in the same words the passport page's drop
             gives. The confidence and the two distances are the working under it,
             not the verdict. */}
@@ -334,7 +354,7 @@ function Result({
         {/* The closest match leads, but a near-copy registered later can sit closer than the
             original. The service always keeps the first registration in the answer, and this is
             where the reader is told it is a different passport from the one on the card. */}
-        {firstRegisteredId === undefined ? null : (
+        {firstRegisteredId === undefined || leading !== null ? null : (
           <p data-first-registered className="mt-6 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
             {t.rich("firstRegistered", {
               link: (chunks) => (
@@ -463,6 +483,68 @@ function Result({
         <Measured answer={answer} />
       </div>
     </Plate>
+  );
+}
+
+/**
+ * The earlier registration, leading the answer. Its title and date are the
+ * line a reader takes away; the holder and the AI-use word are read from the
+ * registry and the register beside it, and a fact that did not come back is
+ * left out rather than guessed.
+ */
+function FirstRegistered({
+  first,
+  closest,
+  consent,
+}: {
+  first: FirstRegistration;
+  closest: MatchedPassport | null;
+  consent?: MatchConsent;
+}) {
+  const t = useTranslations("verify");
+  const summaries = useTranslations("passport.consent.summary");
+  const format = useFormatter();
+  const terms =
+    consent === undefined || consent.source === "unavailable"
+      ? null
+      : summaries(consent.stated ? plainStatement(consent) : "none");
+
+  return (
+    <motion.div
+      data-first-lead
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
+      className="mb-9 border-b border-line pb-8"
+    >
+      <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+        <span aria-hidden className="motif h-[9px] w-[9px]" />
+        {t("first.heading")}
+      </p>
+      <p className="mt-4 max-w-[22ch] font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-text">
+        {t("first.lead", {
+          title: first.title ?? t("untitled"),
+          date: format.dateTime(new Date(Number(first.registeredAt) * 1000), { dateStyle: "medium" }),
+        })}
+      </p>
+      {first.holder === null && terms === null ? null : (
+        <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] tracking-[0.06em] text-text-muted">
+          {first.holder === null ? null : <li data-first-holder>{t("first.held", { holder: shortHex(first.holder) })}</li>}
+          {terms === null ? null : <li data-first-terms>{t("first.aiUse", { terms })}</li>}
+        </ul>
+      )}
+      <Link
+        href={`/passport/${first.id}`}
+        className="mt-6 inline-flex items-center gap-2.5 rounded-[8px] bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
+      >
+        {t("first.open")}
+      </Link>
+      {closest === null ? null : (
+        <p data-first-closest className="mt-6 max-w-[60ch] text-base leading-relaxed text-text-muted">
+          {t("first.closest", { title: closest.title ?? t("untitled"), days: daysLater(first, closest) })}
+        </p>
+      )}
+    </motion.div>
   );
 }
 

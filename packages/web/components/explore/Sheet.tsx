@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { reason } from "@/lib/chain/client";
+import { markSchema } from "@/lib/data/marks";
 import { heldRegistryCounts, type PassportCursor, type RegistryCounts } from "@/lib/data/passports";
 import { Filters } from "./Filters";
 import { Grid } from "./Grid";
@@ -65,10 +66,11 @@ export async function ExploreSheet({
   let countsError: string | null = null;
   let split: PictureSplit | null = null;
 
-  const [page, totals, divide] = await Promise.allSettled([
+  const [page, totals, divide, schema] = await Promise.allSettled([
     sheetPage(search),
     heldRegistryCounts(),
     heldPictureSplit(),
+    markSchema(),
   ]);
 
   if (page.status === "fulfilled") {
@@ -111,7 +113,7 @@ export async function ExploreSheet({
       {/* The chips and the grid share one piece of state: whether the sheet on
           screen is still the one the chips say it is. */}
       <ReadingProvider>
-        <Filters search={search} />
+        <Filters search={search} lookalikeChips={schema.status === "fulfilled" && schema.value.lookalikes} />
         <StatedLine ai={search.ai} />
         {/* The empty sheet is drawn here and handed in, so the grid itself
             never has to load the site's navigation. */}

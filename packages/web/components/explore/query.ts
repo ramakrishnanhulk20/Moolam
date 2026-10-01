@@ -7,7 +7,27 @@ import type { PassportConsent, PassportFilter, PassportPictures } from "@/lib/da
 export const PICTURE_VIEWS = ["pictures", "test", "all"] as const;
 
 /** The chips that narrow the registry by what the record says. */
-export const RECORD_VIEWS = ["generated", "captured", "edits", "rechecked", "manifest", "disputed"] as const;
+export const RECORD_VIEWS = [
+  "generated",
+  "captured",
+  "edits",
+  "rechecked",
+  "manifest",
+  "disputed",
+  "lookalike",
+  "later",
+] as const;
+
+/**
+ * The two chips that read Chainlink's look-alike records. They are drawn only
+ * where the index serves those fields (lib/data/marks.ts), and an address that
+ * names one on an index that does not gets an empty sheet, never an error.
+ */
+export const LOOKALIKE_VIEWS = ["lookalike", "later"] as const satisfies readonly (typeof RECORD_VIEWS)[number][];
+
+export function isLookalikeView(view: string): view is (typeof LOOKALIKE_VIEWS)[number] {
+  return (LOOKALIKE_VIEWS as readonly string[]).includes(view);
+}
 
 /** Every chip over the grid, in the order they are drawn. */
 export const EXPLORE_VIEWS = [...PICTURE_VIEWS, ...RECORD_VIEWS] as const;
@@ -114,6 +134,10 @@ export function filterFor(search: ExploreSearch): PassportFilter {
     filter.manifest = true;
   } else if (search.view === "disputed") {
     filter.disputed = true;
+  } else if (search.view === "lookalike") {
+    filter.lookalike = true;
+  } else if (search.view === "later") {
+    filter.later = true;
   }
 
   const pictures = picturesFor(search.view);

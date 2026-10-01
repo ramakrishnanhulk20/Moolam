@@ -14,6 +14,7 @@ import {
   PICTURE_VIEWS,
   RECORD_VIEWS,
   exploreHref,
+  isLookalikeView,
   type ExploreAi,
   type ExploreSearch,
   type ExploreView,
@@ -45,7 +46,14 @@ const LEGEND_USES: Consent = {
   dataMining: "unspecified",
 };
 
-export function Filters({ search }: { search: ExploreSearch }) {
+export function Filters({
+  search,
+  lookalikeChips = false,
+}: {
+  search: ExploreSearch;
+  /** True where the index serves Chainlink's look-alike records, so the two chips that read them can answer. */
+  lookalikeChips?: boolean;
+}) {
   const t = useTranslations("explore");
   // A phone keeps the key to the letters behind one small press, so the first
   // pictures reach the first screen. From 640 px up the key is always shown.
@@ -88,7 +96,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
           <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-line-strong sm:block md:mx-1" />
-          {RECORD_VIEWS.map((view) => (
+          {RECORD_VIEWS.filter((view) => lookalikeChips || !isLookalikeView(view)).map((view) => (
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
           <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-line-strong md:block" />

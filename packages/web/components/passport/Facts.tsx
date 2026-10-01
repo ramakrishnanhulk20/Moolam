@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getAddress, type Hex } from "viem";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
+import { ClaimLines, claimCopy } from "@/components/mark/claim";
 import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
 import { creditFor } from "@/lib/data/platform-label";
@@ -77,6 +78,11 @@ export async function Facts({
     credited === null
       ? null
       : creditWords(credited, t, (seconds) => format.dateTime(new Date(seconds * 1000), { dateStyle: "medium" }));
+  const claim = await claimCopy({
+    passport,
+    art,
+    platform: platform === null ? null : { status: platform.status, name: platform.name },
+  });
 
   return (
     <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-20">
@@ -139,6 +145,15 @@ export async function Facts({
                   {t("platform.outsideKit", { platform: platform.name })}
                 </p>
               )}
+            </dd>
+          </div>
+
+          {/* How strong the claim behind this record is, then the registrant's
+              own statements under it, so the two never read as one voice. */}
+          <div data-claim>
+            <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{claim.label}</dt>
+            <dd className="mt-2">
+              <ClaimLines copy={claim} />
             </dd>
           </div>
 

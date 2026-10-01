@@ -1,3 +1,4 @@
+import type { MarkState } from "@/components/mark/mark";
 import type { PassportStatement } from "@/lib/data/passports";
 
 /** One plate in the grid: a passport, the picture its metadata pointed at, and its three marks. */
@@ -44,6 +45,13 @@ export interface ExplorePlate {
    * so it is still a picture of its own kind.
    */
   unread?: boolean;
+  /**
+   * The trust mark's state, issued by the one function the passport page uses
+   * (components/mark/mark.ts). Absent where the index does not serve the
+   * mark's fields yet, and on a sheet held from before the field existed: the
+   * plate then draws no word at all.
+   */
+  mark?: MarkState | null;
 }
 
 /**

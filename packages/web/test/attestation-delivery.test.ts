@@ -75,11 +75,13 @@ beforeEach(() => {
 });
 
 describe("the delivery line under a verdict", () => {
-  it("says a simulation run when the report came through the simulation forwarder", async () => {
+  it("says a test run when the report came through the simulation forwarder, which never lights the mark", async () => {
     delivery.current = "simulation";
     const markup = await card(indexedRow);
 
-    expect(markup).toContain(asRendered(en.passport.attestations.delivery.simulation));
+    expect(markup).toContain(asRendered(en.mark.simulator.line));
+    expect(markup).toContain("data-test-run");
+    expect(markup).toContain(asRendered(en.mark.simulator.word));
     expect(markup).not.toContain(asRendered(en.passport.attestations.delivery.network));
     expect(reads.delivery).toHaveBeenCalledWith(REPORT_TX);
   });
@@ -89,14 +91,15 @@ describe("the delivery line under a verdict", () => {
     const markup = await card(indexedRow);
 
     expect(markup).toContain(asRendered(en.passport.attestations.delivery.network));
-    expect(markup).not.toContain(asRendered(en.passport.attestations.delivery.simulation));
+    expect(markup).not.toContain(asRendered(en.mark.simulator.line));
+    expect(markup).not.toContain("data-test-run");
   });
 
   it("says nothing when the address is not one of the two forwarders", async () => {
     delivery.current = "unknown";
     const markup = await card(indexedRow);
 
-    expect(markup).not.toContain(asRendered(en.passport.attestations.delivery.simulation));
+    expect(markup).not.toContain(asRendered(en.mark.simulator.line));
     expect(markup).not.toContain(asRendered(en.passport.attestations.delivery.network));
   });
 
@@ -105,12 +108,12 @@ describe("the delivery line under a verdict", () => {
     const markup = await card([]);
 
     expect(reads.delivery).not.toHaveBeenCalled();
-    expect(markup).not.toContain(asRendered(en.passport.attestations.delivery.simulation));
+    expect(markup).not.toContain(asRendered(en.mark.simulator.line));
   });
 
   it("carries the same line in the reader's own language", async () => {
     delivery.current = "simulation";
-    expect(await card(indexedRow, "ta")).toContain(asRendered(ta.passport.attestations.delivery.simulation));
+    expect(await card(indexedRow, "ta")).toContain(asRendered(ta.mark.simulator.line));
   });
 
   it("names the workflow rather than claiming an independent network", async () => {

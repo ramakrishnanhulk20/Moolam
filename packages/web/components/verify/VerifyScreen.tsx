@@ -8,7 +8,7 @@ import { verify, verifierHost } from "@/lib/verifier/client";
 import type { TrySample } from "@/lib/data/samples";
 import { AnswerCard, type Stage } from "./AnswerCard";
 import { chosenProblem, passportFor, readAnswer, verifyProblem, type Problem } from "./answer";
-import { matchedPassport } from "./lookup";
+import { firstRegistration, matchedPassport } from "./lookup";
 import { fileFromSample } from "./sample";
 import { Samples } from "./Samples";
 import { sampleAsked } from "./ShareAnswer";
@@ -220,9 +220,16 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
     // The service answers with an id and nothing else, so the passport behind
     // it is read from the chain while the card is still turning. That read
     // failing leaves the answer standing.
-    const passport = await passportFor(answer, matchedPassport);
+    // The earlier registration the answer leads with is read beside it, so
+    // the card turns once, with both.
+    const [passport, first] = await Promise.all([
+      passportFor(answer, matchedPassport),
+      answer.kind !== "miss" && answer.firstRegisteredId !== undefined
+        ? firstRegistration(answer.firstRegisteredId).catch(() => null)
+        : Promise.resolve(null),
+    ]);
     if (owns(mine)) {
-      setStage({ kind: "answer", answer, passport });
+      setStage({ kind: "answer", answer, passport, first });
     }
   }
 

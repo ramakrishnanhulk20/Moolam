@@ -1,7 +1,11 @@
 import { unstable_cache } from "next/cache";
+import { pinnedUri } from "@/components/passport/art";
+import { plateMarkState } from "@/components/mark/plate";
+import type { MarkPicture } from "@/components/mark/mark";
 import { recordUnread } from "@/components/passport/unread";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
+import { markSchema } from "@/lib/data/marks";
 import { heldPlatformList, labelFrom, listedAgentOwner, plateMark } from "@/lib/data/platform-label";
 import {
   EXPLORE_PAGE,
@@ -13,7 +17,7 @@ import {
   type PassportCursor,
   type PassportPictures,
 } from "@/lib/data/passports";
-import { filterFor, picturesFor, type ExploreSearch } from "./query";
+import { filterFor, isLookalikeView, picturesFor, type ExploreSearch } from "./query";
 import { answersTerm, searchesTitles } from "./search";
 import { isTestCard, type ExplorePlate } from "./sort";
 
@@ -71,9 +75,24 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         blockhash: art?.blockhash,
         unread: recordUnread(art),
         platform: passport === null ? null : plateMark(platforms, passport, agentOwnerNow),
+        ...(row.marks === undefined ? {} : { mark: plateMarkState(row.marks, pictureOf(row.metadataURI, art)) }),
       };
     }),
   );
+}
+
+/** What a plate's document says it points at, for its mark; null when the document could not be read. */
+function pictureOf(metadataURI: string, art: Awaited<ReturnType<typeof heldArt>> | null): MarkPicture | null {
+  if (metadataURI === "" || pinnedUri(metadataURI) === undefined) {
+    return "none";
+  }
+  if (art === null || recordUnread(art)) {
+    return null;
+  }
+  if (art.sealed === true) {
+    return "sealed";
+  }
+  return art.thumbnailUrl === undefined ? "none" : "public";
 }
 
 /** The sieve the index reads through, and the plates it built on the way. */
@@ -194,9 +213,9 @@ export const TITLE_SCAN = SPLIT_CAP;
  * carries on from there; a scan that stopped at the cap hands back the index's
  * own cursor instead.
  */
-async function titleSheet(search: ExploreSearch, cursor: PassportCursor | null): Promise<SheetPage> {
+async function titleSheet(search: ExploreSearch, cursor: PassportCursor | null, marks: boolean): Promise<SheetPage> {
   const sheet = plateSheet(picturesFor(search.view), (plate) => answersTerm(search.search, plate.id, plate.title));
-  const filter = filterFor({ ...search, search: "" });
+  const filter = { ...filterFor({ ...search, search: "" }), marks };
   // The halves are sifted by the sheet above. Left on the filter, a search that
   // matched a handful of rows would page on through the whole index for more.
   delete filter.pictures;
@@ -227,14 +246,21 @@ const heldSheet = unstable_cache(
     ai: ExploreSearch["ai"],
     cursor: PassportCursor | null,
   ) => {
+    const schema = await markSchema();
+    const marks = schema.network && schema.lookalikes;
+    if (isLookalikeView(view) && !schema.lookalikes) {
+      // The index does not hold the look-alike records yet, so nothing can be
+      // under this chip, and that is not an error the reader needs to see.
+      return { plates: [], cursor: null };
+    }
     if (searchesTitles(search)) {
-      return await titleSheet({ view, search, agent, ai }, cursor);
+      return await titleSheet({ view, search, agent, ai }, cursor, marks);
     }
     const sheet = plateSheet(picturesFor(view));
     // Worked out once for the whole page rather than per row: the chip needs it
     // for its query, and every other chip needs it to light the D on an edit
     // whose picture was disputed.
-    const filter = { ...filterFor({ view, search, agent, ai }), disputedReach: await disputedReach() };
+    const filter = { ...filterFor({ view, search, agent, ai }), disputedReach: await disputedReach(), marks };
     const page = await explorePassports({ filter, cursor, keep: sheet.keep });
     return { plates: sheet.platesFor(page.passports), cursor: page.cursor };
   },

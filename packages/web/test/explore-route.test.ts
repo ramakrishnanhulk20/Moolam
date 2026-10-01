@@ -39,6 +39,7 @@ vi.mock("@/components/explore/plates", () => ({
 }));
 
 vi.mock("@/lib/data/passports", () => ({ heldRegistryCounts: holds.counts }));
+vi.mock("@/lib/data/marks", () => ({ markSchema: async () => ({ network: false, lookalikes: false }) }));
 
 vi.mock("@/lib/chain/client", () => ({
   reason: (error: unknown) => (error instanceof Error ? error.message : String(error)),

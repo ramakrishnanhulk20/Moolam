@@ -66,6 +66,8 @@ vi.mock("@/lib/data/unseal", () => ({ withUnseal: async (art: unknown) => art })
 vi.mock("@/lib/verifier/client", () => ({ sealedStatus: async () => ({ state: "kept" }) }));
 vi.mock("@/components/passport/art", () => ({ readArt: async () => reads.art }));
 vi.mock("@/components/passport/indexed", () => ({ heldIndexedAttestations: async () => [] }));
+// The poster's trust mark has its own suite (test/marks.test.ts); here it is a fixed waiting mark.
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("@/components/passport/Picture", () => ({ Picture: () => createElement("span", { "data-picture": "true" }) }));
 vi.mock("@/components/passport/Attestations", () => ({ Attestations: () => null }));
 vi.mock("@/components/passport/CheckCopy", () => ({ CheckCopy: () => null }));

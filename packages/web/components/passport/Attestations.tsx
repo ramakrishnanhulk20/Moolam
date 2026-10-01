@@ -55,6 +55,7 @@ export async function Attestations({
   const t = await getTranslations("passport.attestations");
   const sealedWords = await getTranslations("passport.sealed");
   const common = await getTranslations("common");
+  const marks = await getTranslations("mark");
   const format = await getFormatter({ locale });
 
   // A sealed picture can be re-checked only from the private copy, so the
@@ -136,6 +137,7 @@ export async function Attestations({
                     phash={phash}
                     t={t}
                     common={common}
+                    marks={marks}
                     txHash={txHash}
                     delivery={delivery}
                     privateCopy={privateCopy}
@@ -182,6 +184,7 @@ function Row({
   clock,
   t,
   common,
+  marks,
 }: {
   attestation: Attestation;
   phash: bigint;
@@ -195,6 +198,7 @@ function Row({
   clock: string;
   t: Translate;
   common: Translate;
+  marks: Translate;
 }) {
   const source = attestationSource(attestation.receiver);
   // Written only by the confidential workflow that reads Moolam's private copy
@@ -223,6 +227,16 @@ function Row({
           <p data-private-badge className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
             <span aria-hidden className="motif h-[9px] w-[9px]" />
             {t("private.badge")}
+          </p>
+        ) : null}
+        {/* A run in Chainlink's simulator is a test run: it keeps its row and
+            its numbers here and never turns on the trust mark (L30). */}
+        {source === "chainlink" && delivery === "simulation" ? (
+          <p
+            data-test-run
+            className="rounded-[6px] border border-line-strong px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
+          >
+            {marks("simulator.word")}
           </p>
         ) : null}
       </div>
@@ -278,7 +292,7 @@ function Row({
           carried it says nothing about Chainlink and is left out. */}
       {unknown || delivery === "unknown" || (isPrivate && delivery === "simulation") ? null : (
         <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-base leading-relaxed text-text-faint">
-          {delivery === "simulation" ? t("delivery.simulation") : t("delivery.network")}
+          {delivery === "simulation" ? marks("simulator.line") : t("delivery.network")}
         </p>
       )}
 

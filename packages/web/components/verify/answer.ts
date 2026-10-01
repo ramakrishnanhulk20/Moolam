@@ -56,6 +56,8 @@ export type Answer =
        * other than `consent`: a later copy's holder must not be the only voice on the card.
        */
       firstRegisteredConsent?: MatchConsent;
+      /** What the first registration's holder said about AI use, whatever the copy's holder said, for the line that leads with it. */
+      firstConsent?: MatchConsent;
       /** Whether a challenge stands against the record. Absent from an older service, which draws no line. */
       dispute?: MatchDispute;
       /** Whether an earlier version of the picture lost a challenge. Absent from an older service. */
@@ -126,6 +128,7 @@ export function readAnswer(response: VerifyResponse, now: number = Date.now()): 
     ...(laterSameFingerprint !== undefined && laterSameFingerprint > 0 ? { laterSameFingerprint } : {}),
     consent,
     ...(earlier !== undefined && statementOf(earlier) !== statementOf(consent) ? { firstRegisteredConsent: earlier } : {}),
+    ...(earlier === undefined ? {} : { firstConsent: earlier }),
     // The challenge and the second opinion travel on the same match rows, so
     // they are found the same way and never borrowed from another passport in
     // the list. The statement is only worth as much as the record under it, so
@@ -199,6 +202,17 @@ export function agentChipId(passport: { generatorAgentId: string } | null): stri
   }
   const id = passport.generatorAgentId.trim();
   return id === "" || /^0+$/.test(id) ? null : id;
+}
+
+/**
+ * Whole days from the first registration to the closest match's, for the line
+ * under the lead. Never below zero: the service names the first registration
+ * only when it came earlier, and a clock that says otherwise reads as "the
+ * same day" rather than as a later first.
+ */
+export function daysLater(first: { registeredAt: string }, closest: { registeredAt: string }): number {
+  const gap = Number(closest.registeredAt) - Number(first.registeredAt);
+  return Number.isFinite(gap) && gap > 0 ? Math.floor(gap / 86_400) : 0;
 }
 
 /** Confidence as a whole percent, which is the only place the number is rounded. */

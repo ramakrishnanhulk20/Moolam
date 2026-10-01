@@ -27,7 +27,46 @@ const metadataSchema = z.object({
   // Kept as it was written. lib/data/file-terms.ts reads it on the server, so
   // a statement in a shape this build does not know never fails the document.
   training: z.unknown().optional(),
+  // The registrant's own statements (L21). Read as anything and checked one by
+  // one below, so a document written straight on chain with an odd value loses
+  // that statement and keeps its picture.
+  sworn: z.unknown().optional(),
+  platformStatement: z.unknown().optional(),
+  seenEarlier: z.unknown().optional(),
+  seenOnline: z.unknown().optional(),
 });
+
+/** The sworn line as the verify service pins it (packages/verifier/src/statements.ts). */
+export const SWORN_TEXT = "I made this picture, or I hold the rights to register it.";
+const SWORN_VERSION = 1;
+
+/** As many web pages as the service ever lists, each as long as it ever stores one (L23). */
+const SEEN_PAGES_MAX = 10;
+const SEEN_PAGE_CHARS = 256;
+const SEEN_COUNT_MAX = 1_000;
+
+/** A platform's statement is at most 1,000 bytes when the kit pins it; a page shows no more than this of one. */
+const PLATFORM_STATEMENT_CHARS = 400;
+
+/** How much of a seenEarlier value that is not a passport id is shown as text. */
+const SEEN_EARLIER_CHARS = 80;
+
+/**
+ * What the registrant said in the document, each item checked and cut here.
+ * Nothing in it is a chain fact and nothing in it becomes a link: the page
+ * links seenEarlier only after holding it to the passport id pattern itself,
+ * and the web pages are only ever text.
+ */
+export interface Statements {
+  /** True when the document carries the sworn line Moolam pins, word for word. */
+  sworn: boolean;
+  /** A platform's own statement in its place, cut, as one line of text. */
+  platformStatement?: string;
+  /** The earlier passport the registrant was shown before signing, as written, cut. */
+  seenEarlier?: string;
+  /** What the registrant's web check found: the count as stored and the pages as text. */
+  seenOnline?: { count: number; pages: string[] };
+}
 
 /** A 32 byte word as the sealed document writes it, which is what the sketch is drawn from. */
 const BLOCK_HASH = /^0x[0-9a-f]{64}$/;
@@ -83,6 +122,11 @@ export interface Art {
    * one in force.
    */
   training?: unknown;
+  /**
+   * The registrant's own statements. Set on every document that was read, so
+   * "said nothing" and "could not be read" stay two answers (L25, L32).
+   */
+  statements?: Statements;
   /** True when the gateway did not answer or the document was not readable. */
   missing: boolean;
 }
@@ -179,6 +223,7 @@ async function readFrom(url: string, documentServed: boolean): Promise<Art | nul
       imageUrl: image === undefined ? undefined : gatewayUrl(image),
       thumbnailUrl: small === undefined ? undefined : gatewayUrl(small),
       ...(parsed.data.training === undefined ? {} : { training: parsed.data.training }),
+      statements: statementsOf(parsed.data),
       // The route reads the image field as it was written, so this does too.
       ...(image !== undefined && documentServed && bareContentId(parsed.data.image) !== null
         ? { original: true as const }
@@ -199,6 +244,50 @@ async function readFrom(url: string, documentServed: boolean): Promise<Art | nul
   } catch {
     return null;
   }
+}
+
+/** One line of text, control and direction characters taken out, cut to `max` code points. */
+function oneLine(value: string, max: number): string {
+  return [...value.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, " ").trim()].slice(0, max).join("");
+}
+
+/** Reads the four statements one by one; a value of the wrong shape is left out on its own. */
+export function statementsOf(document: {
+  sworn?: unknown;
+  platformStatement?: unknown;
+  seenEarlier?: unknown;
+  seenOnline?: unknown;
+}): Statements {
+  const sworn = document.sworn as { text?: unknown; version?: unknown } | null | undefined;
+  const statements: Statements = {
+    sworn:
+      typeof sworn === "object" && sworn !== null && sworn.text === SWORN_TEXT && sworn.version === SWORN_VERSION,
+  };
+  if (typeof document.platformStatement === "string") {
+    const text = oneLine(document.platformStatement, PLATFORM_STATEMENT_CHARS);
+    if (text !== "") {
+      statements.platformStatement = text;
+    }
+  }
+  if (typeof document.seenEarlier === "string") {
+    const text = oneLine(document.seenEarlier, SEEN_EARLIER_CHARS);
+    if (text !== "") {
+      statements.seenEarlier = text;
+    }
+  }
+  const seen = document.seenOnline as { count?: unknown; pages?: unknown } | null | undefined;
+  if (typeof seen === "object" && seen !== null && Array.isArray(seen.pages)) {
+    const pages = seen.pages
+      .filter((page): page is string => typeof page === "string")
+      .map((page) => oneLine(page, SEEN_PAGE_CHARS))
+      .filter((page) => page !== "")
+      .slice(0, SEEN_PAGES_MAX);
+    const count = typeof seen.count === "number" && Number.isSafeInteger(seen.count) ? seen.count : pages.length;
+    if (pages.length > 0 && count >= pages.length && count <= SEEN_COUNT_MAX) {
+      statements.seenOnline = { count, pages };
+    }
+  }
+  return statements;
 }
 
 /**

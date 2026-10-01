@@ -1,7 +1,7 @@
 import type { Hex } from "viem";
 import { pinnedUri, readArt } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
-import { getPassport } from "@/lib/chain/registry";
+import { getOwner, getPassport } from "@/lib/chain/registry";
 import { readUnsealRecord } from "@/lib/verifier/client";
 
 /** The few facts the answer card shows about the passport an image matched. */
@@ -73,4 +73,21 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     blockhash256: passport.blockhash256,
     unsealedAt: published?.unsealedAt,
   };
+}
+
+/** The first registration the answer leads with: the matched passport's facts and who holds it now. */
+export interface FirstRegistration extends MatchedPassport {
+  /** Null when the registry would not say. */
+  holder: Hex | null;
+}
+
+/**
+ * Reads the earlier registration the verify service named, in the browser for
+ * the same reason as matchedPassport. Null when the id is not a passport or
+ * the registry has no record, and the card then keeps its plain line with the
+ * link, so a failed read never costs the reader the way to it.
+ */
+export async function firstRegistration(id: string): Promise<FirstRegistration | null> {
+  const [passport, holder] = await Promise.all([matchedPassport(id), ID_PATTERN.test(id) ? getOwner(id as Hex) : null]);
+  return passport === null ? null : { ...passport, holder };
 }

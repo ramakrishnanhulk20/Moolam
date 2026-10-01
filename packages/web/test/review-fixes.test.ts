@@ -48,6 +48,9 @@ vi.mock("@/lib/data/passports", async (original) => ({
   heldArt: async (uri: string) => index.art[uri] ?? { missing: true },
 }));
 
+// The poster's trust mark reads the chain and the index; this file is about the record rules.
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
+
 vi.mock("@/lib/chain/registry", async (original) => ({
   ...(await original<typeof import("@/lib/chain/registry")>()),
   getPassport: async (id: Hex) => index.chain[id.toLowerCase()] ?? null,

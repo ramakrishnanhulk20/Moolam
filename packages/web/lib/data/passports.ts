@@ -766,6 +766,15 @@ export interface PassportFilter {
    * through the caller's own test.
    */
   pictures?: PassportPictures;
+  /** Only passports whose own newest look-alike record is the network's, valid, and names an earlier one. */
+  lookalike?: boolean;
+  /** Only passports a later passport's newest valid network record names. */
+  later?: boolean;
+  /**
+   * True when the index serves the trust mark's fields (lib/data/marks.ts), so
+   * each row asks for them. Not a where clause.
+   */
+  marks?: boolean;
 }
 
 /** Where the last page stopped: the second its last row was registered in, and that row's id. */
@@ -817,6 +826,12 @@ export function passportWhere(filter: PassportFilter, cursor?: PassportCursor | 
   }
   if (filter.generator !== undefined && filter.generator !== "") {
     clauses.push({ generator_id: { _eq: filter.generator } });
+  }
+  if (filter.lookalike === true) {
+    clauses.push({ earlierFound: { _eq: true } });
+  }
+  if (filter.later === true) {
+    clauses.push({ laterLookalikeCount: { _gt: 0 } });
   }
 
   const pattern = searchPattern(filter.search);
@@ -951,6 +966,20 @@ export interface ExplorePassport {
   /** The registering wallet and the raw manifest word, which the platform label reads (P16). */
   creator?: Hex;
   manifestHash?: string;
+  /** What the trust mark is issued from, only where the index serves its fields. */
+  marks?: ExploreMarkFacts;
+}
+
+/** The index's side of one plate's trust mark. The picture's side is read from its document. */
+export interface ExploreMarkFacts {
+  /** The registry's dispute word, from the index's copy of it. */
+  dispute: "none" | "open" | "upheld" | "rejected";
+  /** The newest verdict Chainlink's network wrote, or null when it has written none (L4). */
+  verdict: { matched: boolean; distance: number; at: number } | null;
+  /** Its own newest look-alike record is the network's, valid, and names an earlier passport (L5, L6). */
+  earlierFound: boolean;
+  /** How many later passports' newest valid network record names this one. */
+  laterCount: number;
 }
 
 export interface ExplorePage {
@@ -1019,6 +1048,28 @@ interface ExploreRow extends ConsentRow {
   attestations: { receiver: string }[];
   generator: { id: string } | null;
   creator?: { id: Hex } | null;
+  earlierFound?: boolean;
+  laterLookalikeCount?: number;
+  networkVerdicts?: { matched: boolean; distance: number; at: string }[];
+  dispute?: { status: number } | null;
+}
+
+/** The index's dispute status number, in the registry's own order (DisputeStatus). */
+const DISPUTE_WORDS = ["none", "open", "upheld", "rejected"] as const;
+
+/** The mark facts off one row, or nothing when the row was read without them. */
+function markFactsOf(row: ExploreRow): ExploreMarkFacts | undefined {
+  if (row.earlierFound === undefined || row.laterLookalikeCount === undefined || row.networkVerdicts === undefined) {
+    return undefined;
+  }
+  const newest = row.networkVerdicts[0];
+  const at = Number(newest?.at);
+  return {
+    dispute: row.disputed ? "upheld" : (DISPUTE_WORDS[row.dispute?.status ?? 0] ?? "none"),
+    verdict: newest === undefined || !Number.isSafeInteger(at) ? null : { matched: newest.matched, distance: newest.distance, at },
+    earlierFound: row.earlierFound,
+    laterCount: row.laterLookalikeCount,
+  };
 }
 
 /** One straight read of the index, with no sifting and no second page. */
@@ -1031,6 +1082,15 @@ async function readPage(
   // without that column the same field would fail the whole query, so the flag
   // is read off the ids the walk worked out instead.
   const inheritedField = filter.disputedReach === "field" ? "inheritedDisputed" : "";
+  // The same rule for the trust mark's fields: asked for only where the index
+  // serves them, so an index from before the redeploy still answers the page.
+  const markFields =
+    filter.marks === true
+      ? `earlierFound
+      laterLookalikeCount
+      networkVerdicts: attestations(where: { network: { _eq: true } }, order_by: [{ at: desc }], limit: 1) { matched distance at }
+      dispute { status }`
+      : "";
 
   const query = `query ExplorePassports($where: Passport_bool_exp!, $limit: Int!) {
     Passport(where: $where, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit) {
@@ -1053,6 +1113,7 @@ async function readPage(
       consentAiGenerativeTraining
       consentAiInference
       consentDataMining
+      ${markFields}
     }
   }`;
 
@@ -1076,6 +1137,7 @@ async function readPage(
     consent: statementFrom(row),
     creator: row.creator?.id,
     manifestHash: row.manifestHash,
+    ...(filter.marks === true && markFactsOf(row) !== undefined ? { marks: markFactsOf(row) } : {}),
   }));
 
   const last = data.Passport[data.Passport.length - 1];

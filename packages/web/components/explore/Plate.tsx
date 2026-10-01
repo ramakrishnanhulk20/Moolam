@@ -3,6 +3,7 @@
 import { useLinkStatus } from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { UseBlock } from "@/components/consent/Marks";
+import { MARK_TONES, TONE_INK } from "@/components/mark/tones";
 import { SUMMARY_TONES } from "@/components/consent/tones";
 import { Picture } from "@/components/passport/Picture";
 import { sealedBits } from "@/components/passport/sealed";
@@ -276,6 +277,11 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
             </span>
           ) : null}
         </span>
+        {/* The trust mark's word, the same one the passport page presses beside
+            its kolam. A sealed plate already says sealed twice, so it is not
+            told a third time. Truthiness: a sheet held from before this field
+            existed, or an index without the mark's fields, has none. */}
+        {plate.mark && !(plate.mark === "sealed" && sealed) ? <PlateMark state={plate.mark} /> : null}
         <span
           aria-hidden
           className="mt-3 block h-px w-0 bg-accent transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:w-full"
@@ -284,6 +290,20 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
 
       <Opening />
     </Link>
+  );
+}
+
+/** The mark's word at a plate's foot, in the mark's own ink, with the small square every mark on the site starts from. */
+function PlateMark({ state }: { state: NonNullable<ExplorePlate["mark"]> }) {
+  const marks = useTranslations("mark");
+  return (
+    <span
+      data-plate-mark={state}
+      className={`mt-1.5 flex items-start gap-1.5 font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] ${TONE_INK[MARK_TONES[state]]}`}
+    >
+      <span aria-hidden className="mt-[2px] h-[7px] w-[7px] shrink-0 border border-current bg-current/30" />
+      <span className="min-w-0">{marks(`states.${state}.word`)}</span>
+    </span>
   );
 }
 

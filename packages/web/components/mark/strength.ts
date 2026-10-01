@@ -1,0 +1,71 @@
+import type { Hex } from "viem";
+import type { Statements } from "@/components/passport/art";
+import { CLAIM_WINDOW_DAYS, DAY_SECONDS } from "./rule";
+
+/**
+ * Where the claim behind a passport comes from, strongest first.
+ *
+ * "studio" is a picture Moolam's own studio agent signed the moment it drew
+ * it. "platform" is a listed platform's agent inside its window, which is what
+ * the platform label's "kit" status already means. Everything else is the
+ * registrant's own claim: open to challenge for thirty days from registration
+ * on the record's words, and always open to challenge with evidence after.
+ *
+ * A camera-signed claim is not issued: the document does not say whether the
+ * camera's record was kept at upload, so the page has nothing to read it from.
+ */
+export type ClaimLine =
+  | { key: "studio" }
+  | { key: "platform"; platform: string }
+  | { key: "self"; address: Hex; date: number; until: number }
+  | { key: "selfLater"; address: Hex; date: number };
+
+export interface ClaimInput {
+  generatorAgentId: bigint;
+  /** The agent Moolam's studio draws with. */
+  studioAgentId: bigint;
+  /** The platform label's status and name, or null when the passport has none or the list could not be read. */
+  platform: { status: "kit" | "outsideKit"; name: string } | null;
+  creator: Hex;
+  /** Unix seconds. */
+  registeredAt: number;
+  /** Unix seconds, read once per render. */
+  now: number;
+}
+
+export function claimOf(input: ClaimInput): ClaimLine {
+  if (input.generatorAgentId !== 0n && input.generatorAgentId === input.studioAgentId) {
+    return { key: "studio" };
+  }
+  if (input.platform?.status === "kit") {
+    return { key: "platform", platform: input.platform.name };
+  }
+  const until = input.registeredAt + CLAIM_WINDOW_DAYS * DAY_SECONDS;
+  return input.now <= until
+    ? { key: "self", address: input.creator, date: input.registeredAt, until }
+    : { key: "selfLater", address: input.creator, date: input.registeredAt };
+}
+
+/**
+ * True when the document was read and carries neither the sworn line nor a
+ * platform's statement in its place: the registration came in some other way
+ * than through Moolam's studio or the kit, and the page says so rather than
+ * letting it read as clean (L25). Null when the document could not be read,
+ * which says nothing either way.
+ */
+export function registeredOutside(statements: Statements | undefined): boolean | null {
+  if (statements === undefined) {
+    return null;
+  }
+  return !statements.sworn && statements.platformStatement === undefined;
+}
+
+const PASSPORT_ID = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * The seenEarlier value as a passport id the page may link, or null when it is
+ * not one. Held to the one pattern before any link is made (L21, R14).
+ */
+export function seenEarlierLink(value: string | undefined): Hex | null {
+  return value !== undefined && PASSPORT_ID.test(value) ? (value.toLowerCase() as Hex) : null;
+}

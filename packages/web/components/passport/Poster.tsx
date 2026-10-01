@@ -1,5 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import type { CSSProperties, ReactNode } from "react";
+import { markCopy, type MarkCopy } from "@/components/mark/copy";
+import { MarkBand } from "@/components/mark/MarkBand";
+import { passportMarkFacts } from "@/components/mark/read";
+import { MarkStamp } from "@/components/mark/Stamp";
 import { SealedPlate } from "@/components/sealed/SealedPlate";
 import { shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
@@ -28,59 +32,77 @@ import { recordUnread } from "./unread";
  *
  * `strip` is the facts strip along the poster's foot. The page always hands it
  * over; a test that leaves it out gets the same poster with nothing there.
+ *
+ * The trust mark is pressed beside the kolam in the corner, and the band under
+ * the poster says what it means and what Chainlink found about look-alikes.
+ * Both are read here from the page's own held reads (components/mark/read.ts);
+ * `mark` hands in words already made, for the screenshot fixtures.
  */
 export async function Poster({
   passport,
   art,
   locale,
   strip,
+  mark,
 }: {
   passport: Passport;
   art: Art;
   locale: string;
   strip?: ReactNode;
+  mark?: MarkCopy;
 }) {
   const t = await getTranslations("passport");
   const kinds = await getTranslations("kind");
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
+  const copy = mark ?? (await markCopy(await passportMarkFacts(passport, art), locale));
+  const stamp =
+    copy.word === null ? null : <MarkStamp state={copy.state} word={copy.word} tone={copy.tone} delay={0.5} />;
 
   if (art.sealed === true) {
     const registered = format.dateTime(new Date(Number(passport.registeredAt) * 1000), { dateStyle: "medium" });
 
     return (
-      // The plate is the whole header here, so it keeps the element the rest of
-      // the page's landmarks are laid out against.
-      <header>
-        <SealedPlate
-          // The chain's own word first. The pinned document says the same
-          // thing, and it is the fallback for the day the two ever disagree.
-          bits={sealedBits(passport.blockhash256, art.blockhash)}
-          title={art.title ?? null}
-          size="poster"
-          as="h1"
-          shortId={shortHex(passport.id, 10, 8)}
-          words={{
-            sealed: t("sealed.label"),
-            // "Keeps no copy" would be untrue once the creator asked for the
-            // private re-check, so that passport gets its own line.
-            line: t(art.privateRecheck === true ? "sealed.posterLinePrivate" : "sealed.posterLine", { date: registered }),
-            untitled: t("untitled"),
-          }}
-          share={{ copy: t("share.copy"), copied: t("share.copied"), copyFailed: common("copyFailed") }}
-        />
-        {/* The plate is drawn by a component three screens share, so the strip
-            hangs off its foot rather than inside it, on the ground the
-            plate's scrim ends on, so the two read as one. */}
-        <div
-          data-strip-under-plate
-          // The band rises into the plate's own bottom padding, which holds
-          // nothing, so the strip starts closer to the first screen.
-          className="relative -mt-6 border-b border-line bg-bg px-5 pb-6 sm:-mt-8 sm:px-8 sm:pb-8"
-        >
-          <div className="mx-auto w-full max-w-[1400px]">{strip}</div>
-        </div>
-      </header>
+      <>
+        {/* The plate is the whole header here, so it keeps the element the rest of
+            the page's landmarks are laid out against. */}
+        <header>
+          <SealedPlate
+            // The chain's own word first. The pinned document says the same
+            // thing, and it is the fallback for the day the two ever disagree.
+            bits={sealedBits(passport.blockhash256, art.blockhash)}
+            title={art.title ?? null}
+            size="poster"
+            as="h1"
+            shortId={shortHex(passport.id, 10, 8)}
+            words={{
+              sealed: t("sealed.label"),
+              // "Keeps no copy" would be untrue once the creator asked for the
+              // private re-check, so that passport gets its own line.
+              line: t(art.privateRecheck === true ? "sealed.posterLinePrivate" : "sealed.posterLine", { date: registered }),
+              untitled: t("untitled"),
+            }}
+            share={{ copy: t("share.copy"), copied: t("share.copied"), copyFailed: common("copyFailed") }}
+          />
+          {/* The plate is drawn by a component three screens share, so the strip
+              hangs off its foot rather than inside it, on the ground the
+              plate's scrim ends on, so the two read as one. */}
+          <div
+            data-strip-under-plate
+            // The band rises into the plate's own bottom padding, which holds
+            // nothing, so the strip starts closer to the first screen.
+            className="relative -mt-6 border-b border-line bg-bg px-5 pb-6 sm:-mt-8 sm:px-8 sm:pb-8"
+          >
+            <div className="mx-auto w-full max-w-[1400px]">
+              {/* The plate is drawn by a shared component with no corner of its
+                  own for the mark, so the stamp leads the strip under it. */}
+              {stamp === null ? null : <div className="pb-4 pt-1">{stamp}</div>}
+              {strip}
+            </div>
+          </div>
+        </header>
+        <MarkBand copy={copy} />
+      </>
     );
   }
 
@@ -90,99 +112,101 @@ export async function Poster({
   const unread = recordUnread(art);
 
   return (
-    <header className="group/poster grain relative h-[74svh] min-h-[34rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
-      {art.imageUrl === undefined ? (
-        missing
-      ) : (
-        // The full pinned image, the same file a verifier fetches when it
-        // re-checks this record. This is the one screen that draws it at full
-        // size; every grid and every plate elsewhere uses the thumbnail.
-        <Picture
-          sources={pictureSources(art.imageUrl)}
-          alt={art.title ?? common("registeredPicture")}
-          sizes="100vw"
-          priority
-          className="object-cover"
-          fallback={missing}
-        />
-      )}
-      {/* Dark keeps the full poster gradient and the band along the top. In
-          light both are cream, and over the whole still they read as a pale
-          haze, so light keeps only the foot the title stands on and the
-          picture shows at full strength above it. On a phone the facts strip
-          takes two rows and pushes the title up into the picture, where a
-          foot of 64% left black type on a dark sky, so there the cream holds
-          firm up to the title and clears only over the top of the still. */}
-      <div data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
-      <div
-        aria-hidden
-        data-scrim="dark"
-        className="pointer-events-none absolute inset-x-0 top-0 h-32 [.light_&]:hidden"
-        style={{ background: "linear-gradient(to bottom, var(--scrim-from) 0%, var(--scrim-to) 100%)" }}
-      />
-      <div
-        aria-hidden
-        data-scrim="light"
-        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-full [--foot-firm:72%] sm:h-[64%] sm:[--foot-firm:45%] [.light_&]:block"
-        style={{
-          background:
-            "linear-gradient(to top, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 80%, transparent) var(--foot-firm), var(--scrim-to) 100%)",
-        }}
-      />
-
-      <div className="absolute inset-x-0 top-0 px-5 py-6 sm:px-8">
-        {/* With no band along the top in light, the label sits on a small plate
-            of the page's own ground so it reads on any sky. */}
-        <div className="inline-flex flex-wrap items-center gap-x-5 gap-y-2 [.light_&]:rounded-[8px] [.light_&]:bg-bg/85 [.light_&]:px-3 [.light_&]:py-1.5 [.light_&]:backdrop-blur-sm">
-          <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
-            <span className="motif h-[10px] w-[10px]" />
-            {t("title")}
-          </p>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-            {/* Hex reads as hex: an upper case X in 0x is not an address. */}
-            <span data-poster-id className="normal-case">
-              {shortHex(passport.id, 10, 8)}
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {/* The seal takes only the room between the label and the title block.
-          The box wraps its one child into a second column, off the side and
-          clipped, whenever that room is too short to hold it, so a long title
-          hides the seal rather than lying over it. */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col px-5 pb-8 sm:px-8 sm:pb-12">
+    <>
+      <header className="group/poster grain relative h-[74svh] min-h-[34rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
+        {art.imageUrl === undefined ? (
+          missing
+        ) : (
+          // The full pinned image, the same file a verifier fetches when it
+          // re-checks this record. This is the one screen that draws it at full
+          // size; every grid and every plate elsewhere uses the thumbnail.
+          <Picture
+            sources={pictureSources(art.imageUrl)}
+            alt={art.title ?? common("registeredPicture")}
+            sizes="100vw"
+            priority
+            className="object-cover"
+            fallback={missing}
+          />
+        )}
+        {/* Dark keeps the full poster gradient and the band along the top. In
+            light both are cream, and over the whole still they read as a pale
+            haze, so light keeps only the foot the title stands on and the
+            picture shows at full strength above it. On a phone the facts strip
+            takes two rows and pushes the title up into the picture, where a
+            foot of 64% left black type on a dark sky, so there the cream holds
+            firm up to the title and clears only over the top of the still. */}
+        <div data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
         <div
-          data-missing-seal
-          className="hidden min-h-0 flex-1 flex-col flex-wrap justify-center overflow-hidden pt-16 group-has-[[data-no-picture]]/poster:flex"
-        >
-          <span aria-hidden className="block h-0 w-full" />
-          <div className="flex w-full flex-col items-center justify-center gap-5 py-4">
-            <span className="motif h-8 w-8 shrink-0" />
-            <p className="max-w-[34ch] text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-              {t("noPicture")}
+          aria-hidden
+          data-scrim="dark"
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 [.light_&]:hidden"
+          style={{ background: "linear-gradient(to bottom, var(--scrim-from) 0%, var(--scrim-to) 100%)" }}
+        />
+        <div
+          aria-hidden
+          data-scrim="light"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-full [--foot-firm:72%] sm:h-[64%] sm:[--foot-firm:45%] [.light_&]:block"
+          style={{
+            background:
+              "linear-gradient(to top, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 80%, transparent) var(--foot-firm), var(--scrim-to) 100%)",
+          }}
+        />
+
+        <div className="absolute inset-x-0 top-0 px-5 py-6 sm:px-8">
+          {/* With no band along the top in light, the label sits on a small plate
+              of the page's own ground so it reads on any sky. */}
+          <div className="inline-flex flex-wrap items-center gap-x-5 gap-y-2 [.light_&]:rounded-[8px] [.light_&]:bg-bg/85 [.light_&]:px-3 [.light_&]:py-1.5 [.light_&]:backdrop-blur-sm">
+            <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
+              <span className="motif h-[10px] w-[10px]" />
+              {t("title")}
             </p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+              {/* Hex reads as hex: an upper case X in 0x is not an address. */}
+              <span data-poster-id className="normal-case">
+                {shortHex(passport.id, 10, 8)}
+              </span>
+            </p>
+            {stamp}
           </div>
         </div>
-        <div className="pointer-events-auto mx-auto mt-auto w-full max-w-[1400px]">
-          {unread ? (
-            // The record never arrived, so there is no name to print and
-            // "Untitled" would say the creator gave none. The id is the one
-            // name this passport certainly has.
-            <>
-              <h1
-                data-title-unread
-                className="rise max-w-[16ch] break-all font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold leading-[0.9] tracking-[-0.04em]"
-                style={{ animationDelay: "60ms" }}
-              >
-                {shortHex(passport.id, 6, 4)}
-              </h1>
-              <p
-                className="rise mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted"
-                style={{ animationDelay: "90ms" }}
-              >
-                {t("titleUnread")}
+
+        {/* The seal takes only the room between the label and the title block.
+            The box wraps its one child into a second column, off the side and
+            clipped, whenever that room is too short to hold it, so a long title
+            hides the seal rather than lying over it. */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col px-5 pb-8 sm:px-8 sm:pb-12">
+          <div
+            data-missing-seal
+            className="hidden min-h-0 flex-1 flex-col flex-wrap justify-center overflow-hidden pt-16 group-has-[[data-no-picture]]/poster:flex"
+          >
+            <span aria-hidden className="block h-0 w-full" />
+            <div className="flex w-full flex-col items-center justify-center gap-5 py-4">
+              <span className="motif h-8 w-8 shrink-0" />
+              <p className="max-w-[34ch] text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+                {t("noPicture")}
               </p>
+            </div>
+          </div>
+          <div className="pointer-events-auto mx-auto mt-auto w-full max-w-[1400px]">
+            {unread ? (
+              // The record never arrived, so there is no name to print and
+              // "Untitled" would say the creator gave none. The id is the one
+              // name this passport certainly has.
+            <>
+                <h1
+                  data-title-unread
+                  className="rise max-w-[16ch] break-all font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold leading-[0.9] tracking-[-0.04em]"
+                  style={{ animationDelay: "60ms" }}
+                >
+                  {shortHex(passport.id, 6, 4)}
+                </h1>
+                <p
+                  className="rise mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted"
+                  style={{ animationDelay: "90ms" }}
+                >
+                  {t("titleUnread")}
+                </p>
             </>
           ) : (
             <h1
@@ -232,6 +256,8 @@ export async function Poster({
         </div>
       </div>
     </header>
+    <MarkBand copy={copy} />
+    </>
   );
 }
 
