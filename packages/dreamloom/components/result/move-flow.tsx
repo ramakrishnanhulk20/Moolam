@@ -24,11 +24,14 @@ export function MoveFlow({
   id,
   moolamSite,
   ownOrigin,
+  waitsByEmail = false,
   onChanged,
 }: {
   id: string;
   moolamSite: string;
   ownOrigin: string;
+  /** The passport already waits at Moolam under the visitor's email, so the move is the other way to it. */
+  waitsByEmail?: boolean;
   onChanged: () => void;
 }) {
   const [state, dispatch] = useReducer(moveStep, { kind: "idle" });
@@ -80,7 +83,7 @@ export function MoveFlow({
 
   return (
     <>
-      <MoveFlowView state={state} onStart={start} onReopen={reopen} onConfirm={() => dispatch({ type: "confirm" })} onCancel={cancel} />
+      <MoveFlowView state={state} waitsByEmail={waitsByEmail} onStart={start} onReopen={reopen} onConfirm={() => dispatch({ type: "confirm" })} onCancel={cancel} />
       <CheckoutOverlay
         open={state.kind === "waiting"}
         place="share"
@@ -96,12 +99,14 @@ export function MoveFlow({
 /** What each move step draws. Kept apart from the listener so every step can be drawn and checked on its own. */
 export function MoveFlowView({
   state,
+  waitsByEmail = false,
   onStart,
   onReopen,
   onConfirm,
   onCancel,
 }: {
   state: MoveState;
+  waitsByEmail?: boolean;
   onStart: () => void;
   onReopen: () => void;
   onConfirm: () => void;
@@ -110,7 +115,7 @@ export function MoveFlowView({
   return (
     <div>
       <p className="font-display text-2xl leading-tight font-extrabold tracking-[-0.02em] text-white">
-        Want it in your own account?
+        {waitsByEmail ? "Or take it into your account now" : "Want it in your own account?"}
       </p>
       <p className="mt-2 max-w-[34rem] text-base text-white/70">
         Moolam asks you to share your address with Dreamloom, then Dreamloom moves the passport to it. You check the

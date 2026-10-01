@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { getAddress } from "viem";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLIENT_ID, CLIENT_SECRET, goodClaims, standInForGoogle } from "./google-stand-in";
 
 const sdk = vi.hoisted(() => ({
   registerAsPlatform: vi.fn(),
@@ -57,9 +58,10 @@ const MARK = {
   passkeyKey: `0x${"5ec2".repeat(16)}`,
   openAiKey: "sk-marker-5ec3-openai",
   rpcUrl: "https://rpc.example.com/v2/marker-5ec4-rpc",
+  googleSecret: CLIENT_SECRET,
 };
 /** What each marker looks like however it is cut: the hex bodies without 0x, and the distinctive words. */
-const NEEDLES = ["5ec05ec05ec0", "5ec15ec15ec1", "5ec25ec25ec2", "marker-5ec3", "marker-5ec4"];
+const NEEDLES = ["5ec05ec05ec0", "5ec15ec15ec1", "5ec25ec25ec2", "marker-5ec3", "marker-5ec4", "marker-5ec9"];
 
 const HANDLE = "c0ffee00".repeat(4);
 const PASSPORT = `0x${"a1".repeat(32)}`;
@@ -82,6 +84,8 @@ function settings(overrides: Record<string, string | undefined> = {}): void {
     DREAMLOOM_PASSKEY_RP_ID: "dreamloom.example.com",
     DREAMLOOM_PLATFORM_KEY: MARK.platformKey,
     OPENAI_API_KEY: MARK.openAiKey,
+    GOOGLE_CLIENT_ID: CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: MARK.googleSecret,
     DATA_DIR: dataDir,
   };
   for (const [name, value] of Object.entries({ ...base, ...overrides })) vi.stubEnv(name, value);
@@ -133,6 +137,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   rmSync(dataDir, { recursive: true, force: true });
 });
 
@@ -221,6 +226,48 @@ describe("D3: secrets never leave the server", () => {
     expect(await res.json()).toEqual({ error: "closed" });
     expect(logged.join("\n")).toContain("DREAMLOOM_PLATFORM_KEY");
     for (const line of logged) expectClean(line);
+  });
+});
+
+describe("the Google client secret never leaves the server except to Google", () => {
+  it("keeps the client secret out of every sign-in answer, header and log line, even when Google's error quotes it", async () => {
+    const google = standInForGoogle();
+    settings();
+    vi.resetModules();
+    const auth = await import("@/lib/server/auth-routes");
+    const answers: string[] = [];
+    const keep = async (res: Response) => {
+      answers.push(await seen(res));
+      return res;
+    };
+    const signinCookie = (res: Response) => res.headers.getSetCookie().find((line) => line.startsWith("dl_signin="))!.split(";")[0]!;
+    const start = async () => {
+      const res = await keep(await auth.signInWithGoogle(req("/api/auth/signin/google?from=%2F", "GET")));
+      const page = new URL(res.headers.get("location")!);
+      return { cookie: signinCookie(res), state: page.searchParams.get("state")!, nonce: page.searchParams.get("nonce")! };
+    };
+
+    // A hostile failure: Google's token endpoint refuses and its error text quotes the secret back.
+    const refused = await start();
+    google.answer = () => ({ status: 401, json: { error: "invalid_client", error_description: `client_secret ${MARK.googleSecret} is not valid` } });
+    await keep(await auth.googleCallback(req(`/api/auth/callback/google?code=4%2F0Atest&state=${refused.state}`, "GET", undefined, refused.cookie)));
+
+    const good = await start();
+    google.answer = () => ({ claims: goodClaims(good.nonce) });
+    const landed = await keep(await auth.googleCallback(req(`/api/auth/callback/google?code=4%2F0Atest&state=${good.state}`, "GET", undefined, good.cookie)));
+    const session = landed.headers.getSetCookie().find((line) => line.startsWith("dl_session="))!.split(";")[0]!;
+    expect(await (await keep(await auth.currentAccount(req("/api/auth/session", "GET", undefined, session)))).clone().json()).toMatchObject({ signedIn: true });
+    await keep(await auth.signOut(req("/api/auth/signout", "POST", undefined, session)));
+
+    expect(answers).toHaveLength(6);
+    for (const answer of answers) expectClean(answer);
+    expect(logged.length).toBeGreaterThan(0);
+    for (const line of logged) expectClean(line);
+
+    // The secret is in use: it went to Google's token endpoint, and nowhere else.
+    expect(google.tokenCalls).toHaveLength(2);
+    expect(google.tokenCalls.every((call) => call.body.get("client_secret") === MARK.googleSecret)).toBe(true);
+    expect(google.strayCalls).toEqual([]);
   });
 });
 

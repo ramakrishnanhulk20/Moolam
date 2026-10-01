@@ -32,7 +32,9 @@ export function PassportPanel({
     ? "You claimed it, so it sits in your own Moolam account and credits you as the person who imagined it."
     : picture.mode === "cosign"
       ? "You signed it, so Moolam names you as its creator."
-      : "Dreamloom registered it and holds it for you. Claim it below to take it into your own Moolam account.";
+      : waiting
+        ? "Dreamloom registered it and holds it for you until you claim it at Moolam."
+        : "Dreamloom registered it and holds it for you. Claim it below to take it into your own Moolam account.";
 
   return (
     <motion.div

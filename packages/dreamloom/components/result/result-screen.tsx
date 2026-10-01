@@ -237,6 +237,7 @@ function ReadySide({
 }) {
   const heading = picture.state === "registered" && picture.mode === "platform" ? HELD : HEADINGS[picture.state];
   const canMove = picture.state === "registered" && picture.mode === "platform";
+  const waitsByEmail = picture.state === "registered" && picture.delivery?.kind === "waiting";
   // A passport that went straight to the person's Moolam account needs no offer to remember an address.
   const claimedTo = picture.state === "moved" && picture.delivery?.kind !== "straight" ? picture.movedTo : undefined;
 
@@ -268,7 +269,7 @@ function ReadySide({
         {LANDED.has(picture.state) && (
           <PassportPanel picture={picture} moolamSite={moolamSite}>
             {canMove ? (
-              <MoveFlow id={id} moolamSite={moolamSite} ownOrigin={ownOrigin} onChanged={onChanged} />
+              <MoveFlow id={id} moolamSite={moolamSite} ownOrigin={ownOrigin} waitsByEmail={waitsByEmail} onChanged={onChanged} />
             ) : claimedTo !== undefined ? (
               <RememberAddress address={claimedTo} remembered={remembered} onRemembered={onRemembered} />
             ) : undefined}

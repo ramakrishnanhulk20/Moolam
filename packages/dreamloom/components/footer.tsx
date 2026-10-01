@@ -12,6 +12,12 @@ export function Footer() {
           <p className="mt-4 max-w-[36rem] text-base text-white/75">
             Dreamloom is a demo site built to show the Moolam platform kit. It is not a real company.
           </p>
+          <a
+            href="/privacy"
+            className="mt-5 inline-flex min-h-11 items-center text-base font-semibold text-white/80 underline decoration-white/30 underline-offset-4 transition hover:text-sun hover:decoration-sun"
+          >
+            Privacy
+          </a>
         </div>
         <a
           href={PLATFORM_DOCS_URL}

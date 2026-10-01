@@ -2,23 +2,30 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { SIGNIN_WORDS, postSignOut, readAccountView, signInHref, signInOutcome, type AccountView, type SignInOutcome } from "./account-api";
+import { SIGNIN_WORDS, postSignOut, signInHref, signInOutcome, type AccountView, type SignInOutcome } from "./account-api";
+import { setAccount, useAccount, type AccountRead } from "./use-account";
+
+/**
+ * The corner's row on phones: one fixed height whether the session answer is still on its way or
+ * says signed in or signed out, so nothing under the header moves when the answer lands. From sm up
+ * it sits inline beside the wordmark at its own height.
+ */
+export const CORNER_ROW = "relative order-last flex h-11 w-full justify-end sm:order-none sm:ml-auto sm:h-auto sm:w-auto";
 
 /**
  * The header's account corner. Signed out: "Sign in with Google" inside the same turning daybreak
  * ring the prompt box wears. Signed in: the masked address and "Sign out". When Google sign-in is
- * not set up on the server, nothing is drawn at all.
+ * not set up on the server, or the server does not answer, nothing is drawn at all.
  *
  * On phones it takes its own row under the wordmark, so the address is never squeezed out.
  */
 export function AccountChip() {
-  const [account, setAccount] = useState<AccountView | null>(null);
+  const read = useAccount();
   const [href, setHref] = useState("/api/auth/signin/google?from=%2F");
   const [outcome, setOutcome] = useState<SignInOutcome | null>(null);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    let live = true;
     setHref(signInHref(window.location.pathname));
     const word = signInOutcome(window.location.search);
     if (word !== null) {
@@ -28,12 +35,6 @@ export function AccountChip() {
       url.searchParams.delete("signin");
       window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }
-    void readAccountView().then((view) => {
-      if (live) setAccount(view);
-    });
-    return () => {
-      live = false;
-    };
   }, []);
 
   async function signOut() {
@@ -44,11 +45,46 @@ export function AccountChip() {
     if (view !== null) setAccount(view);
   }
 
+  return (
+    <AccountCorner
+      read={read}
+      href={href}
+      leaving={leaving}
+      outcome={outcome}
+      onSignOut={() => void signOut()}
+      onCloseOutcome={() => setOutcome(null)}
+    />
+  );
+}
+
+/**
+ * The whole corner for one session answer, apart from its requests, so each state can be drawn and
+ * checked on its own. While the answer is on its way, phones keep the row empty at the chip's
+ * height; once the answer says sign-in is not offered, or never comes, the row goes. From sm up
+ * nothing is held, as before.
+ */
+export function AccountCorner({
+  read,
+  href,
+  leaving,
+  outcome,
+  onSignOut,
+  onCloseOutcome,
+}: {
+  read: AccountRead;
+  href: string;
+  leaving: boolean;
+  outcome: SignInOutcome | null;
+  onSignOut: () => void;
+  onCloseOutcome: () => void;
+}) {
+  if (read.kind === "loading") return <div aria-hidden data-corner="held" className={`${CORNER_ROW} sm:hidden`} />;
+  const account = read.view;
   if (account === null || !account.available) return null;
 
   return (
-    <div className="relative order-last flex w-full justify-end sm:order-none sm:ml-auto sm:w-auto">
-      <AccountChipView account={account} href={href} leaving={leaving} onSignOut={() => void signOut()} />
+    <div className={CORNER_ROW}>
+      <AccountChipView account={account} href={href} leaving={leaving} onSignOut={onSignOut} />
       <AnimatePresence>
         {outcome !== null && !account.signedIn && (
           <motion.p
@@ -62,7 +98,7 @@ export function AccountChip() {
             {SIGNIN_WORDS[outcome]}
             <button
               type="button"
-              onClick={() => setOutcome(null)}
+              onClick={onCloseOutcome}
               className="ml-2 cursor-pointer font-semibold text-ink underline decoration-ink/30 underline-offset-4 transition hover:text-violet hover:decoration-violet"
             >
               Close

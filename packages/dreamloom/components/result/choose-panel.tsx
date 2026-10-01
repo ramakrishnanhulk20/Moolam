@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useId, useState } from "react";
+import type { AccountView } from "@/components/account/account-api";
+import { useAccount } from "@/components/account/use-account";
 import { INK_BUTTON, PRIMARY_BUTTON, ProblemNote, Spinner, Arrow, useSecondsSince } from "./bits";
 import { cosignLink } from "./moolam-links";
 import { CLAIM_SNAG, PAGE_WORDS, postClaim, postCosign, postForget, postRegister, readRemembered, type TermsChoice } from "./picture-api";
@@ -42,6 +44,8 @@ export function ChoosePanel({
   const [terms, setTerms] = useState<TermsChoice>(DEFAULT_TERMS);
   const [pending, setPending] = useState<Pending>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const read = useAccount();
+  const account = read.kind === "done" ? read.view : null;
   const titleId = useId();
   const noteId = useId();
   const issue = titleProblem(title);
@@ -211,9 +215,7 @@ export function ChoosePanel({
                 {pending?.kind === "register" ? "Registering" : "Let Dreamloom hold it for me"}
                 {pending?.kind === "register" ? <Spinner /> : <Arrow />}
               </button>
-              <p className="px-2 text-sm leading-snug text-ink-soft">
-                Dreamloom registers it now and holds it until you claim it into your own Moolam account.
-              </p>
+              <HoldHint account={account} />
             </div>
           ) : (
             <div className="flex flex-col gap-2.5 md:row-span-2 md:grid md:grid-rows-subgrid">
@@ -243,6 +245,26 @@ export function ChoosePanel({
         {pending === null && problem !== null && <ProblemNote>{problem}</ProblemNote>}
       </div>
     </motion.div>
+  );
+}
+
+/**
+ * What "Let Dreamloom hold it for me" means for this visitor. Signed in with Google, the passport is
+ * left waiting at Moolam under their address, shown only as the mask the session answer gives.
+ */
+export function HoldHint({ account }: { account: AccountView | null }) {
+  return (
+    <p className="px-2 text-sm leading-snug text-ink-soft">
+      {account?.available === true && account.signedIn ? (
+        <>
+          Dreamloom registers it now, and it waits for you at Moolam under{" "}
+          <span className="font-mono text-[0.8rem] font-semibold break-all text-ink">{account.email}</span>. Claim it there
+          with this Google account.
+        </>
+      ) : (
+        "Dreamloom registers it now and holds it until you claim it into your own Moolam account."
+      )}
+    </p>
   );
 }
 
