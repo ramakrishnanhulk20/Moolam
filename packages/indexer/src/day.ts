@@ -15,6 +15,7 @@ export type GlobalDelta = {
   creators?: number;
   generators?: number;
   attestations?: number;
+  networkAttestations?: number;
   disputes?: number;
   consentStatements?: number;
   passportsWithConsent?: number;
@@ -85,6 +86,7 @@ export async function bumpGlobal(
     creators: 0,
     generators: 0,
     attestations: 0,
+    networkAttestations: 0,
     disputes: 0,
     consentStatements: 0,
     passportsWithConsent: 0,
@@ -96,6 +98,7 @@ export async function bumpGlobal(
     creators: row.creators + (delta.creators ?? 0),
     generators: row.generators + (delta.generators ?? 0),
     attestations: row.attestations + (delta.attestations ?? 0),
+    networkAttestations: row.networkAttestations + (delta.networkAttestations ?? 0),
     disputes: row.disputes + (delta.disputes ?? 0),
     consentStatements: row.consentStatements + (delta.consentStatements ?? 0),
     passportsWithConsent: row.passportsWithConsent + (delta.passportsWithConsent ?? 0),

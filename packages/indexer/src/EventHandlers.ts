@@ -210,6 +210,14 @@ indexer.onEvent(
         : await context.Generator.get(passport.generator_id);
 
     const matched = event.params.matched;
+    // Read once: the row's flag and the global count must come from the same
+    // answer, or the count could drift from the rows a reader can filter on.
+    const network = isNetworkWrite({
+      writer: event.params.receiver,
+      expectedWriter: VERDICT_RECEIVER,
+      transactionTo: event.transaction.to,
+      blockTimestamp: event.block.timestamp,
+    });
 
     context.Attestation.set({
       id: attestationId(event.transaction.hash, event.logIndex),
@@ -219,12 +227,7 @@ indexer.onEvent(
       distance: Number(event.params.distance),
       recomputed: event.params.recomputed,
       at: BigInt(event.block.timestamp),
-      network: isNetworkWrite({
-        writer: event.params.receiver,
-        expectedWriter: VERDICT_RECEIVER,
-        transactionTo: event.transaction.to,
-        blockTimestamp: event.block.timestamp,
-      }),
+      network,
     });
 
     context.Passport.set({
@@ -246,7 +249,7 @@ indexer.onEvent(
     }
 
     await bumpDaily(context, event.block.timestamp, { attestations: 1 });
-    await bumpGlobal(context, { attestations: 1 });
+    await bumpGlobal(context, { attestations: 1, networkAttestations: network ? 1 : 0 });
   },
 );
 

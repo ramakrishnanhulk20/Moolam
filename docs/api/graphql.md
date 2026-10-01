@@ -30,7 +30,9 @@ with lowercase addresses or you will miss rows.
 | `Receiver` | Verifier address | Whether the policy currently allows it, and since when |
 | `CreatorDay` | `<day>-<creator>` | A marker row so `DailyStats.uniqueCreators` can count distinct creators |
 | `DailyStats` | UTC day | `registrations`, `edits`, `attestations`, `disputes`, `uniqueCreators`, `consentStatements` |
-| `GlobalStats` | `global` | `passports`, `creators`, `generators`, `attestations`, `disputes`, `consentStatements`, `passportsWithConsent` |
+| `GlobalStats` | `global` | `passports`, `creators`, `generators`, `attestations`, `networkAttestations`, `disputes`, `consentStatements`, `passportsWithConsent` |
+
+`networkAttestations` is the part of `attestations` Chainlink's network wrote, counted from the same check that sets `Attestation.network`, so simulator runs never reach it.
 
 `edits` is a subset of `registrations`, not a figure beside it. `BigInt` fields come back as
 strings, which is why `phash` and `registeredAt` are quoted in the output below.

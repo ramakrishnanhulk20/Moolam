@@ -212,6 +212,55 @@ describe("look-alike records and the network flag", () => {
     expect(await byTx(4)).toBe(false);
   });
 
+  it("L4: a network attestation raises networkAttestations and attestations by one", async () => {
+    const indexer = await run([...REGISTRATIONS, attestation({ receiver: VERDICT_RECEIVER, offset: 1 })]);
+
+    const global = await indexer.GlobalStats.getOrThrow("global");
+    expect(global.attestations).toBe(1);
+    expect(global.networkAttestations).toBe(1);
+  });
+
+  it("L4: a simulator attestation raises attestations and leaves networkAttestations alone", async () => {
+    const indexer = await run([
+      ...REGISTRATIONS,
+      attestation({ receiver: SIMULATOR_RECEIVER, offset: 1 }),
+      attestation({ receiver: VERDICT_RECEIVER, offset: 2, to: DEPLOYER }),
+    ]);
+
+    const global = await indexer.GlobalStats.getOrThrow("global");
+    expect(global.attestations).toBe(2);
+    expect(global.networkAttestations).toBe(0);
+  });
+
+  it("L4: an attestation one second before activation is not counted as the network's", async () => {
+    const indexer = await run([
+      ...REGISTRATIONS,
+      attestation({ receiver: VERDICT_RECEIVER, offset: 1, timestamp: ACTIVATION - 1 }),
+    ]);
+
+    const global = await indexer.GlobalStats.getOrThrow("global");
+    expect(global.attestations).toBe(1);
+    expect(global.networkAttestations).toBe(0);
+  });
+
+  it("L4: networkAttestations never passes attestations and matches the rows marked network", async () => {
+    const indexer = await run([
+      ...REGISTRATIONS,
+      attestation({ receiver: VERDICT_RECEIVER, offset: 1 }),
+      attestation({ receiver: SIMULATOR_RECEIVER, offset: 2 }),
+      attestation({ receiver: VERDICT_RECEIVER, offset: 3, timestamp: ACTIVATION + 60 }),
+      attestation({ receiver: VERDICT_RECEIVER, offset: 4, timestamp: ACTIVATION - 1 }),
+      attestation({ receiver: VERDICT_RECEIVER, offset: 5, to: DEPLOYER }),
+    ]);
+
+    const global = await indexer.GlobalStats.getOrThrow("global");
+    const rows = await indexer.Attestation.getAll();
+    expect(global.attestations).toBe(rows.length);
+    expect(global.networkAttestations).toBe(rows.filter((row) => row.network).length);
+    expect(global.networkAttestations).toBe(2);
+    expect(global.networkAttestations).toBeLessThanOrEqual(global.attestations);
+  });
+
   it("L5: an earlier passport registered in the same second is not valid", async () => {
     const indexer = await run([
       ...REGISTRATIONS,

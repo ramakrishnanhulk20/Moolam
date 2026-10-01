@@ -132,6 +132,7 @@ once. `consentStatements` counts statements written, on both rows. `passportsWit
 global row only, counts pictures that carry one: the two differ because a holder can restate, and a
 chart that showed only the total would make a few holders changing their minds look like new
 pictures arriving.
+`networkAttestations`, on the global row only, counts the attestations Chainlink's network wrote, from the same check that sets `Attestation.network`, so a simulator run never reaches it.
 
 Addresses are stored lowercase everywhere, including entity ids. Envio hands them back EIP-55
 checksummed, so the handlers lowercase them first: one casing rule across the whole API means a

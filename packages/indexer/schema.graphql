@@ -200,6 +200,10 @@ type GlobalStats {
   creators: Int!
   generators: Int!
   attestations: Int!
+  # The part of attestations Chainlink's network wrote: raised by the same
+  # reading that sets Attestation.network, so it can never pass attestations and
+  # a simulator run never reaches it.
+  networkAttestations: Int!
   disputes: Int!
   # Statements written, against passports that carry one. They differ because a
   # holder can restate, and a chart that showed only the total would make a

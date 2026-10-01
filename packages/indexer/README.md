@@ -24,9 +24,9 @@ Codegen writes `.envio/types.d.ts`, which is git-ignored, and `envio-env.d.ts`,
 which is committed and points TypeScript at it. Run codegen after any change to
 `config.yaml` or `schema.graphql`, or the handler types go stale.
 
-Thirty tests pass against the generated types with the live mainnet
-addresses in `config.yaml`: twenty four drive the handlers through Envio's own
-test indexer, and six are table tests over the consent mapping. One of the twenty four
+Forty seven tests pass against the generated types with the live mainnet
+addresses in `config.yaml`: forty one drive the handlers through Envio's own
+test indexer, and six are table tests over the consent mapping. One of the forty one
 replays every `ConsentSet` log Monad holds, read from the chain into
 `test/fixtures/consent-events.json`. `proofs/indexer-tests.txt` holds an earlier
 full run with the codegen version and the WSL command wrapper.
