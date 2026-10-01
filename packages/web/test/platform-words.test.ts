@@ -57,6 +57,7 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 // The handover read's cache passes straight through, and the index is a URL a
 // stubbed fetch answers, so no test here reaches the live index.
 vi.mock("next/cache", () => ({ unstable_cache: <T,>(read: T) => read }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("@/lib/data/source", () => ({
   activeSource: () => "envio",
   envioUrl: () => "https://index.example/v1/graphql",

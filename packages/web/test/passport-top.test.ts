@@ -39,6 +39,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("@/lib/chain/reports", () => ({ heldReportDelivery: async () => "simulation" }));
 const picture = vi.hoisted(() => ({ fallback: undefined as unknown }));
 vi.mock("@/components/passport/Picture", () => ({
@@ -121,6 +122,8 @@ const say = {
   statement: (statement: string) => en.passport.consent.summary[statement as "closed"],
   bits: (count: number) => `${count} of 64 bits`,
   privateRecheck: en.passport.attestations.private.badge,
+  testRun: en.mark.simulator.word,
+  privateTestRun: en.passport.attestations.private.testRun,
   sealed: en.passport.sealed.label,
   date: (seconds: bigint) =>
     new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(Number(seconds) * 1000)),
@@ -134,6 +137,11 @@ const input = {
   kind: 0,
   consent: closed,
   attestations: [chainlink(1_789_380_000n)],
+  // The mark's reading of the rows: both runs the network's, so the strip calls them checks.
+  verdicts: [
+    { at: 1_789_380_000, network: true },
+    { at: 1_789_500_000, network: true },
+  ],
   phash: PHASH,
   sealed: false,
   privateRecheck: false,
@@ -297,10 +305,13 @@ describe("the facts strip", () => {
         sealed: true,
         privateRecheck: true,
         attestations: [{ ...chainlink(1_789_500_000n), receiver: addresses.sealedReceiver }],
+        // A sealed receiver is never the network receiver, so the mark reads its run as a test run.
+        verdicts: [{ at: 1_789_500_000, network: false }],
       },
       say,
     );
-    expect(privately.value).toBe(`${en.passport.attestations.private.badge}, Sep 15, 2026, 0 of 64 bits`);
+    expect(privately.value).toBe(`${en.passport.attestations.private.testRun}, Sep 15, 2026, 0 of 64 bits`);
+    expect(privately.tone).toBe("faint");
   });
 
   it("says plainly what it could not read, and what was never stated or checked", () => {

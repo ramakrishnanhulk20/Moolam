@@ -185,7 +185,7 @@ describe("the second opinion line, in all four of its states", () => {
     const markup = render(createElement(SecondOpinion, { recheck: MATCHED, id: ID }));
 
     expect(markup).toContain("Chainlink&#x27;s check");
-    expect(markup).toContain("Checked by a Chainlink CRE workflow");
+    expect(markup).toContain("A Chainlink CRE workflow fetched this picture");
     expect(markup).toContain("fingerprinted it again and matched");
     expect(markup).toContain("1 of 64 bits apart");
     expect(markup).toContain("2026");
@@ -238,7 +238,7 @@ describe("the second opinion line, in all four of its states", () => {
     const stage: Stage = { kind: "answer", answer, passport: null };
 
     const markup = render(createElement(AnswerCard, { stage }));
-    expect(markup).toContain("Checked by a Chainlink CRE workflow");
+    expect(markup).toContain("A Chainlink CRE workflow fetched this picture");
     expect(markup.indexOf("data-consent-stamp")).toBeLessThan(markup.indexOf("data-second-opinion"));
   });
 

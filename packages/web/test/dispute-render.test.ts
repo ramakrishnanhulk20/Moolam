@@ -149,8 +149,14 @@ function console_(value: ResolveDisputes, disputes: OpenDispute[], locale: "en" 
 }
 
 describe("who the dispute panel draws itself for", () => {
-  it("says nothing to a signed out visitor or before Privy has answered", () => {
-    expect(panel(flag({ authenticated: false }))).toBe("");
+  it("draws the rules frame for a signed out visitor, and nothing before Privy has answered", () => {
+    // What a challenge needs is not a secret: a reader with no session gets the
+    // frame, closed, with sign-in where the form would be once it is opened.
+    const signedOut = panel(flag({ authenticated: false }));
+    expect(signedOut).toContain("data-dispute-panel");
+    expect(signedOut).toContain("data-challenge-rules");
+    expect(signedOut).toContain("data-challenge-sign-in");
+    expect(signedOut).not.toContain("<textarea");
     expect(panel(flag({ ready: false }))).toBe("");
   });
 

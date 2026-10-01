@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { WAITING_SHIPPED } from "@/components/story/stated";
 import { BUILD_STEPS, DREAMLOOM_NAME, PERSON_STEPS, PLANS, REASONS, WAY_ROWS, WAYS } from "./content";
 import type { AttackTally, DemoPicture as DemoPictureData, LiveFigures, Snippets } from "./data";
 import { Code, Figure, Kicker, Lead, Proof, Quiet, Reveal } from "./Kit";
@@ -276,9 +277,13 @@ export function Live({ number, live, picture }: { number: string; live: LiveFigu
             </span>
             {t("source")}
           </p>
+          {/* The claim screens and the co-sign and connect windows reach the
+              public site on push day. The one flag that turns the film's
+              waiting beat on that day decides these lines too, so neither side
+              of it ever says something the live site contradicts. */}
           <ul className="mt-8 space-y-3">
-            <li className="text-base leading-relaxed text-text">{t("now")}</li>
-            <li className="text-base leading-relaxed text-text-muted">{t("next")}</li>
+            <li className="text-base leading-relaxed text-text">{t(WAITING_SHIPPED ? "nowShipped" : "now")}</li>
+            {WAITING_SHIPPED ? null : <li className="text-base leading-relaxed text-text-muted">{t("next")}</li>}
           </ul>
         </div>
       </div>

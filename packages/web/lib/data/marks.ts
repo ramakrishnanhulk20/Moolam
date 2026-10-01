@@ -19,9 +19,11 @@ export interface MarkSchema {
   network: boolean;
   /** The Lookalike entity and Passport.earlierFound and laterLookalikeCount. */
   lookalikes: boolean;
+  /** GlobalStats.networkAttestations: how many verdicts the network has written, counted by the index itself. */
+  networkCount: boolean;
 }
 
-export const NO_MARK_FIELDS: MarkSchema = { network: false, lookalikes: false };
+export const NO_MARK_FIELDS: MarkSchema = { network: false, lookalikes: false, networkCount: false };
 
 /** Short enough that the redeploy is picked up within minutes, long enough to cost the shared index nothing. */
 const SCHEMA_HOLD_SECONDS = 600;
@@ -30,11 +32,18 @@ const SCHEMA_QUERY = `query MarkSchema {
   attestation: __type(name: "Attestation") { fields { name } }
   passport: __type(name: "Passport") { fields { name } }
   lookalike: __type(name: "Lookalike") { fields { name } }
+  stats: __type(name: "GlobalStats") { fields { name } }
 }`;
 
 const typeSchema = z.object({ fields: z.array(z.object({ name: z.string() })).nullable() }).nullable();
 
-const schemaAnswer = z.object({ attestation: typeSchema, passport: typeSchema, lookalike: typeSchema });
+const schemaAnswer = z.object({
+  attestation: typeSchema,
+  passport: typeSchema,
+  lookalike: typeSchema,
+  // Older code asked for three types; an answer without the fourth still says what it can.
+  stats: typeSchema.optional(),
+});
 
 /** Reads the three type descriptions. Any failure answers "none of them", which is the query every index can run. */
 async function readMarkSchema(): Promise<MarkSchema> {
@@ -51,12 +60,14 @@ async function readMarkSchema(): Promise<MarkSchema> {
     const attestation = names(parsed.data.attestation);
     const passport = names(parsed.data.passport);
     const lookalike = names(parsed.data.lookalike);
+    const stats = names(parsed.data.stats ?? null);
     return {
       network: attestation.has("network"),
       lookalikes:
         passport.has("earlierFound") &&
         passport.has("laterLookalikeCount") &&
         ["earlierId", "network", "valid", "executedAt", "phashDistance"].every((field) => lookalike.has(field)),
+      networkCount: stats.has("networkAttestations"),
     };
   } catch {
     return NO_MARK_FIELDS;
@@ -75,6 +86,66 @@ export async function markSchema(): Promise<MarkSchema> {
   } catch {
     // Anywhere there is no cache to hold it in, the index is simply asked.
     return await readMarkSchema();
+  }
+}
+
+const COUNT_QUERY = `query NetworkChecks {
+  GlobalStats(limit: 1) { networkAttestations }
+}`;
+
+const countAnswer = z.object({
+  GlobalStats: z.array(z.object({ networkAttestations: z.number().int().min(0) })).max(1),
+});
+
+/** Thrown inside the held read so an index that did not answer is never kept as a number. */
+class CountReadFailed extends Error {
+  constructor() {
+    super("the index did not answer the network check count");
+    this.name = "CountReadFailed";
+  }
+}
+
+/**
+ * How many verdicts Chainlink's network has written on Monad, as the index
+ * counts them, or null where there is no number to show: an index that does
+ * not serve the counter yet, or one that did not answer. A simulator run
+ * never reaches the counter (schema.graphql, GlobalStats.networkAttestations),
+ * so this is the one figure a screen may call Chainlink checks. Null is drawn
+ * as no number at all, never as a zero.
+ */
+async function readNetworkCheckCount(): Promise<number | null> {
+  if (activeSource() !== "envio" || !(await markSchema()).networkCount) {
+    return null;
+  }
+  const parsed = countAnswer.safeParse(await ask<unknown>(COUNT_QUERY, {}));
+  if (!parsed.success) {
+    throw new CountReadFailed();
+  }
+  return parsed.data.GlobalStats[0]?.networkAttestations ?? 0;
+}
+
+const heldCount = unstable_cache(async () => await readNetworkCheckCount(), ["moolam-network-check-count"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
+
+/**
+ * The same count, held for a minute with the rest of the index reads: the
+ * home page's close card and anything else that quotes it share one query.
+ * Never throws; a failed read is null, and is asked again on the next render.
+ */
+export async function heldNetworkCheckCount(): Promise<number | null> {
+  try {
+    return await heldCount();
+  } catch (error) {
+    if ((error as Error | undefined)?.message?.includes("incrementalCache") === true) {
+      try {
+        return await readNetworkCheckCount();
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 }
 

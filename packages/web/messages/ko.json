@@ -274,7 +274,7 @@
       "verdictFigure": "64비트 중 {count}",
       "verdictSame": "비트 차이: 같은 이미지입니다.",
       "verdictMissed": "비트 차이, 검증 서비스는 찾지 못했습니다.",
-      "recheckOn": "{date} Chainlink 워크플로가 등록된 이미지 자체를 확인:",
+      "recheckOn": "{date} Chainlink 네트워크가 등록된 이미지 자체를 확인:",
       "recheckBits": "기록과 64비트 중 {count}비트 차이",
       "recheckMissed": "일치하지 않음, {bits}",
       "chainlink": "Chainlink:",
@@ -289,7 +289,8 @@
         "chainlink": "Chainlink가 확인함",
         "envio": "Envio 인덱싱"
       },
-      "unstarted": "확인이 시작되지 않았습니다. 페이지를 새로 고친 뒤 다시 눌러 주세요."
+      "unstarted": "확인이 시작되지 않았습니다. 페이지를 새로 고친 뒤 다시 눌러 주세요.",
+      "testRunOn": "{date} Chainlink 시뮬레이터의 테스트 실행이 등록된 이미지를 측정:"
     }
   },
   "story": {
@@ -369,7 +370,7 @@
       "verify": "이미지 검증",
       "proof": "증거 보기",
       "passports": "여권",
-      "attestations": "Monad 위의 Chainlink 확인",
+      "attestations": "Monad 위의 Chainlink 네트워크 확인",
       "chain": "Monad에서, 체인 {chainId}",
       "unread": "읽지 못함",
       "error": "지금은 인덱스를 읽지 못했습니다. 잠시 뒤에 페이지를 새로 고쳐 주세요.",
@@ -534,12 +535,14 @@
     "recheck": {
       "label": "Chainlink의 확인",
       "never": "아직 없음",
-      "count": "{count, plural, other {확인 #건}}",
+      "count": "{count, plural, other {Monad에 기록된 판정 #건}}",
       "none": "아직 확인되지 않았습니다.",
       "noneNote": "이 이미지를 가져와 지문을 다시 계산한 독립 워크플로가 아직 없습니다.",
-      "matched": "{at}에 Chainlink CRE 워크플로가 확인했습니다. 이미지를 직접 가져와 지문을 다시 뜬 결과 일치했고, 64비트 중 {count}비트 차이였습니다.",
-      "mismatched": "{at}에 Chainlink CRE 워크플로가 확인했습니다. 이미지를 직접 가져와 지문을 다시 뜬 결과 일치하지 않았고, 64비트 중 {count}비트 차이였습니다.",
-      "link": "Chainlink의 확인 보기"
+      "matched": "{at}에 Chainlink CRE 워크플로가 이 이미지를 직접 가져와 지문을 다시 뜬 결과 일치했고, 64비트 중 {count}비트 차이였습니다.",
+      "mismatched": "{at}에 Chainlink CRE 워크플로가 이 이미지를 직접 가져와 지문을 다시 뜬 결과 일치하지 않았고, 64비트 중 {count}비트 차이였습니다.",
+      "link": "Chainlink의 확인 보기",
+      "network": "Chainlink 네트워크가 실행한 것이므로, 이 여권에는 ‘Chainlink가 확인함’ 표시가 붙습니다.",
+      "testRun": "이것은 Chainlink 시뮬레이터에서 기기 한 대로 한 테스트 실행이었습니다. Chainlink 네트워크는 이 이미지를 아직 확인하지 않았습니다."
     },
     "dispute": {
       "none": "이 여권에 제기된 이의가 없습니다.",
@@ -638,7 +641,8 @@
         "leadEarlier": "Chainlink 기밀 워크플로가 Moolam이 당시 두고 있던 작은 사본으로 비공개 확인했습니다.",
         "limit": "Chainlink 시뮬레이터에서 기기 한 대로 실행했으며, Chainlink의 보안 하드웨어 안에서 실행한 것이 아닙니다.",
         "verdict": "Chainlink 기밀 워크플로가 Moolam이 두고 있던 이 이미지의 작은 비공개 사본을 열어 지문을 비교했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
-        "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 워크플로가 Moolam의 작은 비공개 사본에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다."
+        "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 워크플로가 Moolam의 작은 비공개 사본에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다.",
+        "testRun": "비공개 테스트 실행"
       },
       "sealedBody": "이미지가 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. 제3자가 지문을 확인하고 답을 Monad에 기록합니다. 봉인된 이미지에는 공개 파일이 없으므로 확인은 비공개로 이루어집니다. 제작자가 요청했다면, Chainlink 기밀 워크플로가 Moolam이 두고 있는 작은 비공개 사본을 열어 지문을 비교합니다.",
       "unknown": {
@@ -648,7 +652,8 @@
         "recomputedGrid": "기록자의 지문",
         "verdict": "알 수 없는 기록자가 이 이미지의 지문을 보고했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
         "gridNote": "첫 번째 격자는 이 이미지를 등록할 때 레지스트리가 저장한 지문입니다. 두 번째는 이 기록자가 보고한 지문입니다. Moolam은 이 기록자를 누가 운영하는지 모르므로, 이 페이지는 이미지가 어떻게 확인되었는지 말하지 않습니다."
-      }
+      },
+      "byTestRun": "Chainlink 시뮬레이터의 테스트 실행"
     },
     "children": {
       "heading": "편집본",
@@ -897,7 +902,9 @@
           "recheck": "Monad에 다시 묻기",
           "openAddress": "MonadVision에서 {wallet} 열기",
           "signIn": "로그인"
-        }
+        },
+        "signedOut": "이의 제기에는 Moolam 계정과 내 지갑에서 내는 보증금이 필요합니다. 규칙을 읽는 데에는 둘 다 필요 없습니다.",
+        "signInToChallenge": "로그인하고 이의 제기"
       },
       "bodySettled": "누군가 이 기록이 틀렸다는 주장에 보증금을 걸었고, 정책이 지정한 중재자가 이를 처리했습니다."
     },
@@ -1829,7 +1836,8 @@
     "actions": {
       "recheck": "Monad에 다시 묻기",
       "openAddress": "MonadVision에서 {wallet} 열기"
-    }
+    },
+    "creditSignedOut": "로그인하면 레지스트리에서 받을 금액이 보입니다."
   },
   "notFound": {
     "code": "404",
@@ -1886,7 +1894,8 @@
     "notePrivate": "무료입니다. Chainlink 기밀 워크플로가 Moolam이 두고 있는 작은 비공개 사본을 열어 지문을 비교하고, 그 판정을 Monad에 기록합니다. 판정은 보통 몇 분 안에 체인에 기록됩니다.",
     "runningPrivate": "지금 실행 중입니다. 워크플로가 비공개 사본을 열어 지문을 비교하고 있습니다.",
     "recheckedOn": "{date}에 확인됨",
-    "confirming": "대기열에서는 이 실행이 끝났다고 합니다. 결과를 Monad에서 읽을 수 있게 되면 완료로 표시됩니다."
+    "confirming": "대기열에서는 이 실행이 끝났다고 합니다. 결과를 Monad에서 읽을 수 있게 되면 완료로 표시됩니다.",
+    "testRunOn": "{date}에 테스트 실행"
   },
   "mine": {
     "title": "내 이미지",
@@ -2460,7 +2469,8 @@
       "agent": "에이전트 {id}",
       "pictureAlt": "{title}, {platform}에서 그려 Monad에 여권이 있는 이미지",
       "pictureAltUntitled": "{platform}에서 그려 Monad에 여권이 있는 이미지",
-      "open": "Dreamloom 열기"
+      "open": "Dreamloom 열기",
+      "nowShipped": "지금 운영 중: Moolam 검증 서비스의 플랫폼 경로와 MCP 서버, Dreamloom, 그리고 moolam.vercel.app의 공동 서명 창, 연결 창, 이메일 창."
     },
     "pricing": {
       "kicker": "요금",
@@ -2602,7 +2612,8 @@
       },
       "sealed": {
         "word": "봉인됨",
-        "line": "공개된 적이 없어 Chainlink 네트워크가 확인할 수 없습니다. 지문은 공개되어 있으므로, 사본으로 검증에서 여전히 찾을 수 있습니다."
+        "line": "공개된 적이 없어 Chainlink 네트워크가 확인할 수 없습니다. 지문은 공개되어 있으므로, 사본으로 검증에서 여전히 찾을 수 있습니다.",
+        "lineTestRun": "공개된 적이 없어 Chainlink 네트워크가 확인할 수 없습니다. 아래의 비공개 테스트 실행은 Chainlink 시뮬레이터에서 한 것이며, 사본으로 검증에서 여전히 찾을 수 있습니다."
       },
       "nothing": {
         "word": "확인할 것 없음",
@@ -2627,7 +2638,10 @@
     "selfLater": "{date}에 {address} 지갑이 올렸습니다. 올린 사람의 주장이며, 지금도 누구나 증거를 들어 이의를 제기할 수 있습니다.",
     "outside": "Moolam 스튜디오 밖에서 등록됨: 서약 문장도 웹 확인도 없음.",
     "seenEarlier": "서명하기 전에, 이와 비슷한 먼저 등록된 여권을 안내받았습니다.",
-    "platformStatement": "{platform}의 진술"
+    "platformStatement": "{platform}의 진술",
+    "beforeSworn": "서약 문장이 생기기 전에 Moolam을 통해 등록되어, 서약 문장이 없습니다.",
+    "kitNoStatement": "플랫폼 키트를 통해 등록되었습니다. {platform}은(는) 자체 진술을 보내지 않았고, 플랫폼의 이미지는 웹 확인을 거치지 않습니다.",
+    "cosigned": "{date}에 {platform}에서 {person}이(가) 자신의 패스키로 서명했습니다. {platform}의 에이전트도 같은 이미지에 서명했습니다."
   },
   "lookalike": {
     "found": {

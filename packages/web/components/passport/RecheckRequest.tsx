@@ -40,6 +40,7 @@ export function RecheckRequest({
   className = "",
   sealed = false,
   recheckedOn,
+  lastRun = "unknown",
   tuck = false,
 }: {
   /**
@@ -64,6 +65,12 @@ export function RecheckRequest({
    */
   recheckedOn?: string | null;
   /**
+   * Who ran the newest re-check, from the same forwarder reading the rows
+   * above the control carry: a run in Chainlink's simulator is said as a test
+   * run, in the quiet ink, so the date never claims a check the mark denies.
+   */
+  lastRun?: "network" | "testRun" | "unknown";
+  /**
    * True where the control is the last thing in a section. The room kept for
    * the status sentence then sits inside the section's own bottom padding
    * instead of in front of it, so an idle control leaves no empty band under
@@ -82,7 +89,17 @@ export function RecheckRequest({
   // Keyed by the passport, so a card that answers about a second picture draws
   // a control with a state of its own rather than one still showing where the
   // last passport sat in the queue.
-  return <Control key={id} passportId={id} className={className} sealed={sealed} recheckedOn={recheckedOn} tuck={tuck} />;
+  return (
+    <Control
+      key={id}
+      passportId={id}
+      className={className}
+      sealed={sealed}
+      recheckedOn={recheckedOn}
+      lastRun={lastRun}
+      tuck={tuck}
+    />
+  );
 }
 
 /**
@@ -133,12 +150,14 @@ function Control({
   className,
   sealed,
   recheckedOn,
+  lastRun,
   tuck,
 }: {
   passportId: Hex;
   className: string;
   sealed: boolean;
   recheckedOn?: string | null;
+  lastRun: "network" | "testRun" | "unknown";
   tuck: boolean;
 }) {
   const t = useTranslations("recheck");
@@ -178,8 +197,13 @@ function Control({
       <div className="flex min-h-[2.75rem] flex-wrap items-center gap-x-5 gap-y-3">
         {seat.rechecked === undefined ? (
           <Stamp state={state} calm={calm} />
+        ) : lastRun === "testRun" ? (
+          <p data-last-run="testRun" className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+            <span aria-hidden className="motif h-[7px] w-[7px] bg-line-strong" />
+            {t("testRunOn", { date: seat.rechecked })}
+          </p>
         ) : (
-          <p className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-verified">
+          <p data-last-run={lastRun} className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-verified">
             <span aria-hidden className="motif h-[7px] w-[7px] bg-verified" />
             {t("recheckedOn", { date: seat.rechecked })}
           </p>

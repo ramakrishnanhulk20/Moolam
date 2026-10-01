@@ -284,7 +284,7 @@
       "verdictFigure": "64 位中 {count} 位",
       "verdictSame": "不同：是同一张图。",
       "verdictMissed": "不同，验证服务没有找到它。",
-      "recheckOn": "一个 Chainlink 工作流于 {date} 核验了登记的图片本身：",
+      "recheckOn": "Chainlink 的网络于 {date} 核验了登记的图片本身：",
       "recheckBits": "与记录相比，64 位中有 {count} 位不同",
       "recheckMissed": "不匹配，{bits}",
       "chainlink": "Chainlink：",
@@ -299,7 +299,8 @@
         "chainlink": "Chainlink 已核验",
         "envio": "Envio 索引"
       },
-      "unstarted": "这次检查没有开始。请刷新页面，再按一次。"
+      "unstarted": "这次检查没有开始。请刷新页面，再按一次。",
+      "testRunOn": "Chainlink 模拟器里的一次测试运行于 {date} 测量了登记的图片："
     }
   },
   "story": {
@@ -379,7 +380,7 @@
       "verify": "验证图片",
       "proof": "查看证据",
       "passports": "护照",
-      "attestations": "Monad 上的 Chainlink 核验",
+      "attestations": "Monad 上的 Chainlink 网络核验",
       "chain": "在 Monad 上，链 {chainId}",
       "unread": "未读到",
       "error": "此刻无法读取索引。请稍后刷新页面。",
@@ -544,12 +545,14 @@
     "recheck": {
       "label": "Chainlink 的核验",
       "never": "尚未",
-      "count": "{count, plural, other {# 次核验}}",
+      "count": "{count, plural, other {Monad 上的 # 次判定}}",
       "none": "尚未核验。",
       "noneNote": "还没有独立的工作流取回这张图片并重新计算指纹。",
-      "matched": "由一个 Chainlink CRE 工作流于 {at} 核验：它自己取回图片，重新取了指纹，结果一致，64 位中有 {count} 位不同。",
-      "mismatched": "由一个 Chainlink CRE 工作流于 {at} 核验：它自己取回图片，重新取了指纹，结果不一致，64 位中有 {count} 位不同。",
-      "link": "查看 Chainlink 的核验"
+      "matched": "一个 Chainlink CRE 工作流于 {at} 自己取回这张图片，重新取了指纹，结果一致，64 位中有 {count} 位不同。",
+      "mismatched": "一个 Chainlink CRE 工作流于 {at} 自己取回这张图片，重新取了指纹，结果不一致，64 位中有 {count} 位不同。",
+      "link": "查看 Chainlink 的核验",
+      "network": "这次运行来自 Chainlink 的网络，所以这本护照带有“Chainlink 已核验”的标记。",
+      "testRun": "那是在 Chainlink 模拟器里、一台机器上的测试运行。Chainlink 的网络还没有核验这张图片。"
     },
     "dispute": {
       "none": "没有针对这本护照的未决质疑。",
@@ -648,7 +651,8 @@
         "leadEarlier": "由 Chainlink 机密工作流私下核验，依据的是 Moolam 当时保留的小副本。",
         "limit": "它在 Chainlink 的模拟器里、在一台机器上运行，没有在 Chainlink 的安全硬件里运行。",
         "verdict": "一个 Chainlink 机密工作流打开了 Moolam 为这张图保留的小的私有副本，比对了指纹：<apart>64 位中差 {bits} 位</apart>。",
-        "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。"
+        "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。",
+        "testRun": "私下测试运行"
       },
       "sealedBody": "谁都能说一张图是自己的。这一部分不一样：由第三方核对指纹，并把答案写到 Monad 上。封存的图片没有公开文件，所以核对是私下进行的：如果创作者提出了要求，Chainlink 机密工作流会打开 Moolam 保留的小的私有副本，比对指纹。",
       "unknown": {
@@ -658,7 +662,8 @@
         "recomputedGrid": "写入方的指纹",
         "verdict": "一个未知写入方为这张图报告了这个指纹：<apart>64 位中差 {bits} 位</apart>。",
         "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是这个写入方报告的指纹。Moolam 不知道这个写入方由谁运行，所以本页不说明这张图是怎样检查的。"
-      }
+      },
+      "byTestRun": "Chainlink 模拟器里的一次测试运行"
     },
     "children": {
       "heading": "编辑版本",
@@ -907,7 +912,9 @@
           "recheck": "再问一次 Monad",
           "openAddress": "在 MonadVision 上打开 {wallet}",
           "signIn": "登录"
-        }
+        },
+        "signedOut": "提出质疑需要 Moolam 账户，以及从你自己钱包付出的保证金。阅读规则两者都不需要。",
+        "signInToChallenge": "登录后提出质疑"
       },
       "bodySettled": "有人押了保证金，主张这条记录有误；政策指定的仲裁者已经作出裁决。"
     },
@@ -1839,7 +1846,8 @@
     "actions": {
       "recheck": "再问一次 Monad",
       "openAddress": "在 MonadVision 上打开 {wallet}"
-    }
+    },
+    "creditSignedOut": "登录后可以看到登记处欠你的金额。"
   },
   "notFound": {
     "code": "404",
@@ -1896,7 +1904,8 @@
     "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
     "runningPrivate": "正在运行：工作流正在打开私有副本并比对指纹。",
     "recheckedOn": "已于 {date} 核验",
-    "confirming": "队列显示这次运行已结束。等它的结论能在 Monad 上读到，才会显示为完成。"
+    "confirming": "队列显示这次运行已结束。等它的结论能在 Monad 上读到，才会显示为完成。",
+    "testRunOn": "于 {date} 测试运行"
   },
   "mine": {
     "title": "你的图片",
@@ -2470,7 +2479,8 @@
       "agent": "智能体 {id}",
       "pictureAlt": "{title}，一张在 {platform} 上绘制、在 Monad 上有护照的图片",
       "pictureAltUntitled": "一张在 {platform} 上绘制、在 Monad 上有护照的图片",
-      "open": "打开 Dreamloom"
+      "open": "打开 Dreamloom",
+      "nowShipped": "现已上线：Moolam 验证服务上的平台接口和 MCP 服务器、Dreamloom，以及 moolam.vercel.app 上的共同签名、连接和邮箱窗口。"
     },
     "pricing": {
       "kicker": "价格",
@@ -2612,7 +2622,8 @@
       },
       "sealed": {
         "word": "已封存",
-        "line": "从未公开，所以 Chainlink 的网络无法核验它。它的指纹是公开的，用一份副本在验证页依然能找到它。"
+        "line": "从未公开，所以 Chainlink 的网络无法核验它。它的指纹是公开的，用一份副本在验证页依然能找到它。",
+        "lineTestRun": "从未公开，所以 Chainlink 的网络无法核验它。下面列出的私下测试运行是在 Chainlink 模拟器里做的，用一份副本在验证页依然能找到它。"
       },
       "nothing": {
         "word": "无可核验",
@@ -2637,7 +2648,10 @@
     "selfLater": "由 {address} 于 {date} 上传。这是上传者自己的说法，任何人仍然可以拿证据质疑它。",
     "outside": "在 Moolam 工作室之外登记：没有签名声明，也没有网上比对。",
     "seenEarlier": "签名之前，登记者看到过一本与此相似的更早护照。",
-    "platformStatement": "{platform} 的声明"
+    "platformStatement": "{platform} 的声明",
+    "beforeSworn": "在签名声明出现之前通过 Moolam 登记，所以没有签名声明。",
+    "kitNoStatement": "通过平台工具包登记。{platform} 没有发送自己的声明，平台的图片也不做网上比对。",
+    "cosigned": "{person} 于 {date} 在 {platform} 上用自己的通行密钥签了名。{platform} 的智能体也为同一张图片签了名。"
   },
   "lookalike": {
     "found": {

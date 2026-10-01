@@ -59,7 +59,7 @@ const FIRST = {
       thumbnail: "https://gateway.example/ipfs/thumb",
       registeredAt: 1_788_881_666,
       phash: PHASH.toString(),
-      recheck: { matched: true, distance: 0, at: 1_789_380_000 },
+      recheck: { matched: true, distance: 0, at: 1_789_380_000, network: true },
       statement: { summary: "closed" as const, at: 1_789_700_000 },
       statementError: null,
     },
@@ -130,7 +130,7 @@ describe("screen one, as the server sends it", () => {
 
   it("quotes the live finding in the reader's language, with every figure read", async () => {
     expect(text(await served("en"))).toContain(
-      "A Chainlink workflow checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record.",
+      "Chainlink's network checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record.",
     );
     const tamil = text(await served("ta"));
     expect(tamil).toContain(ta.passport.consent.summary.closed);

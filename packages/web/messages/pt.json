@@ -285,7 +285,7 @@
       "verdictFigure": "{count} de 64",
       "verdictSame": "bits de diferença: a mesma imagem.",
       "verdictMissed": "bits de diferença, e o serviço de verificação não a encontrou.",
-      "recheckOn": "Um fluxo da Chainlink conferiu a própria imagem registrada em {date}:",
+      "recheckOn": "A rede da Chainlink conferiu a própria imagem registrada em {date}:",
       "recheckBits": "{count} de 64 bits de diferença do registro dela",
       "recheckMissed": "não bateu, {bits}",
       "chainlink": "Chainlink:",
@@ -300,7 +300,8 @@
         "chainlink": "Conferido pela Chainlink",
         "envio": "Indexado pela Envio"
       },
-      "unstarted": "A conferência não começou. Recarregue a página e toque de novo."
+      "unstarted": "A conferência não começou. Recarregue a página e toque de novo.",
+      "testRunOn": "Uma execução de teste no simulador da Chainlink mediu a imagem registrada em {date}:"
     }
   },
   "story": {
@@ -380,7 +381,7 @@
       "verify": "Verificar uma imagem",
       "proof": "Ver as provas",
       "passports": "Passaportes",
-      "attestations": "Conferências da Chainlink na Monad",
+      "attestations": "Conferências da rede da Chainlink na Monad",
       "chain": "na Monad, rede {chainId}",
       "unread": "não lido",
       "error": "Não foi possível ler o índice agora. Recarregue a página daqui a pouco.",
@@ -545,12 +546,14 @@
     "recheck": {
       "label": "A conferência da Chainlink",
       "never": "ainda não",
-      "count": "{count, plural, =1 {# conferência} other {# conferências}}",
+      "count": "{count, plural, =1 {# veredito na Monad} other {# vereditos na Monad}}",
       "none": "Ainda não foi conferida.",
       "noneNote": "Nenhum fluxo independente buscou esta imagem nem recalculou a impressão dela.",
-      "matched": "Conferida por um fluxo CRE da Chainlink em {at}: ele baixou a imagem por conta própria, tirou a impressão de novo e bateu, {count} de 64 bits de diferença.",
-      "mismatched": "Conferida por um fluxo CRE da Chainlink em {at}: ele baixou a imagem por conta própria, tirou a impressão de novo e não bateu, {count} de 64 bits de diferença.",
-      "link": "Ver a conferência da Chainlink"
+      "matched": "Um fluxo CRE da Chainlink baixou esta imagem em {at}, tirou a impressão de novo e bateu, {count} de 64 bits de diferença.",
+      "mismatched": "Um fluxo CRE da Chainlink baixou esta imagem em {at}, tirou a impressão de novo e não bateu, {count} de 64 bits de diferença.",
+      "link": "Ver a conferência da Chainlink",
+      "network": "Quem rodou foi a rede da Chainlink, então este passaporte leva o selo Conferido pela Chainlink.",
+      "testRun": "Foi uma execução de teste no simulador da Chainlink, em uma única máquina. A rede da Chainlink ainda não conferiu esta imagem."
     },
     "dispute": {
       "none": "Não há nenhuma contestação aberta contra este passaporte.",
@@ -649,7 +652,8 @@
         "leadEarlier": "Conferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guardava na época.",
         "limit": "Rodou no simulador da Chainlink em uma única máquina, não dentro do hardware seguro da Chainlink.",
         "verdict": "Um fluxo confidencial da Chainlink abriu a cópia privada pequena que a Moolam guardava desta imagem e comparou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
-        "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou da cópia privada pequena da Moolam. Cada célula diferente fica marcada."
+        "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou da cópia privada pequena da Moolam. Cada célula diferente fica marcada.",
+        "testRun": "Execução de teste privada"
       },
       "sealedBody": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um terceiro confere a impressão e grava a resposta na Monad. Uma imagem lacrada não tem arquivo público, então a conferência dela é privada: se quem a criou pediu, um fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda e compara a impressão.",
       "unknown": {
@@ -659,7 +663,8 @@
         "recomputedGrid": "Impressão do autor",
         "verdict": "Um autor desconhecido informou esta impressão para a imagem: <apart>{bits} de 64 bits de diferença</apart>.",
         "gridNote": "A primeira grade é a impressão que o registro guardou quando esta imagem foi registrada. A segunda é a que este autor informou. A Moolam não sabe quem opera este autor, então esta página não diz como a imagem foi conferida."
-      }
+      },
+      "byTestRun": "Uma execução de teste no simulador da Chainlink"
     },
     "children": {
       "heading": "Edições",
@@ -908,7 +913,9 @@
           "recheck": "Perguntar à Monad de novo",
           "openAddress": "Abrir {wallet} no MonadVision",
           "signIn": "Entrar"
-        }
+        },
+        "signedOut": "Contestar exige uma conta na Moolam e a caução da sua própria carteira. Ler as regras não exige nenhuma das duas.",
+        "signInToChallenge": "Entrar para contestar"
       },
       "bodySettled": "Alguém colocou uma caução por trás da alegação de que este registro estava errado, e o árbitro que a política indica já resolveu a contestação."
     },
@@ -1840,7 +1847,8 @@
     "actions": {
       "recheck": "Perguntar à Monad de novo",
       "openAddress": "Abrir {wallet} no MonadVision"
-    }
+    },
+    "creditSignedOut": "Entre para ver o que o registro deve a você."
   },
   "notFound": {
     "code": "404",
@@ -1897,7 +1905,8 @@
     "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. O veredito costuma chegar à rede em poucos minutos.",
     "runningPrivate": "Rodando agora: o fluxo está abrindo a cópia privada e comparando a impressão.",
     "recheckedOn": "Conferida em {date}",
-    "confirming": "A fila diz que esta conferência terminou. Ela aparece como pronta quando o veredito puder ser lido na Monad."
+    "confirming": "A fila diz que esta conferência terminou. Ela aparece como pronta quando o veredito puder ser lido na Monad.",
+    "testRunOn": "Execução de teste em {date}"
   },
   "mine": {
     "title": "Suas imagens",
@@ -2471,7 +2480,8 @@
       "agent": "Agente {id}",
       "pictureAlt": "{title}, uma imagem desenhada em {platform} com o passaporte na Monad",
       "pictureAltUntitled": "Uma imagem desenhada em {platform} com o passaporte na Monad",
-      "open": "Abrir a Dreamloom"
+      "open": "Abrir a Dreamloom",
+      "nowShipped": "No ar agora: as rotas para plataformas e o servidor MCP no serviço de verificação da Moolam, a Dreamloom, e as janelas de coassinatura, de conexão e de e-mail em moolam.vercel.app."
     },
     "pricing": {
       "kicker": "Preços",
@@ -2613,7 +2623,8 @@
       },
       "sealed": {
         "word": "Lacrado",
-        "line": "A imagem nunca foi publicada, então a rede da Chainlink não pode conferi-la. As impressões dela são públicas, e uma cópia ainda a encontra em Verificar."
+        "line": "A imagem nunca foi publicada, então a rede da Chainlink não pode conferi-la. As impressões dela são públicas, e uma cópia ainda a encontra em Verificar.",
+        "lineTestRun": "A imagem nunca foi publicada, então a rede da Chainlink não pode conferi-la. A execução de teste privada abaixo rodou no simulador da Chainlink, e uma cópia ainda a encontra em Verificar."
       },
       "nothing": {
         "word": "Nada a conferir",
@@ -2638,7 +2649,10 @@
     "selfLater": "Enviada por {address} em {date}. É a alegação dessa pessoa, e qualquer um ainda pode contestá-la com provas.",
     "outside": "Registrada fora do estúdio da Moolam: sem declaração jurada, sem busca na web.",
     "seenEarlier": "Antes de assinar, essa pessoa viu um passaporte anterior parecido com este.",
-    "platformStatement": "Declaração de {platform}"
+    "platformStatement": "Declaração de {platform}",
+    "beforeSworn": "Registrada pela Moolam antes de a declaração jurada existir, então não a carrega.",
+    "kitNoStatement": "Registrada pelo kit para plataformas. A {platform} não enviou declaração própria, e a imagem de uma plataforma não passa pela busca na web.",
+    "cosigned": "Assinada por {person} com a própria chave de acesso na {platform}, em {date}. O agente da {platform} assinou a mesma imagem."
   },
   "lookalike": {
     "found": {

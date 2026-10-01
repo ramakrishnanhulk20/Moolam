@@ -86,11 +86,12 @@ function facts(secondPrint: boolean): PassportMarkFacts {
     earlier: null,
     lookalike: { kind: "quiet" },
     later: { first: null, count: 0 },
+    testRun: false,
   };
 }
 
 const art: Art = { title: "Nets", thumbnailUrl: "https://gateway.example/ipfs/x", statements: { sworn: true }, missing: false };
-const passport = { creator: CREATOR, generatorAgentId: 0n, registeredAt: 1_790_000_000n };
+const passport = { creator: CREATOR, generatorAgentId: 0n, registeredAt: 1_790_000_000n, metadataURI: "ipfs://bafkreidocument" };
 
 describe("the three words, in all ten files", () => {
   it("carries the second-print line with no number, and the two claim keys, in every language", () => {

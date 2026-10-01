@@ -96,7 +96,8 @@ describe("the passport page", () => {
     stub.state = { kind: "none" };
     const markup = await passportPage([row]);
 
-    expect(markup).toContain("Checked on 14 Sept 2026");
+    // The report in this file comes through the simulator, so the date is a test run's.
+    expect(markup).toContain("Test run on 14 Sept 2026");
     expect(markup).toContain('data-recheck-state="rechecked"');
     expect(markup).not.toContain(BUTTON);
     expect(markup).not.toContain(NOTE);
@@ -109,6 +110,7 @@ describe("the passport page", () => {
     expect(markup).toContain(BUTTON);
     expect(markup).toContain(NOTE);
     expect(markup).not.toContain("Checked on");
+    expect(markup).not.toContain("Test run on");
   });
 });
 

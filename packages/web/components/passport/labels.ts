@@ -1,3 +1,4 @@
+import type { MarkState } from "@/components/mark/mark";
 import { chainlinkReceivers as namedChainlinkReceivers, sameAddress } from "@/lib/chain/receivers";
 
 /** Who wrote a re-check back to the registry. */
@@ -49,6 +50,27 @@ export function standingOf(passport: {
     return "mismatched";
   }
   return passport.attestations.length > 0 ? "verified" : "unverified";
+}
+
+/**
+ * The record chip's word from the trust mark, which is the one rule every
+ * screen reads a verdict by: only a verdict Chainlink's network wrote can say
+ * the record was checked, a run in the simulator leaves it not checked yet,
+ * and a mark that could not be read says so rather than either. A disputed
+ * standing the page worked out, on this record or an ancestor, stays whatever
+ * the mark says.
+ */
+export function markStanding(standing: Standing, mark: MarkState | "unread"): Standing | "unread" {
+  if (standing === "disputed" || mark === "upheld") {
+    return "disputed";
+  }
+  if (mark === "unread") {
+    return "unread";
+  }
+  if (mark === "mismatch") {
+    return "mismatched";
+  }
+  return mark === "checked" ? "verified" : "unverified";
 }
 
 /**

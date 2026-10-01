@@ -72,6 +72,11 @@ export async function markCopy(facts: PassportMarkFacts, locale: string): Promis
     case "checked":
       line = t("mark.states.checked.line", { bits: mark.verdict.phashBits, date: day(mark.verdict.at) });
       break;
+    case "sealed":
+      // The facts strip and the record under the mark list the private test
+      // run, so the mark names it rather than reading as if nothing ran.
+      line = facts.testRun ? t("mark.states.sealed.lineTestRun") : t("mark.states.sealed.line");
+      break;
     default:
       line = t(`mark.states.${mark.state}.line`);
   }

@@ -43,6 +43,7 @@ vi.mock("@/components/passport/Picture", () => ({
 }));
 
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("@/lib/chain/reports", () => ({ heldReportDelivery: async () => "simulation" }));
 
 vi.mock("next/dynamic", () => ({

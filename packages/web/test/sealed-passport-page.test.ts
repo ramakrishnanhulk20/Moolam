@@ -20,6 +20,7 @@ import { initialEditState } from "@/lib/passport/edit";
 
 const language = { current: "en" as "en" | "ta" };
 
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) =>
     createTranslator({ locale: language.current, messages: language.current === "en" ? en : ta, namespace }),

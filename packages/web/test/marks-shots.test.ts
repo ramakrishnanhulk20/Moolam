@@ -66,6 +66,7 @@ vi.mock("next/link", () => ({
 }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ locale: "en" }), useRouter: () => ({ refresh: () => undefined }) }));
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 vi.mock("@/lib/data/platform-label", () => ({ creditFor: async () => null }));
 vi.mock("@/lib/passport/useEditPassport", async () => {
   const { initialEditState } = await import("@/lib/passport/edit");
@@ -271,7 +272,7 @@ const strip: TopFact[] = [
   { key: "rechecked", label: en.passport.facts.rechecked, value: en.passport.facts.notYet, href: "#second-opinion", tone: "faint" },
 ];
 
-const quiet = { lookalike: { kind: "quiet" } as const, later: { first: null, count: 0 }, earlier: null, challenge: null };
+const quiet = { lookalike: { kind: "quiet" } as const, later: { first: null, count: 0 }, earlier: null, challenge: null, testRun: false };
 const earlierPassport = { id: EARLIER, title: "Nets at Kovalam, first light", registeredAt: REGISTERED - 86_400 * 41 };
 const checked = { network: true, matched: true, phashBits: 0, at: REGISTERED + 540 };
 
@@ -300,6 +301,7 @@ const PASSPORTS: Record<string, { facts: PassportMarkFacts; art?: Art; facts2?: 
       earlier: earlierPassport,
       lookalike: { kind: "found", earlier: earlierPassport, sealed: false, bits: 2, at: REGISTERED + 600 },
       later: { first: null, count: 0 },
+      testRun: false,
     },
     facts2: {
       ...art,

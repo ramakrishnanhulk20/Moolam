@@ -4,6 +4,7 @@ import { getAddress, type Hex } from "viem";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
 import { ClaimLines, claimCopy } from "@/components/mark/claim";
+import { passportMarkFacts } from "@/components/mark/read";
 import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
 import { creditFor } from "@/lib/data/platform-label";
@@ -12,7 +13,7 @@ import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { aboutLine } from "./about";
 import { cidOf, pinnedUri, type Art } from "./art";
 import { Mono } from "./Mono";
-import { standingClass, type Standing } from "./labels";
+import { markStanding, standingClass, type Standing } from "./labels";
 import { ANCHOR_MARGIN, FACT_ANCHORS } from "./top-facts";
 
 /** A manifest hash of nothing but zeroes means no C2PA manifest was embedded. */
@@ -78,10 +79,16 @@ export async function Facts({
     credited === null
       ? null
       : creditWords(credited, t, (seconds) => format.dateTime(new Date(seconds * 1000), { dateStyle: "medium" }));
+  // The chip wears the trust mark's reading of the verdicts, from the same held
+  // reads the band under the poster makes, so a test run in the simulator
+  // never reads "checked on chain" here while the mark above says waiting.
+  const mark = await passportMarkFacts(passport, art).catch(() => null);
+  const chip = markStanding(standing, mark?.mark.state ?? "unread");
   const claim = await claimCopy({
     passport,
     art,
     platform: platform === null ? null : { status: platform.status, name: platform.name },
+    credit: credited,
   });
 
   return (
@@ -94,11 +101,16 @@ export async function Facts({
               fault the holder could fix. It says what it is instead, in the
               same cold ink as the rest of the standing family. */}
           <p
+            data-record-standing={chip}
             className={`border border-line bg-bg-raised px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] ${
-              art.sealed === true && standing === "unverified" ? "text-text-muted" : standingClass(standing)
+              chip === "unread" || (art.sealed === true && chip === "unverified") ? "text-text-muted" : standingClass(chip)
             }`}
           >
-            {art.sealed === true && standing === "unverified" ? t("sealed.standing") : t(`standing.${standing}`)}
+            {chip === "unread"
+              ? t("facts.unread")
+              : art.sealed === true && chip === "unverified"
+                ? t("sealed.standing")
+                : t(`standing.${chip}`)}
           </p>
         </div>
 

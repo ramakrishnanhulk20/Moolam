@@ -348,12 +348,20 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("creditLabel")}</p>
         {/* Until the registry has been asked there is no figure, and a status
             is said as a status: small, in the label's ink. The headline slot is
-            kept for the amount itself once it is read. */}
+            kept for the amount itself once it is read. A signed-out reader has
+            no account to ask about, so for them the line says what would read
+            it rather than waiting for ever. */}
         {owed === null ? (
-          <p data-credit-unread className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-            <span aria-hidden className="motif h-1.5 w-1.5 bg-line-strong" />
-            {t("creditUnread")}
-          </p>
+          desk.ready && !desk.authenticated ? (
+            <p data-credit-signed-out className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-muted">
+              {t("creditSignedOut")}
+            </p>
+          ) : (
+            <p data-credit-unread className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+              <span aria-hidden className="motif h-1.5 w-1.5 bg-line-strong" />
+              {t("creditUnread")}
+            </p>
+          )
         ) : (
           <p
             data-credit-amount

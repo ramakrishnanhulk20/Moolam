@@ -3,15 +3,20 @@ import type { Hex } from "viem";
 import type { Art } from "@/components/passport/art";
 import { DEMO_AGENT_ID, shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
-import { claimOf, registeredOutside, seenEarlierLink } from "./strength";
+import type { Credit } from "@/lib/platforms/platforms";
+import { claimOf, claimOrigin, seenEarlierLink, type ClaimOrigin } from "./strength";
 
 /** The words of the claim block, made once on the server so the drawing needs no reads. */
 export interface ClaimCopy {
   label: string;
   /** Where the claim comes from: the strength line. */
   strength: string;
-  /** Said only for a document read with no sworn line and no platform statement (L25). */
-  outside: string | null;
+  /**
+   * Who wrote the document, when that is worth a line: outside Moolam, through
+   * Moolam before the sworn line existed, or through the kit with no statement
+   * from the platform (L25). Null for a sworn document and for one nobody read.
+   */
+  origin: { kind: Exclude<ClaimOrigin, "stated">; line: string } | null;
   /** The registrant's own statements, each drawn as theirs and never as a chain fact (L21). */
   sworn: string | null;
   platformStatement: { label: string | null; text: string } | null;
@@ -24,11 +29,14 @@ export async function claimCopy({
   passport,
   art,
   platform,
+  credit = null,
   now = Math.floor(Date.now() / 1000),
 }: {
-  passport: { creator: Hex; generatorAgentId: bigint; registeredAt: bigint };
+  passport: { creator: Hex; generatorAgentId: bigint; registeredAt: bigint; metadataURI: string };
   art: Art;
   platform: { status: "kit" | "outsideKit"; name: string } | null;
+  /** The credit rule's answer, which is what names a co-signed picture's person and platform. */
+  credit?: Credit | null;
   now?: number;
 }): Promise<ClaimCopy> {
   // The request's own language, which the page has already set.
@@ -40,6 +48,7 @@ export async function claimCopy({
     generatorAgentId: passport.generatorAgentId,
     studioAgentId: DEMO_AGENT_ID,
     platform,
+    credit,
     creator: passport.creator,
     registeredAt: Number(passport.registeredAt),
     now,
@@ -49,19 +58,35 @@ export async function claimCopy({
       ? t("claim.studio")
       : claim.key === "platform"
         ? t("claim.platform", { platform: claim.platform })
-        : claim.key === "self"
-          ? t("claim.self", { address: shortHex(claim.address), date: day(claim.date), until: day(claim.until) })
-          : t("claim.selfLater", { address: shortHex(claim.address), date: day(claim.date) });
+        : claim.key === "cosigned"
+          ? t("claim.cosigned", { person: shortHex(claim.person), platform: claim.platform, date: day(claim.date) })
+          : claim.key === "self"
+            ? t("claim.self", { address: shortHex(claim.address), date: day(claim.date), until: day(claim.until) })
+            : t("claim.selfLater", { address: shortHex(claim.address), date: day(claim.date) });
 
   const statements = art.statements;
   const seen = statements?.seenOnline;
   const earlier = statements?.seenEarlier;
   const earlierHref = seenEarlierLink(earlier);
 
+  const origin = claimOrigin({ metadataURI: passport.metadataURI, art, platformKit: platform?.status === "kit" });
+  const originLine =
+    origin === null || origin === "stated"
+      ? null
+      : {
+          kind: origin,
+          line:
+            origin === "outside"
+              ? t("claim.outside")
+              : origin === "kit"
+                ? t("claim.kitNoStatement", { platform: platform?.name ?? "" })
+                : t("claim.beforeSworn"),
+        };
+
   return {
     label: t("claim.label"),
     strength,
-    outside: registeredOutside(statements) === true ? t("claim.outside") : null,
+    origin: originLine,
     sworn: statements?.sworn === true ? t("story.sealed.readoutSworn") : null,
     // Named after the platform only where Moolam's list names it; otherwise the words stand alone.
     platformStatement:
@@ -103,9 +128,16 @@ export function ClaimLines({ copy }: { copy: ClaimCopy }) {
       <p data-claim-strength className="max-w-[58ch] text-base leading-relaxed text-text">
         {copy.strength}
       </p>
-      {copy.outside === null ? null : (
-        <p data-claim-outside className="mt-3 max-w-[58ch] border-s-2 border-failed/60 ps-4 text-base leading-relaxed text-text-muted">
-          {copy.outside}
+      {/* Only a document the service never pinned takes the warning edge; the
+          other two origins are plain facts about an older or a platform record. */}
+      {copy.origin === null ? null : (
+        <p
+          data-claim-origin={copy.origin.kind}
+          className={`mt-3 max-w-[58ch] border-s-2 ps-4 text-base leading-relaxed text-text-muted ${
+            copy.origin.kind === "outside" ? "border-failed/60" : "border-line-strong"
+          }`}
+        >
+          {copy.origin.line}
         </p>
       )}
       {copy.sworn === null &&

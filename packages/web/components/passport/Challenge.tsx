@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useSyncExternalStore } from "react";
 import { formatEther, type Hex } from "viem";
@@ -9,7 +9,6 @@ import { useRouter } from "@/lib/i18n/routing";
 import { REASON_MAX, REASON_MIN } from "@/lib/disputes/evidence";
 import {
   FLAG_STEPS,
-  bondFate,
   isFlagBusy,
   isFlagDone,
   isFlagUnconfirmed,
@@ -21,6 +20,7 @@ import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPasspo
 import { refreshPassport } from "@/lib/passport/refresh";
 import { WarningMark } from "@/components/WarningMark";
 import { HEX_MARK, withHex } from "@/components/agents/hex";
+import { ChallengeFrame, ChallengeOpening, Rules, SignInToChallenge } from "./ChallengeRules";
 
 /**
  * The challenge panel itself, in a file of its own so that nothing on a passport page reaches the
@@ -74,7 +74,10 @@ export function Challenge({
   if (view === "receipt" && kept !== undefined) {
     return <KeptReceipt receipt={kept} />;
   }
-  return view === "panel" ? <Panel flag={flag} /> : null;
+  if (view === "none") {
+    return null;
+  }
+  return <Panel flag={flag} signedOut={view === "rules"} />;
 }
 
 /** What a challenge that landed leaves behind: its transaction and the block Monad put it in. */
@@ -118,10 +121,13 @@ function subscribe(notify: () => void): () => void {
 }
 
 /**
- * Which of the three the passport page draws. A receipt this visit kept wins
+ * Which of the four the passport page draws. A receipt this visit kept wins
  * over everything, the open dispute and a sign-out included, because it is a
  * public transaction the reader was just shown and has every right to keep
- * reading.
+ * reading. A reader with no session gets the rules and who decides, with
+ * sign-in where the form would be: what a challenge needs is not a secret,
+ * and the registry refuses a second challenge while one is open, so an open
+ * dispute draws nothing for anyone.
  */
 export function challengeView(standing: {
   kept: boolean;
@@ -129,14 +135,14 @@ export function challengeView(standing: {
   ready: boolean;
   authenticated: boolean;
   isOwner: boolean;
-}): "receipt" | "panel" | "none" {
+}): "receipt" | "panel" | "rules" | "none" {
   if (standing.kept) {
     return "receipt";
   }
-  if (standing.disputeOpen || !standing.ready || !standing.authenticated || standing.isOwner) {
+  if (standing.disputeOpen || !standing.ready || standing.isOwner) {
     return "none";
   }
-  return "panel";
+  return standing.authenticated ? "panel" : "rules";
 }
 
 /** The kept receipt in the same frame the form stood in, without the toggle: a challenge that is on chain cannot be closed. */
@@ -150,51 +156,26 @@ export function KeptReceipt({ receipt }: { receipt: ChallengeReceipt }) {
   );
 }
 
-function Panel({ flag }: { flag: FlagPassport }) {
-  const t = useTranslations("passport.dispute.flag");
-  const calm = useReducedMotion() === true;
+function Panel({ flag, signedOut }: { flag: FlagPassport; signedOut: boolean }) {
   const { state } = flag;
 
   return (
-    <section data-dispute-panel className="mt-12 border-t border-line pt-6">
-      <button
-        type="button"
-        onClick={state.open ? flag.actions.close : flag.actions.open}
-        aria-expanded={state.open}
-        className="group flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint transition-colors duration-200 hover:text-disputed"
-      >
-        <span
-          aria-hidden
-          className={`h-[9px] w-[9px] border border-current transition-transform duration-300 ${
-            state.open ? "rotate-45 bg-disputed" : "group-hover:rotate-45"
-          }`}
-        />
-        <span className="underline decoration-line underline-offset-[6px] transition-colors duration-200 group-hover:decoration-disputed">
-          {state.open ? t("close") : t("link")}
-        </span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {state.open ? (
-          <motion.div
-            key="open"
-            initial={calm ? false : { opacity: 0, height: 0 }}
-            animate={calm ? undefined : { opacity: 1, height: "auto" }}
-            exit={calm ? undefined : { opacity: 0, height: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="mt-7 border-s-2 border-disputed bg-disputed/5 p-6 sm:p-8">
-              {isFlagDone(state) ? (
-                <Recorded receipt={{ hash: state.hash, block: state.block }} />
-              ) : (
-                <Form flag={flag} />
-              )}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </section>
+    <ChallengeFrame open={state.open} onToggle={state.open ? flag.actions.close : flag.actions.open}>
+      {isFlagDone(state) ? (
+        <Recorded receipt={{ hash: state.hash, block: state.block }} />
+      ) : signedOut ? (
+        // The wallet is up and nobody is signed in: the same opening and rules
+        // the form carries, with sign-in where the form would be. Signing in
+        // turns this into the form in place, since the panel stays open.
+        <div>
+          <ChallengeOpening bond={flag.bond} />
+          <Rules treasury={flag.treasury ?? null} />
+          <SignInToChallenge onSignIn={flag.actions.signIn} />
+        </div>
+      ) : (
+        <Form flag={flag} />
+      )}
+    </ChallengeFrame>
   );
 }
 
@@ -208,12 +189,7 @@ function Form({ flag }: { flag: FlagPassport }) {
 
   return (
     <div>
-      <h3 className="max-w-[22ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
-        {t("heading")}
-      </h3>
-      <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">
-        {bond === null ? t("whatUnknown") : t("what", { bond })}
-      </p>
+      <ChallengeOpening bond={flag.bond} />
 
       <Rules treasury={flag.treasury ?? null} />
 
@@ -281,65 +257,6 @@ function Form({ flag }: { flag: FlagPassport }) {
           <FailureLine failure={state.failure} flag={flag} />
         </div>
       )}
-    </div>
-  );
-}
-
-const RULES = ["earlier", "proof", "verify", "licensed"] as const;
-
-/**
- * What a challenge needs and who decides it, before the bond and the button.
- * The rules lead and the decider sits beside them, so a challenger reads the
- * burden of proof before they read the price.
- */
-function Rules({ treasury }: { treasury: Hex | null }) {
-  const t = useTranslations("challenge");
-  const calm = useReducedMotion() === true;
-  const fate = bondFate(treasury);
-
-  return (
-    <div
-      data-challenge-rules
-      className="mt-8 grid gap-9 border-t border-line pt-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12"
-    >
-      <div className="min-w-0">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("rules.heading")}</p>
-        <ol className="mt-3 border-t border-line">
-          {RULES.map((rule, index) => (
-            <motion.li
-              key={rule}
-              data-rule={rule}
-              initial={calm ? false : { opacity: 0, y: 12 }}
-              animate={calm ? undefined : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.12 + index * 0.06, ease: [0.16, 1, 0.3, 1] }}
-              className="group grid grid-cols-[2.25rem_minmax(0,1fr)] items-baseline border-b border-line py-3.5"
-            >
-              <span className="font-mono text-[11px] tabular-nums text-disputed transition-transform duration-200 group-hover:translate-x-0.5">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="text-base leading-relaxed text-text">{t(`rules.${rule}`)}</span>
-            </motion.li>
-          ))}
-        </ol>
-        <p className="mt-5 max-w-[54ch] border-s-2 border-disputed ps-4 text-base font-medium leading-relaxed text-text">
-          {t("rules.burden")}
-        </p>
-      </div>
-
-      <aside data-challenge-decider className="min-w-0 lg:border-s lg:border-line lg:ps-10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("decider.heading")}</p>
-        <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("decider.who")}</p>
-        <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">{t("decider.seat")}</p>
-        {fate === "burned" ? (
-          <p data-bond-fate="burned" className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">
-            {t("decider.bond")}
-          </p>
-        ) : fate === "treasury" && treasury !== null ? (
-          <p data-bond-fate="treasury" className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">
-            {withHex(t("decider.treasury", { treasury: HEX_MARK }), shortHex(treasury))}
-          </p>
-        ) : null}
-      </aside>
     </div>
   );
 }

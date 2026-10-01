@@ -45,6 +45,7 @@ vi.mock("@/components/passport/Picture", () => ({
 }));
 
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 
 // The cache keeps its answer as JSON, so the stand-in does too: a key whose
 // value is undefined is dropped on the way through, as it is in Next.

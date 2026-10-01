@@ -108,6 +108,14 @@ export interface TopFactsInput {
   /** Null when the consent register could not be read. */
   consent: ConsentReading | null;
   attestations: readonly Attestation[];
+  /**
+   * Which verdicts Chainlink's network delivered, by the trust mark's own rule
+   * (networkVerdicts in components/mark/read.ts), matched to a row by its
+   * time. Null, or left out by a screen that made no index read, when that
+   * could not be read: the fact then says so, as the mark does, rather than
+   * calling a run a check or a test run on a guess.
+   */
+  verdicts?: readonly { at: number; network: boolean }[] | null;
   phash: bigint;
   sealed: boolean;
   privateRecheck: boolean;
@@ -129,6 +137,13 @@ export interface TopFactsSay {
   statement: (statement: Statement) => string;
   bits: (count: number) => string;
   privateRecheck: string;
+  /**
+   * The words for a run in Chainlink's simulator, public and private: it is
+   * listed, and never a check. A caller that hands in no verdicts never needs
+   * them; one that does and leaves them out gets the unread fact instead.
+   */
+  testRun?: string;
+  privateTestRun?: string;
   sealed: string;
   date: (seconds: bigint) => string;
   /**
@@ -221,7 +236,7 @@ function aiUse({ consent }: TopFactsInput, say: TopFactsSay): TopFact {
 }
 
 function rechecked(
-  { attestations, phash, sealed, privateRecheck }: TopFactsInput,
+  { attestations, verdicts, phash, sealed, privateRecheck }: TopFactsInput,
   say: TopFactsSay,
 ): TopFact {
   const base = { key: "rechecked" as const, label: say.words.rechecked, href: anchor("rechecked") };
@@ -238,18 +253,30 @@ function rechecked(
       : { ...base, value: say.words.notYet, tone: "faint" };
   }
 
-  const who = isPrivateRecheck(latest.receiver)
-    ? say.privateRecheck
-    : attestationSource(latest.receiver) === "chainlink"
-      ? say.words.chainlink
-      : `${say.words.unknownWriter} ${shortHex(latest.receiver)}`;
   // Counted off the chain's own two fingerprints, the same count the section
   // below prints, rather than the receiver's word for it.
   const counted = bitsApart(phash, phashWord(latest.recomputed));
+  const line = (who: string): string => `${who}, ${say.date(latest.at)}, ${say.bits(counted)}`;
 
+  if (attestationSource(latest.receiver) !== "chainlink") {
+    return { ...base, value: line(`${say.words.unknownWriter} ${shortHex(latest.receiver)}`), tone: latest.matched ? "verified" : "failed" };
+  }
+  const network = verdicts?.find((verdict) => verdict.at === Number(latest.at))?.network;
+  if (network === undefined) {
+    return { ...base, value: say.words.unread, tone: "faint", unread: true };
+  }
+  const privately = isPrivateRecheck(latest.receiver);
+  // A run in the simulator is listed in the quiet ink: the mark it never turns
+  // on sits right over this strip, and the two must not disagree.
+  if (!network) {
+    const word = privately ? say.privateTestRun : say.testRun;
+    return word === undefined
+      ? { ...base, value: say.words.unread, tone: "faint", unread: true }
+      : { ...base, value: line(word), tone: "faint" };
+  }
   return {
     ...base,
-    value: `${who}, ${say.date(latest.at)}, ${say.bits(counted)}`,
+    value: line(privately ? say.privateRecheck : say.words.chainlink),
     tone: latest.matched ? "verified" : "failed",
   };
 }

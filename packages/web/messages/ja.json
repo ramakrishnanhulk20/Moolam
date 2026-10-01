@@ -277,7 +277,7 @@
       "verdictFigure": "64 ビット中 {count}",
       "verdictSame": "ビットの差：同じ画像です。",
       "verdictMissed": "ビットの差。検証サービスは見つけられませんでした。",
-      "recheckOn": "{date} に Chainlink ワークフローが登録された画像そのものを確認：",
+      "recheckOn": "{date} に Chainlink のネットワークが登録された画像そのものを確認：",
       "recheckBits": "記録との差は 64 ビット中 {count} ビット",
       "recheckMissed": "一致せず、{bits}",
       "chainlink": "Chainlink：",
@@ -292,7 +292,8 @@
         "chainlink": "Chainlink 確認済み",
         "envio": "Envio がインデックス"
       },
-      "unstarted": "確認が始まりませんでした。ページを再読み込みして、もう一度押してください。"
+      "unstarted": "確認が始まりませんでした。ページを再読み込みして、もう一度押してください。",
+      "testRunOn": "{date} に Chainlink のシミュレーターでのテスト実行が登録された画像を測定："
     }
   },
   "story": {
@@ -372,7 +373,7 @@
       "verify": "画像を検証",
       "proof": "証拠を見る",
       "passports": "パスポート",
-      "attestations": "Monad 上の Chainlink の確認",
+      "attestations": "Monad 上の Chainlink ネットワークの確認",
       "chain": "Monad 上、チェーン {chainId}",
       "unread": "読み取れず",
       "error": "いまインデックスを読めませんでした。少ししてからページを再読み込みしてください。",
@@ -537,12 +538,14 @@
     "recheck": {
       "label": "Chainlink の確認",
       "never": "まだです",
-      "count": "{count, plural, other {確認 # 件}}",
+      "count": "{count, plural, other {Monad 上の判定 # 件}}",
       "none": "まだ確認されていません。",
       "noneNote": "この画像を取得して指紋を計算し直した独立のワークフローは、まだありません。",
-      "matched": "{at} に Chainlink CRE ワークフローが確認しました。自分で画像を取得し、指紋を取り直して一致、64 ビット中 {count} ビットの差でした。",
-      "mismatched": "{at} に Chainlink CRE ワークフローが確認しました。自分で画像を取得し、指紋を取り直しましたが一致せず、64 ビット中 {count} ビットの差でした。",
-      "link": "Chainlink の確認を見る"
+      "matched": "{at} に Chainlink CRE ワークフローがこの画像を自分で取得し、指紋を取り直して一致しました。64 ビット中 {count} ビットの差です。",
+      "mismatched": "{at} に Chainlink CRE ワークフローがこの画像を自分で取得し、指紋を取り直しましたが一致しませんでした。64 ビット中 {count} ビットの差です。",
+      "link": "Chainlink の確認を見る",
+      "network": "実行したのは Chainlink のネットワークなので、このパスポートには「Chainlink 確認済み」の印が付いています。",
+      "testRun": "これは Chainlink のシミュレーターによる、1 台のマシンでのテスト実行でした。Chainlink のネットワークはこの画像をまだ確認していません。"
     },
     "dispute": {
       "none": "このパスポートに対する異議は出ていません。",
@@ -641,7 +644,8 @@
         "leadEarlier": "Chainlink の機密ワークフローが、Moolam が当時保持していた小さなコピーから非公開で確認しました。",
         "limit": "実行したのは 1 台のマシン上の Chainlink のシミュレーターで、Chainlink の安全なハードウェアの中ではありません。",
         "verdict": "Chainlink の機密ワークフローが、Moolam が保持していたこの画像の小さな非公開コピーを開き、指紋を照合しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
-        "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ワークフローが Moolam の小さな非公開コピーから計算した指紋です。食い違う升目には印が付きます。"
+        "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ワークフローが Moolam の小さな非公開コピーから計算した指紋です。食い違う升目には印が付きます。",
+        "testRun": "非公開のテスト実行"
       },
       "sealedBody": "その画像は自分のものだと、誰でも言えます。ここは違います。第三者が指紋を確認し、答えを Monad に書き込みます。封印された画像には公開ファイルがないため、確認は非公開で行います。制作者が依頼した場合、Chainlink の機密ワークフローが Moolam の保持する小さな非公開コピーを開き、指紋を照合します。",
       "unknown": {
@@ -651,7 +655,8 @@
         "recomputedGrid": "書き手の指紋",
         "verdict": "不明な書き手がこの画像の指紋を報告しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
         "gridNote": "一つ目の格子は、この画像の登録時にレジストリが保存した指紋です。二つ目は、この書き手が報告した指紋です。Moolam はこの書き手を誰が動かしているか知らないため、このページは画像がどう確認されたかを述べません。"
-      }
+      },
+      "byTestRun": "Chainlink のシミュレーターでのテスト実行"
     },
     "children": {
       "heading": "編集",
@@ -900,7 +905,9 @@
           "recheck": "Monad にもう一度尋ねる",
           "openAddress": "MonadVision で {wallet} を開く",
           "signIn": "サインイン"
-        }
+        },
+        "signedOut": "異議の申し立てには Moolam のアカウントと、自分のウォレットからの保証金が必要です。ルールを読むだけならどちらも要りません。",
+        "signInToChallenge": "サインインして異議を申し立てる"
       },
       "bodySettled": "この記録は誤りだという主張に誰かが保証金を積み、ポリシーが指名した裁定者がすでに判断しました。"
     },
@@ -1832,7 +1839,8 @@
     "actions": {
       "recheck": "Monad にもう一度尋ねる",
       "openAddress": "MonadVision で {wallet} を開く"
-    }
+    },
+    "creditSignedOut": "サインインすると、レジストリからの受取分が見られます。"
   },
   "notFound": {
     "code": "404",
@@ -1889,7 +1897,8 @@
     "notePrivate": "無料です。Chainlink の機密ワークフローが Moolam の保持する小さな非公開コピーを開き、指紋を照合して、その判定を Monad に書き込みます。判定はたいてい数分以内にチェーンに記録されます。",
     "runningPrivate": "実行中です。ワークフローが非公開コピーを開き、指紋を照合しています。",
     "recheckedOn": "{date} に確認済み",
-    "confirming": "待ち行列ではこの実行は完了済みです。結果が Monad で読めるようになった時点で、完了と表示します。"
+    "confirming": "待ち行列ではこの実行は完了済みです。結果が Monad で読めるようになった時点で、完了と表示します。",
+    "testRunOn": "{date} にテスト実行"
   },
   "mine": {
     "title": "あなたの画像",
@@ -2463,7 +2472,8 @@
       "agent": "エージェント {id}",
       "pictureAlt": "{title}、{platform} で描かれ、Monad 上にパスポートを持つ画像",
       "pictureAltUntitled": "{platform} で描かれ、Monad 上にパスポートを持つ画像",
-      "open": "Dreamloom を開く"
+      "open": "Dreamloom を開く",
+      "nowShipped": "稼働中: Moolam の検証サービス上のプラットフォーム用ルートと MCP サーバー、Dreamloom、そして moolam.vercel.app の共同署名、接続、メールのウィンドウ。"
     },
     "pricing": {
       "kicker": "料金",
@@ -2605,7 +2615,8 @@
       },
       "sealed": {
         "word": "封印済み",
-        "line": "一度も公開されていないため、Chainlink のネットワークは確認できません。指紋は公開されているので、コピーからでも検証で見つかります。"
+        "line": "一度も公開されていないため、Chainlink のネットワークは確認できません。指紋は公開されているので、コピーからでも検証で見つかります。",
+        "lineTestRun": "一度も公開されていないため、Chainlink のネットワークは確認できません。下に載っている非公開のテスト実行は Chainlink のシミュレーターで行われたもので、コピーからでも検証で見つかります。"
       },
       "nothing": {
         "word": "確認するものなし",
@@ -2630,7 +2641,10 @@
     "selfLater": "{date} に {address} がアップロード。これはその人の主張で、今も誰でも証拠を添えて異議を申し立てられます。",
     "outside": "Moolam のスタジオの外で登録: 宣誓もウェブ照合もありません。",
     "seenEarlier": "署名の前に、これとよく似た先のパスポートが示されていました。",
-    "platformStatement": "{platform} の表明"
+    "platformStatement": "{platform} の表明",
+    "beforeSworn": "宣誓の仕組みができる前に Moolam を通して登録されたため、宣誓はありません。",
+    "kitNoStatement": "プラットフォームキットを通して登録。{platform} は独自の表明を送らず、プラットフォームの画像はウェブ照合の対象になりません。",
+    "cosigned": "{date} に {platform} 上で {person} が自分のパスキーで署名。{platform} のエージェントも同じ画像に署名しました。"
   },
   "lookalike": {
     "found": {

@@ -50,6 +50,8 @@ vi.mock("@/lib/data/passports", async (original) => ({
 
 // The poster's trust mark reads the chain and the index; this file is about the record rules.
 vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
+// Where the newest verdict came from is the server's own held read; here nothing may reach a chain.
+vi.mock("@/lib/passport/standing", () => ({ newestVerdictStanding: async () => "unread" }));
 
 vi.mock("@/lib/chain/registry", async (original) => ({
   ...(await original<typeof import("@/lib/chain/registry")>()),

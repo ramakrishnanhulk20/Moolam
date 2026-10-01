@@ -263,7 +263,8 @@
       "verdictFigure": "{count} of 64",
       "verdictSame": "bits apart: the same picture.",
       "verdictMissed": "bits apart, and the verify service did not find it.",
-      "recheckOn": "A Chainlink workflow checked the registered picture itself on {date}:",
+      "recheckOn": "Chainlink's network checked the registered picture itself on {date}:",
+      "testRunOn": "A test run in Chainlink's simulator measured the registered picture on {date}:",
       "recheckBits": "{count} of 64 bits apart from its record",
       "recheckMissed": "did not match, {bits}",
       "chainlink": "Chainlink:",
@@ -302,7 +303,7 @@
       "kicker": "Terms",
       "title": "{summary}.",
       "body": "Their terms for AI went on Monad beside the passport, with the date. They can change them, and the history stays.",
-      "readout": "Terms written on Monad {written}, in force since.",
+      "readout": "Terms written on Monad {written}, and in force since then.",
       "registered": "Registered {when}",
       "today": "Today"
     },
@@ -358,7 +359,7 @@
       "verify": "Verify an image",
       "proof": "See the proof",
       "passports": "Passports",
-      "attestations": "Chainlink checks on Monad",
+      "attestations": "Chainlink network checks on Monad",
       "chain": "on Monad, chain {chainId}",
       "unread": "unread",
       "error": "The index could not be read just now. Reload the page in a moment.",
@@ -523,11 +524,13 @@
     "recheck": {
       "label": "Chainlink's check",
       "never": "not yet",
-      "count": "{count, plural, =1 {# check} other {# checks}}",
+      "count": "{count, plural, =1 {# verdict on Monad} other {# verdicts on Monad}}",
       "none": "Not checked yet.",
       "noneNote": "No independent workflow has fetched this picture and recomputed its fingerprint.",
-      "matched": "Checked by a Chainlink CRE workflow on {at}: it fetched the picture itself, fingerprinted it again and matched, {count} of 64 bits apart.",
-      "mismatched": "Checked by a Chainlink CRE workflow on {at}: it fetched the picture itself, fingerprinted it again and did not match, {count} of 64 bits apart.",
+      "matched": "A Chainlink CRE workflow fetched this picture on {at}, fingerprinted it again and matched, {count} of 64 bits apart.",
+      "mismatched": "A Chainlink CRE workflow fetched this picture on {at}, fingerprinted it again and did not match, {count} of 64 bits apart.",
+      "network": "Chainlink's network ran it, so this passport wears Checked by Chainlink.",
+      "testRun": "That was a test run in Chainlink's simulator, on one machine. Chainlink's network has not checked this picture yet.",
       "link": "See Chainlink's check"
     },
     "dispute": {
@@ -610,6 +613,7 @@
       "body": "Anyone can say a picture is theirs. This part is different: Chainlink's CRE workflow downloaded the picture itself, took its fingerprint again and wrote the result on Monad.",
       "distanceLabel": "What Chainlink reported",
       "byChainlink": "Checked by a Chainlink CRE workflow",
+      "byTestRun": "A test run in Chainlink's simulator",
       "delivery": {
         "simulation": "Chainlink's CRE simulator ran this check on one machine, not across Chainlink's network.",
         "network": "Several independent Chainlink machines ran this check and agreed on the answer."
@@ -623,6 +627,7 @@
       "whatIsRecheck": "A check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture.",
       "private": {
         "badge": "Private check",
+        "testRun": "Private test run",
         "lead": "Checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.",
         "leadEarlier": "Checked privately by a Chainlink confidential workflow, from the small copy Moolam kept at the time.",
         "limit": "It ran in Chainlink's simulator on one machine, not inside Chainlink's secure hardware.",
@@ -838,6 +843,8 @@
         "reasonHint": "Between {min} and {max} characters. It travels inside the transaction, so it is public and permanent.",
         "submit": "Flag with {bond} MON",
         "submitUnknown": "Flag this passport",
+        "signedOut": "Challenging takes a Moolam account and the bond from your own wallet. Reading the rules takes neither.",
+        "signInToChallenge": "Sign in to challenge",
         "steps": {
           "account": {
             "waiting": "Your account puts up the bond",
@@ -1781,6 +1788,7 @@
     "signIn": "Sign in",
     "creditLabel": "What the registry owes you",
     "creditUnread": "Not read yet",
+    "creditSignedOut": "Sign in to see what the registry owes you.",
     "creditBody": "Money here is pulled, never pushed. A settled dispute records a credit, and nothing reaches an account until that account asks for it.",
     "withdraw": "Withdraw {amount} MON",
     "withdrawing": "Sending",
@@ -1875,6 +1883,7 @@
     "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
     "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
     "recheckedOn": "Checked on {date}",
+    "testRunOn": "Test run on {date}",
     "confirming": "The queue says this run finished. It shows as done once its verdict can be read on Monad."
   },
   "mine": {
@@ -2446,6 +2455,7 @@
       "unread": "Not read just now",
       "now": "Live now: the platform routes and the MCP server on Moolam's verify service, and Dreamloom.",
       "next": "Coming with the next release: leave it for their email, and the co-sign and connect windows on moolam.vercel.app.",
+      "nowShipped": "Live now: the platform routes and the MCP server on Moolam's verify service, Dreamloom, and the co-sign, connect and email windows on moolam.vercel.app.",
       "agent": "Agent {id}",
       "pictureAlt": "{title}, a picture drawn on {platform} with its passport on Monad",
       "pictureAltUntitled": "A picture drawn on {platform} with its passport on Monad",
@@ -2591,7 +2601,8 @@
       },
       "sealed": {
         "word": "Sealed",
-        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify.",
+        "lineTestRun": "Never published, so Chainlink's network cannot check it. The private test run listed below ran in Chainlink's simulator, and a copy still finds it in Verify."
       },
       "nothing": {
         "word": "Nothing to check",
@@ -2615,6 +2626,9 @@
     "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
     "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
     "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
+    "beforeSworn": "Registered through Moolam before the sworn line existed, so it carries no sworn statement.",
+    "kitNoStatement": "Registered through the platform kit. {platform} sent no statement of its own, and a platform's picture is not checked against the web.",
+    "cosigned": "Signed by {person} with their own passkey on {platform}, {date}. {platform}'s agent signed the same picture.",
     "seenEarlier": "Before signing, they were shown an earlier passport like this one.",
     "platformStatement": "{platform}'s statement"
   },

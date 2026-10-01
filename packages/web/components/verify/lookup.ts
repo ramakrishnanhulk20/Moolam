@@ -2,7 +2,11 @@ import type { Hex } from "viem";
 import { pinnedUri, readArt } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
 import { getOwner, getPassport } from "@/lib/chain/registry";
+import { newestVerdictStanding } from "@/lib/passport/standing";
 import { readUnsealRecord } from "@/lib/verifier/client";
+
+/** Where the newest verdict on a passport came from, as the server's one rule for the trust mark reads it. */
+export type VerdictStanding = Awaited<ReturnType<typeof newestVerdictStanding>>;
 
 /** The few facts the answer card shows about the passport an image matched. */
 export interface MatchedPassport {
@@ -21,6 +25,12 @@ export interface MatchedPassport {
   blockhash256?: Hex;
   /** ISO 8601, set when this passport was registered sealed and published by its holder later. */
   unsealedAt?: string;
+  /**
+   * Whether Chainlink's network or its simulator wrote the newest verdict, so
+   * the card calls a test run a test run. "unread" when the server could not
+   * say, and the card then claims neither.
+   */
+  verdict?: VerdictStanding;
 }
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -47,7 +57,14 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     return null;
   }
 
-  const art = await readArt(passport.metadataURI);
+  // Which forwarder carried the newest verdict is in the index's rows and the
+  // chain's transactions, which only the app's server holds. That one question
+  // goes there, beside the document read, and carries nothing of the file; an
+  // answer that does not come leaves the card naming neither network nor simulator.
+  const [art, verdict] = await Promise.all([
+    readArt(passport.metadataURI),
+    newestVerdictStanding(passport.id).catch(() => "unread" as const),
+  ]);
   // A sealed document says sealed for ever, so a passport whose holder has
   // published the picture since is only knowable from the record filed under
   // its id. This page already talks to the verify service directly, which is
@@ -72,6 +89,7 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     sealed: art.sealed === true && published === null,
     blockhash256: passport.blockhash256,
     unsealedAt: published?.unsealedAt,
+    verdict,
   };
 }
 

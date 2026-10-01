@@ -5,6 +5,7 @@ import type { Hex } from "viem";
 import { Link } from "@/lib/i18n/routing";
 import type { MatchRecheck } from "@/lib/verifier/client";
 import { RecheckRequest } from "@/components/passport/RecheckRequest";
+import type { VerdictStanding } from "./lookup";
 
 /**
  * Whether this block draws anything at all.
@@ -33,6 +34,11 @@ export function hasSecondOpinion(
  * service that carries no such field, print nothing at all: silence is the only
  * honest answer to a question nobody asked the chain.
  *
+ * The verdict line says what the workflow did; the sentence after it says who
+ * ran it, by the trust mark's rule: Chainlink's network, which lights the mark,
+ * or a test run in its simulator, which never does. A standing the server
+ * could not read adds no sentence, so the line claims neither.
+ *
  * The button to ask for a re-check sits only under "never". The runner closes
  * any request for a picture that already carries a verdict, so under one a
  * press could only come back refused.
@@ -40,10 +46,13 @@ export function hasSecondOpinion(
 export function SecondOpinion({
   recheck,
   id,
+  standing,
   className = "",
 }: {
   recheck?: MatchRecheck;
   id: Hex;
+  /** Where the newest verdict came from, read beside the matched passport. */
+  standing?: VerdictStanding;
   className?: string;
 }) {
   const t = useTranslations("verify.recheck");
@@ -84,6 +93,11 @@ export function SecondOpinion({
           ? t("matched", { at, count: latest.distance })
           : t("mismatched", { at, count: latest.distance })}
       </p>
+      {standing === "network" || standing === "testRun" ? (
+        <p data-verdict-standing={standing} className="mt-2 max-w-[60ch] text-base leading-relaxed text-text-muted">
+          {t(standing)}
+        </p>
+      ) : null}
 
       {/* Straight to the re-check block on the passport page, which carries the
           two fingerprints drawn bit by bit and the transaction each verdict was

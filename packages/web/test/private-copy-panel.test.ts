@@ -328,7 +328,7 @@ describe("every language carries the private re-check words", () => {
 
   it("is ten languages, and English has every word the screens ask for", () => {
     expect(locales.length).toBe(10);
-    expect(english.size).toBe(31);
+    expect(english.size).toBe(32);
   });
 
   for (const locale of locales) {

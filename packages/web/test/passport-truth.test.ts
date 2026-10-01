@@ -36,6 +36,7 @@ vi.mock("@/lib/i18n/routing", () => ({
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ locale: "en", id: `0x${"7c".repeat(32)}` }) }));
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
+vi.mock("@/components/mark/read", async () => (await import("./mark-fixtures")).markReadMock);
 
 const delivery = vi.hoisted(() => ({ current: "simulation" as ReportDelivery }));
 vi.mock("@/lib/chain/reports", () => ({ heldReportDelivery: async () => delivery.current }));
@@ -286,7 +287,9 @@ describe("a public re-check row", () => {
     expect(markup).toContain(words.gridNote);
     // A passport that already carries a verdict has no button, so no note for it.
     expect(markup).not.toContain(en.recheck.note.replace(/'/g, "&#x27;"));
-    expect(markup).toContain("Checked on");
+    // Every report in this file comes through the simulator, so the date under the control is a test run's.
+    expect(markup).toContain("Test run on");
+    expect(markup).not.toContain("Checked on");
     expect(markup).not.toContain(words.private.gridNote.replace(/'/g, "&#x27;"));
     expect(markup).not.toContain(words.sealedBody.replace(/'/g, "&#x27;"));
   });
@@ -344,8 +347,8 @@ describe("the re-check control's place once a request has finished", () => {
     const markup = await card({ rows: [older, publicRow], sealed: false });
 
     // 1_789_368_639 is 14 Sept 2026 in UTC; the older row is 9 Sept.
-    expect(markup).toContain("Checked on 14 Sept 2026");
-    expect(markup).not.toContain("Checked on 9 Sept 2026");
+    expect(markup).toContain("Test run on 14 Sept 2026");
+    expect(markup).not.toContain("Test run on 9 Sept 2026");
     expect(markup).not.toContain(STAMP_DONE);
     expect(markup).not.toContain("Done: checked");
     expect(markup).toContain('data-recheck-state="rechecked"');
@@ -358,6 +361,7 @@ describe("the re-check control's place once a request has finished", () => {
 
     // 1_790_000_300 is 21 September 2026, the date the chain confirmed, in the
     // client formatter's own English style.
+    // No row carries this verdict yet, so its forwarder is unknown and the date keeps the plain words.
     expect(markup).toContain("Checked on Sep 21, 2026");
     expect(markup).not.toContain(STAMP_DONE);
     expect(markup).not.toContain(BUTTON);

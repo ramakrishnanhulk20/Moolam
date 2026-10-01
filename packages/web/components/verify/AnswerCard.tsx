@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { reason as oneLine, shortHex } from "@/lib/chain/client";
 import { ConsentStamp } from "@/components/consent/ConsentStamp";
+import { withoutDoubleStop } from "@/lib/i18n/sentence";
 import { pictureSources } from "@/lib/images";
 import { Mono } from "@/components/passport/Mono";
 import { Picture } from "@/components/passport/Picture";
@@ -262,6 +263,7 @@ function Result({
   const format = useFormatter();
   const agentId = agentChipId(passport);
   const sealed = passport?.sealed === true;
+  const title = passport?.title ?? t("untitled");
 
   if (answer.kind === "miss") {
     return (
@@ -317,10 +319,10 @@ function Result({
         {/* The plain answer first, in the same words the passport page's drop
             gives. The confidence and the two distances are the working under it,
             not the verdict. */}
+        {/* A title that ends a sentence of its own would otherwise get the
+            template's stop after it ("gods.."). */}
         <p className="max-w-[24ch] font-display text-[clamp(1.5rem,3vw,2.3rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-verified">
-          {answer.kind === "exact"
-            ? t("verdictExact", { title: passport?.title ?? t("untitled") })
-            : t("verdict", { title: passport?.title ?? t("untitled") })}
+          {withoutDoubleStop(t(answer.kind === "exact" ? "verdictExact" : "verdict", { title }), title)}
         </p>
         <ChooseAnother onPress={onChooseAnother} />
         <StaleIndex minutes={answer.staleMinutes} />
@@ -443,7 +445,7 @@ function Result({
             <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("sealed.recheck")}</p>
           </div>
         ) : hasSecondOpinion(answer.recheck) ? (
-          <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
+          <SecondOpinion recheck={answer.recheck} id={answer.id} standing={passport?.verdict} className="mt-6" />
         ) : (
           // The service could not say what anyone else has found, which is no
           // reason to take away the one thing a reader can do about that.

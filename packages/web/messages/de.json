@@ -263,7 +263,7 @@
       "verdictFigure": "{count} von 64",
       "verdictSame": "Bit Unterschied: dasselbe Bild.",
       "verdictMissed": "Bit Unterschied, und der Prüfdienst hat es nicht gefunden.",
-      "recheckOn": "Ein Chainlink-Workflow hat das eingetragene Bild am {date} selbst geprüft:",
+      "recheckOn": "Das Netz von Chainlink hat das eingetragene Bild am {date} selbst geprüft:",
       "recheckBits": "{count} von 64 Bit Unterschied zu seinem Eintrag",
       "recheckMissed": "kein Treffer, {bits}",
       "chainlink": "Chainlink:",
@@ -278,7 +278,8 @@
         "chainlink": "Von Chainlink geprüft",
         "envio": "Indexiert von Envio"
       },
-      "unstarted": "Die Prüfung ist nicht angelaufen. Lade die Seite neu und drück noch einmal."
+      "unstarted": "Die Prüfung ist nicht angelaufen. Lade die Seite neu und drück noch einmal.",
+      "testRunOn": "Ein Testlauf in Chainlinks Simulator hat das eingetragene Bild am {date} gemessen:"
     }
   },
   "story": {
@@ -358,7 +359,7 @@
       "verify": "Bild prüfen",
       "proof": "Die Belege ansehen",
       "passports": "Pässe",
-      "attestations": "Chainlink-Prüfungen auf Monad",
+      "attestations": "Chainlink-Netzprüfungen auf Monad",
       "chain": "auf Monad, Kette {chainId}",
       "unread": "ungelesen",
       "error": "Der Index konnte gerade nicht gelesen werden. Lade die Seite gleich neu.",
@@ -523,12 +524,14 @@
     "recheck": {
       "label": "Die Prüfung durch Chainlink",
       "never": "noch nicht",
-      "count": "{count, plural, =1 {# Prüfung} other {# Prüfungen}}",
+      "count": "{count, plural, =1 {# Ergebnis auf Monad} other {# Ergebnisse auf Monad}}",
       "none": "Noch nicht geprüft.",
       "noneNote": "Kein unabhängiger Workflow hat dieses Bild geholt und seinen Fingerabdruck neu berechnet.",
-      "matched": "Am {at} von einem Chainlink-CRE-Workflow geprüft: Er hat das Bild selbst geholt, erneut abgetastet und eine Übereinstimmung gefunden, {count} von 64 Bit Unterschied.",
-      "mismatched": "Am {at} von einem Chainlink-CRE-Workflow geprüft: Er hat das Bild selbst geholt, erneut abgetastet und keine Übereinstimmung gefunden, {count} von 64 Bit Unterschied.",
-      "link": "Die Prüfung durch Chainlink ansehen"
+      "matched": "Ein Chainlink-CRE-Workflow hat dieses Bild am {at} geholt, erneut abgetastet und eine Übereinstimmung gefunden, {count} von 64 Bit Unterschied.",
+      "mismatched": "Ein Chainlink-CRE-Workflow hat dieses Bild am {at} geholt, erneut abgetastet und keine Übereinstimmung gefunden, {count} von 64 Bit Unterschied.",
+      "link": "Die Prüfung durch Chainlink ansehen",
+      "network": "Das Netz von Chainlink hat ihn ausgeführt, also trägt dieser Pass das Zeichen Von Chainlink geprüft.",
+      "testRun": "Das war ein Testlauf in Chainlinks Simulator, auf einem einzigen Rechner. Das Netz von Chainlink hat dieses Bild noch nicht geprüft."
     },
     "dispute": {
       "none": "Gegen diesen Pass läuft kein Einspruch.",
@@ -627,7 +630,8 @@
         "leadEarlier": "Privat geprüft von einem vertraulichen Chainlink-Workflow, anhand der kleinen Kopie, die Moolam damals behielt.",
         "limit": "Er lief in Chainlinks Simulator auf einem einzigen Rechner, nicht in der gesicherten Hardware von Chainlink.",
         "verdict": "Ein vertraulicher Chainlink-Workflow hat die kleine private Kopie geöffnet, die Moolam von diesem Bild behielt, und seinen Fingerabdruck verglichen: <apart>{bits} von 64 Bit Unterschied</apart>.",
-        "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert."
+        "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert.",
+        "testRun": "Privater Testlauf"
       },
       "sealedBody": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: eine zweite Stelle prüft den Fingerabdruck und schreibt die Antwort auf Monad. Ein versiegeltes Bild hat keine öffentliche Datei, also ist seine Prüfung privat: wenn sein Urheber darum gebeten hat, öffnet ein vertraulicher Chainlink-Workflow die kleine private Kopie, die Moolam behält, und vergleicht den Fingerabdruck.",
       "unknown": {
@@ -637,7 +641,8 @@
         "recomputedGrid": "Fingerabdruck des Absenders",
         "verdict": "Ein unbekannter Absender hat diesen Fingerabdruck für das Bild gemeldet: <apart>{bits} von 64 Bit Unterschied</apart>.",
         "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung dieses Bildes gespeichert hat. Das zweite ist der, den dieser Absender gemeldet hat. Moolam weiß nicht, wer diesen Absender betreibt, deshalb sagt diese Seite nicht, wie das Bild geprüft wurde."
-      }
+      },
+      "byTestRun": "Ein Testlauf in Chainlinks Simulator"
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -886,7 +891,9 @@
           "recheck": "Monad noch einmal fragen",
           "openAddress": "{wallet} auf MonadVision öffnen",
           "signIn": "Anmelden"
-        }
+        },
+        "signedOut": "Zum Bestreiten brauchst du ein Moolam-Konto und die Kaution aus deiner eigenen Wallet. Zum Lesen der Regeln brauchst du keins von beidem.",
+        "signInToChallenge": "Anmelden und bestreiten"
       },
       "bodySettled": "Jemand hat eine Kaution hinter die Behauptung gesetzt, dieser Eintrag sei falsch, und die Schlichterin, die die Policy benennt, hat darüber entschieden."
     },
@@ -1818,7 +1825,8 @@
     "actions": {
       "recheck": "Monad noch einmal fragen",
       "openAddress": "{wallet} auf MonadVision öffnen"
-    }
+    },
+    "creditSignedOut": "Melde dich an, um zu sehen, was das Register dir schuldet."
   },
   "notFound": {
     "code": "404",
@@ -1875,7 +1883,8 @@
     "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Kette.",
     "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
     "recheckedOn": "Geprüft am {date}",
-    "confirming": "Die Warteschlange meldet diesen Lauf als fertig. Als fertig erscheint er erst, wenn sein Ergebnis auf Monad lesbar ist."
+    "confirming": "Die Warteschlange meldet diesen Lauf als fertig. Als fertig erscheint er erst, wenn sein Ergebnis auf Monad lesbar ist.",
+    "testRunOn": "Testlauf am {date}"
   },
   "mine": {
     "title": "Deine Bilder",
@@ -2449,7 +2458,8 @@
       "agent": "Agent {id}",
       "pictureAlt": "{title}, ein auf {platform} gezeichnetes Bild mit seinem Pass auf Monad",
       "pictureAltUntitled": "Ein auf {platform} gezeichnetes Bild mit seinem Pass auf Monad",
-      "open": "Dreamloom öffnen"
+      "open": "Dreamloom öffnen",
+      "nowShipped": "Jetzt live: die Plattform-Routen und der MCP-Server auf dem Prüfdienst von Moolam, Dreamloom sowie die Fenster zum Mitsignieren, Verbinden und für die E-Mail auf moolam.vercel.app."
     },
     "pricing": {
       "kicker": "Preise",
@@ -2591,7 +2601,8 @@
       },
       "sealed": {
         "word": "Versiegelt",
-        "line": "Nie veröffentlicht, also kann das Netz von Chainlink es nicht prüfen. Seine Fingerabdrücke sind öffentlich, und eine Kopie findet es trotzdem unter Prüfen."
+        "line": "Nie veröffentlicht, also kann das Netz von Chainlink es nicht prüfen. Seine Fingerabdrücke sind öffentlich, und eine Kopie findet es trotzdem unter Prüfen.",
+        "lineTestRun": "Nie veröffentlicht, also kann das Netz von Chainlink es nicht prüfen. Der private Testlauf unten lief in Chainlinks Simulator, und eine Kopie findet es trotzdem unter Prüfen."
       },
       "nothing": {
         "word": "Nichts zu prüfen",
@@ -2616,7 +2627,10 @@
     "selfLater": "Hochgeladen von {address} am {date}. Das ist ihre eigene Angabe, und jeder kann sie weiterhin mit Belegen bestreiten.",
     "outside": "Außerhalb von Moolams Studio eingetragen: keine signierte Bestätigung, keine Websuche.",
     "seenEarlier": "Vor dem Signieren bekam die Person einen früheren Pass wie diesen gezeigt.",
-    "platformStatement": "Aussage von {platform}"
+    "platformStatement": "Aussage von {platform}",
+    "beforeSworn": "Über Moolam eingetragen, bevor es die signierte Bestätigung gab, deshalb trägt der Pass keine.",
+    "kitNoStatement": "Über das Plattform-Kit eingetragen. {platform} hat keine eigene Aussage mitgeschickt, und das Bild einer Plattform wird nicht gegen das Web geprüft.",
+    "cosigned": "Signiert von {person} mit dem eigenen Passkey auf {platform}, am {date}. Der Agent von {platform} hat dasselbe Bild signiert."
   },
   "lookalike": {
     "found": {

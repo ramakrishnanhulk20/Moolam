@@ -275,7 +275,7 @@
       "verdictFigure": "{count} sur 64",
       "verdictSame": "bits d’écart : la même image.",
       "verdictMissed": "bits d’écart, et le service de vérification ne l’a pas trouvée.",
-      "recheckOn": "Un workflow Chainlink a contrôlé l’image enregistrée elle-même le {date} :",
+      "recheckOn": "Le réseau de Chainlink a contrôlé l’image enregistrée elle-même le {date} :",
       "recheckBits": "{count} bits d’écart sur 64 avec son enregistrement",
       "recheckMissed": "pas de correspondance, {bits}",
       "chainlink": "Chainlink :",
@@ -290,7 +290,8 @@
         "chainlink": "Contrôlé par Chainlink",
         "envio": "Indexé par Envio"
       },
-      "unstarted": "Le contrôle n’a pas démarré. Rechargez la page et appuyez à nouveau."
+      "unstarted": "Le contrôle n’a pas démarré. Rechargez la page et appuyez à nouveau.",
+      "testRunOn": "Un essai dans le simulateur de Chainlink a mesuré l’image enregistrée le {date} :"
     }
   },
   "story": {
@@ -314,7 +315,7 @@
       "kicker": "Déclaration",
       "title": "{summary}.",
       "body": "Sa déclaration sur l’usage par l’IA est inscrite sur Monad à côté du passeport, avec sa date. Elle peut être modifiée, et l’historique reste.",
-      "readout": "Déclaration écrite sur Monad le {written}, en vigueur depuis.",
+      "readout": "Déclaration écrite sur Monad le {written}, en vigueur depuis lors.",
       "registered": "Enregistrée le {when}",
       "today": "Aujourd’hui"
     },
@@ -370,7 +371,7 @@
       "verify": "Vérifier une image",
       "proof": "Voir les preuves",
       "passports": "Passeports",
-      "attestations": "Contrôles Chainlink sur Monad",
+      "attestations": "Contrôles du réseau Chainlink sur Monad",
       "chain": "sur Monad, chaîne {chainId}",
       "unread": "non lu",
       "error": "L’index n’a pas pu être lu pour le moment. Rechargez la page dans un instant.",
@@ -535,12 +536,14 @@
     "recheck": {
       "label": "Le contrôle de Chainlink",
       "never": "pas encore",
-      "count": "{count, plural, =1 {# contrôle} other {# contrôles}}",
+      "count": "{count, plural, =1 {# verdict sur Monad} other {# verdicts sur Monad}}",
       "none": "Pas encore contrôlée.",
       "noneNote": "Aucun workflow indépendant n’a récupéré cette image ni recalculé son empreinte.",
-      "matched": "Contrôlée par un workflow CRE de Chainlink le {at} : il a lui-même récupéré l’image, recalculé son empreinte et trouvé une correspondance, à {count} bits d’écart sur 64.",
-      "mismatched": "Contrôlée par un workflow CRE de Chainlink le {at} : il a lui-même récupéré l’image, recalculé son empreinte et n’a pas trouvé de correspondance, à {count} bits d’écart sur 64.",
-      "link": "Voir le contrôle de Chainlink"
+      "matched": "Un workflow CRE de Chainlink a récupéré cette image le {at}, recalculé son empreinte et trouvé une correspondance, à {count} bits d’écart sur 64.",
+      "mismatched": "Un workflow CRE de Chainlink a récupéré cette image le {at}, recalculé son empreinte et n’a pas trouvé de correspondance, à {count} bits d’écart sur 64.",
+      "link": "Voir le contrôle de Chainlink",
+      "network": "C’est le réseau de Chainlink qui l’a exécuté, donc ce passeport porte la marque Contrôlé par Chainlink.",
+      "testRun": "C’était un essai dans le simulateur de Chainlink, sur une seule machine. Le réseau de Chainlink n’a pas encore contrôlé cette image."
     },
     "dispute": {
       "none": "Aucune contestation n’est ouverte contre ce passeport.",
@@ -639,7 +642,8 @@
         "leadEarlier": "Contrôlée en privé par un workflow confidentiel Chainlink, à partir de la petite copie que Moolam gardait alors.",
         "limit": "Il s’est exécuté dans le simulateur de Chainlink sur une seule machine, pas dans le matériel sécurisé de Chainlink.",
         "verdict": "Un workflow confidentiel Chainlink a ouvert la petite copie privée que Moolam gardait de cette image et comparé son empreinte : <apart>{bits} bits d'écart sur 64</apart>.",
-        "gridNote": "La première grille est l'empreinte inscrite au registre lors de l'enregistrement. La seconde est celle que le workflow a calculée à partir de la petite copie privée de Moolam. Chaque case qui diffère est marquée."
+        "gridNote": "La première grille est l'empreinte inscrite au registre lors de l'enregistrement. La seconde est celle que le workflow a calculée à partir de la petite copie privée de Moolam. Chaque case qui diffère est marquée.",
+        "testRun": "Essai privé"
       },
       "sealedBody": "N'importe qui peut dire qu'une image est la sienne. Ici c'est différent : un tiers vérifie l'empreinte et inscrit la réponse sur Monad. Une image scellée n'a pas de fichier public, donc son contrôle est privé : si son créateur l'a demandé, un workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam et compare l'empreinte.",
       "unknown": {
@@ -649,7 +653,8 @@
         "recomputedGrid": "Empreinte de l’auteur",
         "verdict": "Un auteur inconnu a rapporté cette empreinte pour l’image : <apart>{bits} bits d’écart sur 64</apart>.",
         "gridNote": "La première grille est l’empreinte que le registre a stockée à l’enregistrement de cette image. La seconde est celle que cet auteur a rapportée. Moolam ne sait pas qui exploite cet auteur, donc cette page ne dit pas comment l’image a été vérifiée."
-      }
+      },
+      "byTestRun": "Un essai dans le simulateur de Chainlink"
     },
     "children": {
       "heading": "Retouches",
@@ -898,7 +903,9 @@
           "recheck": "Redemander à Monad",
           "openAddress": "Ouvrir {wallet} sur MonadVision",
           "signIn": "Se connecter"
-        }
+        },
+        "signedOut": "Contester demande un compte Moolam et la caution depuis votre propre portefeuille. Lire les règles ne demande ni l’un ni l’autre.",
+        "signInToChallenge": "Se connecter pour contester"
       },
       "bodySettled": "Quelqu’un a déposé une caution derrière l’affirmation que cet enregistrement était faux, et l’arbitre désigné par la politique a tranché."
     },
@@ -1830,7 +1837,8 @@
     "actions": {
       "recheck": "Redemander à Monad",
       "openAddress": "Ouvrir {wallet} sur MonadVision"
-    }
+    },
+    "creditSignedOut": "Connectez-vous pour voir ce que le registre vous doit."
   },
   "notFound": {
     "code": "404",
@@ -1887,7 +1895,8 @@
     "notePrivate": "Gratuit. Le workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam, compare l'empreinte et inscrit son verdict sur Monad. Le verdict arrive en général sur la blockchain en quelques minutes.",
     "runningPrivate": "En cours : le workflow ouvre la copie privée et compare l'empreinte.",
     "recheckedOn": "Contrôlée le {date}",
-    "confirming": "La file indique que cette exécution est terminée. Elle apparaîtra comme terminée dès que son verdict sera lisible sur Monad."
+    "confirming": "La file indique que cette exécution est terminée. Elle apparaîtra comme terminée dès que son verdict sera lisible sur Monad.",
+    "testRunOn": "Essai le {date}"
   },
   "mine": {
     "title": "Vos images",
@@ -2461,7 +2470,8 @@
       "agent": "Agent {id}",
       "pictureAlt": "{title}, une image dessinée sur {platform} avec son passeport sur Monad",
       "pictureAltUntitled": "Une image dessinée sur {platform} avec son passeport sur Monad",
-      "open": "Ouvrir Dreamloom"
+      "open": "Ouvrir Dreamloom",
+      "nowShipped": "En service : les routes pour plateformes et le serveur MCP du service de vérification de Moolam, Dreamloom, et les fenêtres de cosignature, de liaison et d’e-mail sur moolam.vercel.app."
     },
     "pricing": {
       "kicker": "Tarifs",
@@ -2603,7 +2613,8 @@
       },
       "sealed": {
         "word": "Scellé",
-        "line": "Jamais publiée, donc le réseau de Chainlink ne peut pas la contrôler. Ses empreintes sont publiques, et une copie retrouve quand même ce passeport sur la page Vérifier."
+        "line": "Jamais publiée, donc le réseau de Chainlink ne peut pas la contrôler. Ses empreintes sont publiques, et une copie retrouve quand même ce passeport sur la page Vérifier.",
+        "lineTestRun": "Jamais publiée, donc le réseau de Chainlink ne peut pas la contrôler. L’essai privé ci-dessous s’est exécuté dans le simulateur de Chainlink, et une copie retrouve quand même ce passeport sur la page Vérifier."
       },
       "nothing": {
         "word": "Rien à contrôler",
@@ -2628,7 +2639,10 @@
     "selfLater": "Téléversée par {address} le {date}. C’est son affirmation, et n’importe qui peut encore la contester avec des preuves.",
     "outside": "Enregistrée hors du studio de Moolam : aucune déclaration sur l’honneur, aucune recherche sur le web.",
     "seenEarlier": "Avant de signer, cette personne a vu un passeport antérieur comme celui-ci.",
-    "platformStatement": "La déclaration de {platform}"
+    "platformStatement": "La déclaration de {platform}",
+    "beforeSworn": "Enregistrée via Moolam avant que la déclaration sur l’honneur n’existe, donc elle n’en porte aucune.",
+    "kitNoStatement": "Enregistrée via le kit pour plateformes. {platform} n’a envoyé aucune déclaration, et l’image d’une plateforme n’est pas recherchée sur le web.",
+    "cosigned": "Signée par {person} avec sa propre clé d’accès sur {platform}, le {date}. L’agent de {platform} a signé la même image."
   },
   "lookalike": {
     "found": {

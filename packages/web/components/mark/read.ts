@@ -47,6 +47,12 @@ export interface PassportMarkFacts {
   lookalike: LookalikeView;
   /** The later passports whose newest valid network record names this one (L6). */
   later: { first: OtherPassport | null; count: number };
+  /**
+   * True when the record lists a run that was not the network's, a test run in
+   * Chainlink's simulator, so a mark that says the network has not checked the
+   * picture can point at the run listed below it rather than contradict it.
+   */
+  testRun: boolean;
 }
 
 /** A read, or the given answer when it throws. */
@@ -204,7 +210,7 @@ export async function passportMarkFacts(passport: Passport, art: Art): Promise<P
   const [record, rows, schema, lookalikes] = await Promise.all([
     settle(async () => await heldPassportRecord(passport.id), null),
     settle(async () => await heldIndexedVerdictRows(passport.id), null),
-    settle(async () => await markSchema(), { network: false, lookalikes: false }),
+    settle(async () => await markSchema(), { network: false, lookalikes: false, networkCount: false }),
     settle(async (): Promise<LookalikeFacts> => await heldLookalikeFacts(passport.id), { kind: "failed" }),
   ]);
 
@@ -256,5 +262,6 @@ export async function passportMarkFacts(passport: Passport, art: Art): Promise<P
     earlier,
     lookalike: view,
     later: { first: later, count: lookalikes.kind === "rows" ? lookalikes.laterCount : 0 },
+    testRun: verdicts !== null && verdicts.some((verdict) => !verdict.network),
   };
 }

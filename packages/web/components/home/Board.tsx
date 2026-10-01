@@ -146,18 +146,27 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
   const measured = isRead(copy) ? bitsOf(BigInt(copy.read.phash)) : null;
 
   // Only a re-check written through one of the Chainlink receivers is named
-  // here: read.ts keeps every other writer out of it.
+  // here: read.ts keeps every other writer out of it. Whether the network or
+  // the simulator ran it is the mark's reading; a run whose reading failed
+  // is left out, since the line would have to call it one or the other.
   const { recheck } = finding;
   const apart = recheck === null ? "" : t("recheckBits", { count: recheck.distance });
-  const rechecked: Line =
+  const rechecked: Line | null =
     recheck === null
       ? { lead: t("chainlink"), fact: t("recheckNone"), tone: "plain" }
-      : recheck.matched
-        ? { lead: t("recheckOn", { date: day(recheck.at) }), fact: apart, tone: "proof" }
-        : { lead: t("recheckOn", { date: day(recheck.at) }), fact: t("recheckMissed", { bits: apart }), tone: "miss" };
+      : recheck.network === null
+        ? null
+        : {
+            lead: t(recheck.network ? "recheckOn" : "testRunOn", { date: day(recheck.at) }),
+            fact: recheck.matched ? apart : t("recheckMissed", { bits: apart }),
+            tone: recheck.matched ? "proof" : "miss",
+          };
   // A register that would not answer is left out rather than reported: the
   // column only ever says what was read.
-  const lines: Line[] = [rechecked, ...(finding.statementError === null ? [stated(finding.statement)] : [])];
+  const lines: Line[] = [
+    ...(rechecked === null ? [] : [rechecked]),
+    ...(finding.statementError === null ? [stated(finding.statement)] : []),
+  ];
 
   return (
     <Play id="finding" className="relative scroll-mt-24 lg:flex lg:grow lg:flex-col lg:justify-between">

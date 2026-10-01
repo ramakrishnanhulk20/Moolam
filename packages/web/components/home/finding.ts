@@ -56,6 +56,12 @@ export interface FindingRecheck {
   distance: number;
   /** Whole seconds, from the attestation itself. */
   at: number;
+  /**
+   * True when Chainlink's network delivered this verdict, false for a test run
+   * in its simulator, by the trust mark's own rule (components/mark/read.ts).
+   * Null when that could not be told, and the screen then says neither.
+   */
+  network: boolean | null;
 }
 
 /**
@@ -105,13 +111,20 @@ export interface AttestationRow {
 }
 
 /**
- * The newest re-check a Chainlink workflow wrote.
+ * The newest re-check a Chainlink workflow wrote, and whether the network
+ * delivered it.
  *
  * Any receiver the policy allows can write an attestation, so the list is not
  * all Chainlink. Only a row written through one of the receivers the CRE
- * workflows report into may carry that name on the screen.
+ * workflows report into may carry that name on the screen. `network` is the
+ * mark's own reading of every verdict, matched to the row by its time; a
+ * reading that failed, or one that holds no entry for the row, leaves null.
  */
-export function chainlinkRecheck(rows: readonly AttestationRow[], receivers: readonly Hex[]): FindingRecheck | null {
+export function chainlinkRecheck(
+  rows: readonly AttestationRow[],
+  receivers: readonly Hex[],
+  network: readonly { at: number; network: boolean }[] | null = null,
+): FindingRecheck | null {
   const allowed = new Set(receivers.map(addressKey));
   let newest: AttestationRow | null = null;
   for (const row of rows) {
@@ -122,7 +135,12 @@ export function chainlinkRecheck(rows: readonly AttestationRow[], receivers: rea
       newest = row;
     }
   }
-  return newest === null ? null : { matched: newest.matched, distance: newest.distance, at: Number(newest.at) };
+  if (newest === null) {
+    return null;
+  }
+  const at = Number(newest.at);
+  const read = network?.find((verdict) => verdict.at === at);
+  return { matched: newest.matched, distance: newest.distance, at, network: read === undefined ? null : read.network };
 }
 
 /** What the verify service said about the copy, with the fields the first screen reads. */

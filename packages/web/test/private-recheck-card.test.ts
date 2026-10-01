@@ -129,7 +129,9 @@ describe("a verdict written by the sealed receiver", () => {
   it("leaves a public Chainlink verdict exactly as it was", async () => {
     const markup = await card({ rows: [publicRow], sealed: false });
 
-    expect(markup).toContain(words.byChainlink);
+    // Every report in this file comes through the simulator, so the public row leads as a test run.
+    expect(markup).toContain(asRendered(words.byTestRun));
+    expect(markup).not.toContain(words.byChainlink);
     expect(markup).not.toContain(words.private.badge);
     expect(markup).not.toContain(asRendered(words.private.lead));
   });
@@ -169,7 +171,9 @@ describe("the same passport once a verdict is on chain", () => {
     // The runner closes any request for a passport that already carries a verdict.
     const markup = await card({ rows: [privateRow], privateCopy: "kept" });
     expect(markup).not.toContain(BUTTON);
-    expect(markup).toContain("Checked on");
+    // The private verdict in this file comes through the simulator, so its date is a test run's.
+    expect(markup).toContain("Test run on");
+    expect(markup).not.toContain("Checked on");
   });
 
   it("says why there is no button in the button's place once the copy is gone", async () => {

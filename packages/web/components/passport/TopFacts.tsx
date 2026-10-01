@@ -1,12 +1,15 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import type { ConsentRecord } from "@/components/consent/ConsentSection";
 import { readCard } from "@/components/agent/card";
+import { networkVerdicts } from "@/components/mark/read";
 import { heldAgent, heldPassportRecord } from "@/lib/chain/registry";
+import { markSchema } from "@/lib/data/marks";
 import { creditFor } from "@/lib/data/platform-label";
 import type { Attestation, Passport } from "@/lib/chain/registry";
 import { Link } from "@/lib/i18n/routing";
 import type { Art } from "./art";
 import { FactJumpLink } from "./FactJump";
+import { heldIndexedVerdictRows } from "./indexed";
 import { TOP_FACT_WORD_KEYS, topFacts, type TopFact, type TopFactTone, type TopFactWords } from "./top-facts";
 
 const TONES: Record<TopFactTone, string> = {
@@ -44,8 +47,12 @@ export async function TopFacts({
 }) {
   const t = await getTranslations("passport");
   const kinds = await getTranslations("kind");
+  const marks = await getTranslations("mark");
   const format = await getFormatter({ locale });
-  const credit = await creditFor(passport, async () => (await heldPassportRecord(passport.id)).owner).catch(() => null);
+  const [credit, verdicts] = await Promise.all([
+    creditFor(passport, async () => (await heldPassportRecord(passport.id)).owner).catch(() => null),
+    networkReading(passport, attestations),
+  ]);
 
   const facts = topFacts(
     {
@@ -55,6 +62,7 @@ export async function TopFacts({
       kind: passport.kind,
       consent: consent === null ? null : consent.reading,
       attestations,
+      verdicts,
       phash: passport.phash,
       sealed: art.sealed === true,
       privateRecheck: art.privateRecheck === true,
@@ -67,6 +75,8 @@ export async function TopFacts({
       statement: (statement) => t(`consent.summary.${statement}`),
       bits: (count) => t("attestations.distance", { distance: count }),
       privateRecheck: t("attestations.private.badge"),
+      testRun: marks("simulator.word"),
+      privateTestRun: t("attestations.private.testRun"),
       sealed: t("sealed.label"),
       date: (seconds) => format.dateTime(new Date(Number(seconds) * 1000), { dateStyle: "medium" }),
       heldBy: (platform) => t("facts.heldBy", { platform }),
@@ -175,6 +185,23 @@ function Arrow({ leaves }: { leaves: boolean }) {
 async function agentName(agentId: bigint): Promise<string | null> {
   try {
     return readCard((await heldAgent(agentId.toString())).card)?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The mark's own reading of which verdicts the network delivered, from the
+ * same held reads the band under the poster makes, so the strip and the mark
+ * can never call one run two things. A read that fails answers null.
+ */
+async function networkReading(
+  passport: Passport,
+  attestations: readonly Attestation[],
+): Promise<{ at: number; network: boolean }[] | null> {
+  try {
+    const [rows, schema] = await Promise.all([heldIndexedVerdictRows(passport.id).catch(() => null), markSchema()]);
+    return await networkVerdicts(passport, attestations, rows, schema.network);
   } catch {
     return null;
   }

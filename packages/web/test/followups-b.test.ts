@@ -134,6 +134,10 @@ describe("step 10: the challenge's Recorded receipt", () => {
     expect(challengeView({ kept: false, disputeOpen: true, ...signedIn })).toBe("none");
     expect(challengeView({ kept: false, disputeOpen: false, ...signedIn })).toBe("panel");
     expect(challengeView({ kept: false, disputeOpen: false, ...signedIn, isOwner: true })).toBe("none");
+    // A reader with no session gets the rules and who decides, with sign-in where the form would be.
+    expect(challengeView({ kept: false, disputeOpen: false, ready: true, authenticated: false, isOwner: false })).toBe("rules");
+    expect(challengeView({ kept: false, disputeOpen: true, ready: true, authenticated: false, isOwner: false })).toBe("none");
+    expect(challengeView({ kept: false, disputeOpen: false, ready: false, authenticated: false, isOwner: false })).toBe("none");
   });
 
   it("draws the Recorded stamp, the block and the transaction link, with no toggle that could close it", () => {

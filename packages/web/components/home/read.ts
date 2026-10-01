@@ -1,9 +1,12 @@
 import { unstable_cache } from "next/cache";
 import sharp from "sharp";
+import { networkVerdicts } from "@/components/mark/read";
+import { heldIndexedVerdictRows } from "@/components/passport/indexed";
 import { CACHE_TAGS, HOLD_SECONDS, reason } from "@/lib/chain/client";
 import { chainlinkReceivers } from "@/lib/chain/receivers";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { heldPassportRecord } from "@/lib/chain/registry";
+import { markSchema } from "@/lib/data/marks";
 import { offeredSamples } from "@/lib/data/offeredSamples";
 import { askIndex, heldArt } from "@/lib/data/passports";
 import type { TrySample } from "@/lib/data/samples";
@@ -132,11 +135,29 @@ async function readRecord(): Promise<Read<Omit<Finding, keyof Said>>> {
         thumbnail: art.thumbnailUrl ?? null,
         registeredAt: Number(passport.registeredAt),
         phash: passport.phash.toString(),
-        recheck: chainlinkRecheck(attestations, chainlinkReceivers()),
+        recheck: chainlinkRecheck(attestations, chainlinkReceivers(), await networkReading(passport, attestations)),
       },
     };
   } catch (error) {
     return { failed: reason(error) };
+  }
+}
+
+/**
+ * Which of the passport's verdicts Chainlink's network delivered, by the mark's
+ * own rule and from the same held reads the passport page makes. A read that
+ * fails answers null, and the first screen then names neither the network nor
+ * the simulator for the run: the column only ever says what was read.
+ */
+async function networkReading(
+  passport: Parameters<typeof networkVerdicts>[0],
+  attestations: Parameters<typeof networkVerdicts>[1],
+): Promise<{ at: number; network: boolean }[] | null> {
+  try {
+    const [rows, schema] = await Promise.all([heldIndexedVerdictRows(FINDING_ID).catch(() => null), markSchema()]);
+    return await networkVerdicts(passport, attestations, rows, schema.network);
+  } catch {
+    return null;
   }
 }
 

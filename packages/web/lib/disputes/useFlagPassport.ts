@@ -18,6 +18,7 @@ import {
   type BondCheck,
   type FlagState,
 } from "./flag";
+import { takeReopen } from "./reopen";
 
 /** One reading of the two numbers, kept with the wallet it belongs to. */
 interface Numbers {
@@ -87,8 +88,18 @@ export function useFlagPassport({
   const [state, dispatch] = useReducer(flagReducer, initialFlagState);
   /** The last answer to "what does the bond cost and what does this account hold". */
   const [numbers, setNumbers] = useState<Numbers | null>(null);
+  /** The bond alone, read for a reader with no wallet, so the rules still name the price. */
+  const [askedBond, setAskedBond] = useState<bigint | null>(null);
 
   const [treasury, setTreasury] = useState<Hex | null>(null);
+
+  // A first sign-in reloads the page with the wallet up, and the panel that
+  // asked for it opens itself again, so the form lands where the press was.
+  useEffect(() => {
+    if (takeReopen(passportId)) {
+      dispatch({ type: "open" });
+    }
+  }, [passportId]);
 
   /** The flag that is out, so a recheck can look again without sending a second one. */
   const watching = useRef<{ challenger: Hex; hash?: Hex } | null>(null);
@@ -132,6 +143,25 @@ export function useFlagPassport({
     };
   }, [isOwner, state.open, wallet]);
 
+  // Signed out there is no balance to read against the bond, and the rules
+  // still name the price, so the bond is read on its own.
+  useEffect(() => {
+    if (!state.open || wallet !== undefined) {
+      return;
+    }
+    let live = true;
+    void disputeBond()
+      .then((asked) => {
+        if (live) {
+          setAskedBond(asked);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [state.open, wallet]);
+
   // The bond's fate is a line of its own under the rules, so a treasury that
   // cannot be read costs that line and nothing else.
   useEffect(() => {
@@ -151,9 +181,11 @@ export function useFlagPassport({
     };
   }, [isOwner, state.open]);
 
-  // An answer read for another wallet is not this wallet's answer.
+  // An answer read for another wallet is not this wallet's answer. The bond is
+  // the same number for everybody, so the one read without a wallet stands in
+  // until this wallet's own pair arrives.
   const current = numbers !== null && numbers.wallet === wallet ? numbers : null;
-  const bond = current?.bond ?? null;
+  const bond = current?.bond ?? askedBond;
   const balance = current?.balance ?? null;
 
   /** Watches Monad for the flag that is out. Safe to run again: it reads, it never sends. */

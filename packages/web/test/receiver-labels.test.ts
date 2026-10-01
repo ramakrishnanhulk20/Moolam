@@ -117,12 +117,15 @@ const say = {
   statement: () => "",
   bits: (count: number) => `${count} of 64 bits`,
   privateRecheck: words.private.badge,
+  testRun: en.mark.simulator.word,
+  privateTestRun: words.private.testRun,
   sealed: en.passport.sealed.label,
   date: () => "Sep 26, 2026",
   words: en.passport.facts,
 };
 
-function recheckedFact(receiver: Hex): string {
+/** The strip's checked fact for one row, with the mark's reading of it handed in: the network's, or a run in the simulator. */
+function recheckedFact(receiver: Hex, network = false): string {
   const facts = topFacts(
     {
       creator: STRANGER,
@@ -131,6 +134,7 @@ function recheckedFact(receiver: Hex): string {
       kind: 0,
       consent: null,
       attestations: [row(receiver)],
+      verdicts: [{ at: 1_790_400_000, network }],
       phash: PHASH,
       sealed: false,
       privateRecheck: false,
@@ -153,10 +157,12 @@ describe("the two receivers deployed on 2026-09-26", () => {
       expect(attestationSource(written)).toBe("chainlink");
     }
     const drawn = await drawnRow([row(NEW_PUBLIC)]);
-    expect(drawn).toContain(words.byChainlink);
+    // Every report in this file comes through the simulator, so the row leads as a test run.
+    expect(drawn).toContain(asRendered(words.byTestRun));
     expect(drawn).not.toContain(words.private.badge);
     expect(drawn).not.toContain(words.unknown.lead);
-    expect(recheckedFact(NEW_PUBLIC)).toBe("Chainlink, Sep 26, 2026, 1 of 64 bits");
+    expect(recheckedFact(NEW_PUBLIC)).toBe(`${en.mark.simulator.word}, Sep 26, 2026, 1 of 64 bits`);
+    expect(recheckedFact(NEW_PUBLIC, true)).toBe("Chainlink, Sep 26, 2026, 1 of 64 bits");
   });
 
   it("name the sealed one as the private re-check", async () => {
@@ -165,7 +171,8 @@ describe("the two receivers deployed on 2026-09-26", () => {
     expect(drawn).toContain(words.private.badge);
     expect(drawn).toContain(asRendered(words.private.leadEarlier));
     expect(drawn).not.toContain(words.unknown.lead);
-    expect(recheckedFact(NEW_SEALED)).toBe(`${words.private.badge}, Sep 26, 2026, 1 of 64 bits`);
+    expect(recheckedFact(NEW_SEALED)).toBe(`${words.private.testRun}, Sep 26, 2026, 1 of 64 bits`);
+    expect(recheckedFact(NEW_SEALED, true)).toBe(`${words.private.badge}, Sep 26, 2026, 1 of 64 bits`);
   });
 });
 
@@ -173,9 +180,9 @@ describe("the two receivers taken off the policy on 2026-09-26", () => {
   it("keep their names for the verdicts they wrote", async () => {
     expect(receivers.receiverRole(OLD_PUBLIC)).toBe("public");
     expect(receivers.receiverRole(OLD_SEALED)).toBe("private");
-    expect(await drawnRow([row(OLD_PUBLIC)])).toContain(words.byChainlink);
+    expect(await drawnRow([row(OLD_PUBLIC)])).toContain(asRendered(words.byTestRun));
     expect(await drawnRow([row(OLD_SEALED)])).toContain(words.private.badge);
-    expect(recheckedFact(OLD_PUBLIC)).toBe("Chainlink, Sep 26, 2026, 1 of 64 bits");
+    expect(recheckedFact(OLD_PUBLIC, true)).toBe("Chainlink, Sep 26, 2026, 1 of 64 bits");
   });
 });
 

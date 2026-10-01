@@ -80,6 +80,10 @@ export async function Attestations({
       };
     }),
   );
+  // The date under the control is the newest row's, so it is said the way that
+  // row is: a simulator run as a test run, never as a check.
+  const newestDelivery = rows.find((row) => row.attestation.at === newest)?.delivery ?? "unknown";
+  const lastRun = newestDelivery === "simulation" ? "testRun" : newestDelivery;
 
   return (
     // The verify card's "See the second opinion" link lands here. The margin is
@@ -153,6 +157,7 @@ export async function Attestations({
                 className="mt-8 border-t border-line pt-7"
                 sealed={sealed}
                 recheckedOn={recheckedOn}
+                lastRun={lastRun}
                 tuck
               />
             ) : attestations.length > 0 && copyLine !== null ? (
@@ -260,8 +265,10 @@ function Row({
           )}
         </>
       ) : (
+        // A run the simulation forwarder carried is led as the test run it is,
+        // so the first words of the row agree with the badge beside it.
         <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-          {unknown ? t("unknown.lead") : t("byChainlink")}
+          {unknown ? t("unknown.lead") : delivery === "simulation" ? t("byTestRun") : t("byChainlink")}
         </p>
       )}
 

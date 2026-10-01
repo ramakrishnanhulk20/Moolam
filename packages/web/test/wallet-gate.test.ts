@@ -144,8 +144,13 @@ describe("what a screen does before the wallet provider is mounted", () => {
     expect(held).toMatch(/<button[^>]*disabled=""[^>]*tabindex="-1"/);
   });
 
-  it("paints nothing at all for the three passport panels", () => {
-    expect(render(SCREENS.dispute(), false)).toBe("");
+  it("paints the challenge rules toggle for a stranger, and nothing for the two holder panels", () => {
+    // What a challenge needs is not a secret: the frame and its toggle are drawn
+    // without the wallet, and the sign-in offer brings a provider only when pressed.
+    const dispute = render(SCREENS.dispute(), false);
+    expect(dispute).toContain("data-dispute-panel");
+    expect(dispute).toContain(en.passport.dispute.flag.link);
+    expect(dispute).not.toContain("data-challenge-rules");
     expect(render(SCREENS.edit(), false)).toBe("");
     expect(render(SCREENS.consent(), false)).toBe("");
   });

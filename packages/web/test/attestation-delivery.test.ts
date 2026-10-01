@@ -116,11 +116,12 @@ describe("the delivery line under a verdict", () => {
     expect(await card(indexedRow, "ta")).toContain(asRendered(ta.mark.simulator.line));
   });
 
-  it("names the workflow rather than claiming an independent network", async () => {
+  it("leads a simulator row as the test run it is, and never as an independent network", async () => {
     delivery.current = "simulation";
     const markup = await card(indexedRow);
 
-    expect(markup).toContain(en.passport.attestations.byChainlink);
+    expect(markup).toContain(asRendered(en.passport.attestations.byTestRun));
+    expect(markup).not.toContain(en.passport.attestations.byChainlink);
     expect(markup).not.toContain("Verified independently");
     expect(markup).not.toContain("An independent network");
   });

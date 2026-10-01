@@ -136,8 +136,8 @@ function bundle(attestations: Attestation[], dispute: Dispute | null = null) {
   return { passport, attestations, edits: [], owner: CREATOR, dispute, hasPasskey: true };
 }
 
-const NEW_INDEX: MarkSchema = { network: true, lookalikes: true };
-const OLD_INDEX: MarkSchema = { network: false, lookalikes: false };
+const NEW_INDEX: MarkSchema = { network: true, lookalikes: true, networkCount: true };
+const OLD_INDEX: MarkSchema = { network: false, lookalikes: false, networkCount: false };
 
 function lookalikeRows(own: Partial<Extract<LookalikeFacts, { kind: "rows" }>["own"]> | null, later = 0): LookalikeFacts {
   return {
@@ -460,7 +460,7 @@ describe("L32: every mark is a read that succeeded, and a failed read is said", 
   });
 
   it("asks the old index only for the fields it has", async () => {
-    expect(marks.NO_MARK_FIELDS).toEqual({ network: false, lookalikes: false });
+    expect(marks.NO_MARK_FIELDS).toEqual({ network: false, lookalikes: false, networkCount: false });
     const source = readFileSync(fileURLToPath(new URL("../lib/data/passports.ts", import.meta.url)), "utf8");
     expect(source).toContain('filter.marks === true');
   });
@@ -529,14 +529,14 @@ describe("L25: a registration from outside the studio is labelled, never clean",
 
   it("says outside the studio for a document with no sworn line and no platform statement", async () => {
     const markup = await strength({ sworn: false });
-    expect(markup).toContain("data-claim-outside");
+    expect(markup).toContain('data-claim-origin="outside"');
     expect(markup).toContain(shown(en.claim.outside));
   });
 
   it("says nothing of the kind for a sworn document, a platform's statement, or a document nobody could read", async () => {
-    expect(await strength({ sworn: true })).not.toContain("data-claim-outside");
-    expect(await strength({ sworn: false, platformStatement: "Drawn on Dreamloom by its user." })).not.toContain("data-claim-outside");
-    expect(await strength(undefined)).not.toContain("data-claim-outside");
+    expect(await strength({ sworn: true })).not.toContain("data-claim-origin");
+    expect(await strength({ sworn: false, platformStatement: "Drawn on Dreamloom by its user." })).not.toContain("data-claim-origin");
+    expect(await strength(undefined)).not.toContain("data-claim-origin");
   });
 
   it("names the strength of the claim: studio, a listed platform, or the registrant's own until thirty days pass", () => {

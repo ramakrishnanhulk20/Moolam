@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import { WAITING_SHIPPED } from "@/components/story/stated";
 
 /**
  * Everything the business page needs that is not a word: where each link goes,
@@ -68,12 +69,16 @@ export const REASONS = [
 
 export const WAY_ROWS = ["person", "credit", "cost", "build"] as const;
 
-/** The three ways, the recommended one first, each with the tag it wears. */
-export const WAYS = [
+/**
+ * The three ways, the recommended one first, each with the tag it wears. The
+ * email way is live from push day, the day the film's waiting beat turns on,
+ * so the same flag drops its "next release" tag.
+ */
+export const WAYS: readonly { key: "cosign" | "email" | "connect"; tag: "recommended" | "next" | null }[] = [
   { key: "cosign", tag: "recommended" },
-  { key: "email", tag: "next" },
+  { key: "email", tag: WAITING_SHIPPED ? null : "next" },
   { key: "connect", tag: null },
-] as const;
+];
 
 export const PERSON_STEPS = ["make", "press", "window", "signIn", "passkey", "passport"] as const;
 

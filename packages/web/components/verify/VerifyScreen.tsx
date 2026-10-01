@@ -4,6 +4,7 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { withoutDoubleStop } from "@/lib/i18n/sentence";
 import { verify, verifierHost } from "@/lib/verifier/client";
 import type { TrySample } from "@/lib/data/samples";
 import { AnswerCard, type Stage } from "./AnswerCard";
@@ -442,8 +443,8 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
               {stage.answer.kind === "miss"
                 ? t("none")
                 : stage.answer.kind === "exact"
-                  ? t("verdictExact", { title: stage.passport?.title ?? t("untitled") })
-                  : t("verdict", { title: stage.passport?.title ?? t("untitled") })}
+                  ? withoutDoubleStop(t("verdictExact", { title: stage.passport?.title ?? t("untitled") }), stage.passport?.title ?? t("untitled"))
+                  : withoutDoubleStop(t("verdict", { title: stage.passport?.title ?? t("untitled") }), stage.passport?.title ?? t("untitled"))}
             </motion.p>
           ) : null}
 
