@@ -4,7 +4,7 @@
     "creator": "制作者",
     "generatorAgent": "生成エージェント",
     "verify": "検証",
-    "attestation": "制作者以外が書いた、チェーン上の再確認",
+    "attestation": "制作者以外が書いた、チェーン上の確認",
     "editChain": "編集のつながり",
     "dispute": "異議",
     "passkey": "パスキー",
@@ -77,19 +77,19 @@
         "title": "どの画像でも検証できます",
         "line": "画像を渡すと、Monad にパスポートがあるか、制作者が何を許可したかを Moolam が答えます。",
         "action": "画像を検証",
-        "elsewhere": "パソコンでは上のバー、スマートフォンでは下のバーにあります。"
+        "elsewhere": "パソコンでは上のメニューの「個人向け」の中にあります。スマートフォンでは下のバーにあります。"
       },
       "make": {
         "title": "作ってパスポートを受け取る",
         "line": "スタジオで画像を登録します。署名は二つ、約一秒、誰にも黙って書き換えられない記録が残ります。",
         "action": "画像を登録",
-        "elsewhere": "パソコンでは上のバー、スマートフォンでは真ん中のタブです。"
+        "elsewhere": "パソコンでは上のメニューの「個人向け」の中にあります。スマートフォンでは真ん中のタブです。"
       },
       "find": {
         "title": "自分の画像を見つける",
         "line": "登録した画像のすべてが、サインインしたどの端末でも、パスポートと履歴つきで並びます。",
         "action": "自分の画像",
-        "elsewhere": "上のバーで他の項目の隣、スマートフォンでは一番右のタブです。"
+        "elsewhere": "パソコンでは右上の「自分のアカウント」です。スマートフォンでは一番右のタブです。"
       }
     }
   },
@@ -139,11 +139,11 @@
     "kicker": "一覧",
     "title": "レジストリ",
     "rail": "Monad 上のすべてのパスポート",
-    "lede": "Monad に登録されたすべての画像を、新しい順に、このページが開くたびインデックスから読み出します。ひとつ開けば、指紋も Content Credentials も再確認も見えます。",
+    "lede": "Monad に登録されたすべての画像を、新しい順に、このページが開くたびインデックスから読み出します。ひとつ開けば、指紋も Content Credentials も確認結果も見えます。",
     "counts": {
       "total": "パスポート",
       "generated": "生成",
-      "rechecked": "再確認済み",
+      "rechecked": "確認済み",
       "stated": "AI 利用の表明あり"
     },
     "countsError": "件数を読み取れませんでした: {reason}。",
@@ -163,11 +163,11 @@
       "generated": "生成",
       "captured": "撮影",
       "edits": "編集",
-      "rechecked": "再確認済み",
+      "rechecked": "確認済み",
       "manifest": "Content Credentials 付き",
       "disputed": "異議が認められた",
-      "lookalike": "Registered after a look-alike",
-      "later": "Has later look-alikes"
+      "lookalike": "よく似た画像の後に登録",
+      "later": "後によく似た画像あり"
     },
     "ai": {
       "label": "AI 利用",
@@ -187,17 +187,17 @@
     "clearAgent": "エージェントの絞り込みを外す",
     "marks": {
       "manifest": "Content Credentials 付き",
-      "rechecked": "チェーン上で再確認済み",
-      "chainlink": "Chainlink ワークフローが再確認",
+      "rechecked": "チェーン上で確認済み",
+      "chainlink": "Chainlink ワークフローが確認",
       "disputed": "異議が認められた",
-      "platform": "Drawn on {platform}"
+      "platform": "{platform} で描画"
     },
     "legend": {
       "manifest": "Content Credentials 付き",
-      "rechecked": "チェーン上で再確認済み",
+      "rechecked": "チェーン上で確認済み",
       "disputed": "この画像か、その編集元の画像で異議が認められた",
       "consent": "AI 利用の表明、四つの用途に四つの印",
-      "platform": "Drawn on a platform Moolam lists"
+      "platform": "Moolam のリストに載るプラットフォームで描画"
     },
     "untitled": "無題",
     "noPicture": "ゲートウェイに画像がありません",
@@ -229,7 +229,7 @@
     "kicker": "エージェント",
     "title": "エージェント",
     "lede": "パスポートに署名したとインデックスが見たすべての生成エージェントと、そこで数えられたすべての数字。署名の多い順です。",
-    "scoreMeaning": "0 から 100 までの信頼スコア。Chainlink の再確認が、このエージェントの署名とどれだけ一致したかです。認められた異議は二倍に数えて差し引きます。",
+    "scoreMeaning": "0 から 100 までの信頼スコア。Chainlink の確認が、このエージェントの署名とどれだけ一致したかです。認められた異議は二倍に数えて差し引きます。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "スコアの求め方",
     "formulaDoc": "インデックスがこれを数えている場所",
@@ -239,13 +239,13 @@
     "since": "初回 {when}",
     "trustScore": "信頼スコア",
     "passports": "パスポート",
-    "matched": "一致した再確認",
-    "mismatched": "外れた再確認",
+    "matched": "一致した確認",
+    "mismatched": "外れた確認",
     "upheld": "認められた異議",
     "seeWorks": "このエージェントのパスポート",
     "empty": "パスポートに署名したエージェントを、インデックスはまだ見ていません。",
     "error": "インデックスを読み取れませんでした: {reason}。",
-    "formulaPlain": "一致した再確認はスコアを上げ、外れた再確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。",
+    "formulaPlain": "一致した確認はスコアを上げ、外れた確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。",
     "strip": {
       "label": "このエージェントが署名した最新の画像"
     }
@@ -277,11 +277,11 @@
       "verdictFigure": "64 ビット中 {count}",
       "verdictSame": "ビットの差：同じ画像です。",
       "verdictMissed": "ビットの差。検証サービスは見つけられませんでした。",
-      "recheckOn": "{date} に Chainlink が登録された画像そのものを再確認：",
+      "recheckOn": "{date} に Chainlink ワークフローが登録された画像そのものを確認：",
       "recheckBits": "記録との差は 64 ビット中 {count} ビット",
       "recheckMissed": "一致せず、{bits}",
       "chainlink": "Chainlink：",
-      "recheckNone": "登録された画像の再確認はまだ書かれていません",
+      "recheckNone": "登録された画像の確認はまだ書かれていません",
       "statedOn": "AI 利用についての保有者の表明、{date}：",
       "aiUse": "AI 利用：",
       "openPassport": "パスポートを開く：{title}",
@@ -289,7 +289,7 @@
       "billing": {
         "monad": "Monad メインネット上",
         "privy": "Privy のパスキー",
-        "chainlink": "Chainlink が再確認",
+        "chainlink": "Chainlink 確認済み",
         "envio": "Envio がインデックス"
       },
       "unstarted": "確認が始まりませんでした。ページを再読み込みして、もう一度押してください。"
@@ -299,35 +299,35 @@
     "title": "Moolam",
     "chapter": {
       "kicker": "映像",
-      "title": "パスポートのしくみ"
+      "title": "画像がパスポートを得るまで"
     },
     "scrollCue": "スクロール",
     "noWebgl": "このブラウザでは映像を 3D で再生できないため、物語をこのページの形でお届けします。並ぶ数字はどれも、映像と同じくライブで読み取ったものです。",
     "sealed": {
       "kicker": "署名する",
-      "title": "制作者のパスキーが署名しました。",
-      "body": "Monad がブロック {block} に記録しました。署名は二つ、記録は一つ、およそ一秒です。",
-      "bodyNoBlock": "Monad が記録しました。署名は二つ、記録は一つ、およそ一秒です。",
+      "title": "本人のパスキーが署名しました。Monad が書き留めました。",
+      "body": "ブロック {block}。約一秒で記録が一つ。誰にも書き換えられません。",
+      "bodyNoBlock": "約一秒で記録が一つ。誰にも書き換えられません。",
       "readout": "パスポート {passport}、{date} 登録",
       "unread": "このパスポートはレジストリから読み取れませんでした。",
-      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
+      "readoutSworn": "宣誓して署名: この画像は私が作ったもの、または私が登録する権利を持つものです。"
     },
     "stated": {
       "kicker": "表明",
       "title": "{summary}。",
-      "body": "AI 利用についての制作者の言葉は、日付とともにパスポートの隣の Monad に記されました。それ以降のどの日を尋ねても、チェーンはその日の答えを返します。",
-      "readout": "{written} に Monad に記され、以後ずっと有効",
+      "body": "AI についての本人の表明が、日付とともにパスポートの隣の Monad に記されました。あとから変えられ、履歴は残ります。",
+      "readout": "表明は {written} に Monad に記され、以後有効。",
       "registered": "{when} 登録",
       "today": "今日"
     },
     "shared": {
       "kicker": "広まる",
-      "title": "プラットフォームは投稿時に証明書を消します。",
+      "title": "プラットフォームは投稿時にラベルを消します。",
       "body": "それでもコピーは旅を続けます。再圧縮され、十分の一に縮められ、回され、反転され、SNS のパイプラインを通り抜けて。どれもが、出どころを語っていたファイルを失っています。"
     },
     "verified": {
-      "kicker": "検証する",
-      "title": "どのコピーも、自分の記録に戻ってこられます。",
+      "kicker": "見つかる",
+      "title": "どのコピーも、自分のパスポートにたどり着けます。",
       "match": "一致度",
       "copies": {
         "rotate-90": "90 度回したコピー",
@@ -340,8 +340,8 @@
       "similarity": "64 ビット中 {value} ビットの差: {result}",
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
-      "attestation": "Chainlink CRE ワークフローが再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
-      "noAttestation": "このパスポートには、再確認がまだ書かれていません。",
+      "attestation": "Chainlink ワークフローが確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
+      "noAttestation": "このパスポートには、確認がまだ書かれていません。",
       "provenance": "はしごの数値は Moolam 検証サービスが別の登録済み画像で測ったものです。パスポート {passport}、{date}",
       "provenanceSelf": "数値は Moolam 検証サービスがこのパスポートで測ったものです。{date}"
     },
@@ -363,20 +363,20 @@
       "noMatchBody": "レジストリのどのパスポートもこの画像と一致しません。生成器から出たまま一度も登録されていないファイルは、ちょうどこう見えます。",
       "noManifest": "このファイルに Content Credentials は残っていません。それでも記録は見つかりました。",
       "openPassport": "このパスポートを開く",
-      "titleTouch": "Check any copy of any image"
+      "titleTouch": "どんな画像のどんなコピーでも確認"
     },
     "close": {
       "kicker": "Moolam",
       "title": "一度登録すれば、どこでも見分けがつく。",
-      "body": "生成されたすべての画像に一冊のパスポートを。生まれた瞬間に Monad へ書き込み、Chainlink ワークフローが再確認し、インターネットを生き延びたどのコピーからでもたどれます。",
+      "body": "すべての画像にパスポートを。作った本人が署名し、Monad に書き込まれ、どのコピーからでも見つけ直せます。Chainlink が確認します。",
       "verify": "画像を検証",
       "proof": "証拠を見る",
       "passports": "パスポート",
-      "attestations": "チェーン上の再確認",
+      "attestations": "Monad 上の Chainlink の確認",
       "chain": "Monad 上、チェーン {chainId}",
       "unread": "読み取れず",
       "error": "いまインデックスを読めませんでした。少ししてからページを再読み込みしてください。",
-      "checked": "Checked by Chainlink"
+      "checked": "Chainlink 確認済み"
     },
     "skip": "映像をとばす",
     "failed": {
@@ -384,54 +384,54 @@
       "retry": "もう一度試す"
     },
     "imagined": {
-      "kicker": "Imagined",
-      "title": "A person imagined this.",
-      "body": "Agent {agent} drew it. The credit goes to the person, never the tool.",
-      "bodyPlatform": "Drawn by {platform}'s agent. The credit goes to the person, never the tool.",
-      "tag": "Imagined by {creator}",
-      "titlePhoto": "A person took this.",
-      "bodyPhoto": "No agent touched it. They registered it themselves.",
-      "titleHeld": "Imagined on {platform}.",
-      "bodyHeld": "{platform} holds it until the person who imagined it claims it."
+      "kicker": "思い描く",
+      "title": "これを思い描いたのは人間です。",
+      "body": "描いたのはエージェント {agent}。クレジットは人のもので、道具のものではありません。",
+      "bodyPlatform": "描いたのは {platform} のエージェント。クレジットは人のもので、道具のものではありません。",
+      "tag": "{creator} が思い描いた",
+      "titlePhoto": "これを撮ったのは人間です。",
+      "bodyPhoto": "エージェントは関わっていません。本人が自分で登録しました。",
+      "titleHeld": "{platform} で思い描かれました。",
+      "bodyHeld": "思い描いた本人が受け取るまで、{platform} が預かっています。"
     },
     "asked": {
-      "kicker": "Asked",
-      "question": "May I train on this?",
-      "title": "Any AI can ask first.",
-      "body": "An AI agent asks Moolam's server and gets the holder's terms back, read from Monad. It cannot say it did not know.",
-      "readout": "Answered from the same register through Moolam's MCP server, get_ai_use_terms."
+      "kicker": "尋ねる",
+      "question": "これで学習してもいいですか。",
+      "title": "どの AI も、先に尋ねられます。",
+      "body": "AI エージェントは Moolam のサーバーに尋ね、Monad から読んだ保有者の表明を受け取ります。知らなかったとは言えません。",
+      "readout": "同じ登録簿から、Moolam の MCP サーバーの get_ai_use_terms を通して回答。"
     },
     "checked": {
-      "kicker": "Checked",
-      "mark": "Checked by Chainlink",
-      "title": "Chainlink checks it. We do not.",
-      "body": "Chainlink's network fetches the picture, measures it again, and its nodes must agree. Only their verdict turns this mark on.",
-      "readout": "Checked by Chainlink on {date}: {result}, {distance} of 64 bits apart.",
-      "score": "Agent {agent}'s score: {score}",
-      "testTitle": "Chainlink measured it again.",
-      "testBody": "A Chainlink workflow fetched the picture, measured it and wrote the answer on Monad: {result}, {distance} bits apart. This run was a test on one machine."
+      "kicker": "確認する",
+      "mark": "Chainlink 確認済み",
+      "title": "確認するのは Chainlink。私たちではありません。",
+      "body": "Chainlink のネットワークが画像を取得して測り直し、そのノードどうしの答えが一致しなければなりません。この印が付くのは、その判定があったときだけです。",
+      "readout": "Chainlink 確認済み、{date}: {result}、64 ビット中 {distance} ビットの差。",
+      "score": "エージェント {agent} のスコア: {score}",
+      "testTitle": "Chainlink が測り直しました。",
+      "testBody": "Chainlink ワークフローが画像を取得して測り、答えを Monad に書きました: {result}、差は {distance} ビット。この実行は 1 台のマシンでのテストでした。"
     },
     "lookalike": {
-      "kicker": "Look-alike",
-      "title": "Register a copy, and you are second.",
-      "body": "If someone registers a copy of a picture already here, Chainlink finds the earlier passport and marks the new one as later. Anyone can challenge it.",
-      "readout": "{later} was registered {gap} after {earlier}. {bits} of 64 bits apart, found by Chainlink on {date}.",
-      "aside": "Two other passports, not the one this film follows."
+      "kicker": "よく似た画像",
+      "title": "コピーを登録しても、二番目です。",
+      "body": "すでにある画像のコピーを誰かが登録すると、Chainlink が先のパスポートを見つけ、新しいほうに「後から」と印を付けます。誰でも異議を申し立てられます。",
+      "readout": "{later} は {earlier} の {gap}後に登録されました。64 ビット中 {bits} ビットの差で、{date} に Chainlink が見つけました。",
+      "aside": "別の二つのパスポートです。この映像が追っているものではありません。"
     },
     "yourself": {
-      "kicker": "Sign it yourself",
-      "label": "Drawn on {platform}",
-      "tag": "Imagined by {person}",
-      "title": "Made on another AI site? Sign it yourself.",
-      "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
-      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+      "kicker": "自分で署名する",
+      "label": "{platform} で描画",
+      "tag": "{person} が思い描いた",
+      "title": "ほかの AI サイトで作りましたか。自分で署名できます。",
+      "body": "画像サイトは Moolam に参加できます。サイトのエージェントは道具として署名し、あなたはワンタップで制作者として署名します。クレジットは最初のブロックからあなたのものです。",
+      "readout": "{platforms, plural, other {# プラットフォーム}}で描かれた画像 {count, plural, other {# 枚}}。この一枚: {title}。"
     },
     "waiting": {
-      "kicker": "Waiting for you",
-      "tag": "Waiting for you",
-      "title": "No Moolam account yet? It waits for you.",
-      "body": "A site can leave your passports under the email it verified. Sign in with Google or an emailed code, press These are mine, then Confirm, and they are yours.",
-      "readout": "No figure here, on purpose: who a picture is waiting for is private."
+      "kicker": "あなたを待つ",
+      "tag": "あなたを待っています",
+      "title": "Moolam のアカウントはまだですか。画像はあなたを待っています。",
+      "body": "サイトは、確認したあなたのメールアドレス宛てにパスポートを預けておけます。Google かメールで届くコードでサインインし、「私のものです」を押して確定すれば、あなたのものになります。",
+      "readout": "ここに数字はありません。わざとです。画像が誰を待っているかは非公開だからです。"
     }
   },
   "verify": {
@@ -535,14 +535,14 @@
     "samples": "この中から試すこともできます",
     "sampleFailed": "この画像はどのゲートウェイからも取得できませんでした。もう一度試すか、自分のファイルを選んでください。",
     "recheck": {
-      "label": "第三者の再確認",
+      "label": "Chainlink の確認",
       "never": "まだです",
-      "count": "{count, plural, other {再確認 # 件}}",
-      "none": "まだ再確認されていません。",
+      "count": "{count, plural, other {確認 # 件}}",
+      "none": "まだ確認されていません。",
       "noneNote": "この画像を取得して指紋を計算し直した独立のワークフローは、まだありません。",
-      "matched": "{at} に Chainlink (CRE ワークフロー) が再確認しました。自分で画像を取得し、指紋を取り直して一致、64 ビット中 {count} ビットの差でした。",
-      "mismatched": "{at} に Chainlink (CRE ワークフロー) が再確認しました。自分で画像を取得し、指紋を取り直しましたが一致せず、64 ビット中 {count} ビットの差でした。",
-      "link": "第三者の再確認を見る"
+      "matched": "{at} に Chainlink CRE ワークフローが確認しました。自分で画像を取得し、指紋を取り直して一致、64 ビット中 {count} ビットの差でした。",
+      "mismatched": "{at} に Chainlink CRE ワークフローが確認しました。自分で画像を取得し、指紋を取り直しましたが一致せず、64 ビット中 {count} ビットの差でした。",
+      "link": "Chainlink の確認を見る"
     },
     "dispute": {
       "none": "このパスポートに対する異議は出ていません。",
@@ -554,7 +554,7 @@
     "sealed": {
       "matched": "封印済みのパスポートと一致しました。登録された画像は公開されていません。",
       "label": "封印済み",
-      "recheck": "再確認できる公開コピーがありません。再確認するには画像を公開する必要があります。"
+      "recheck": "公開コピーがないため、Chainlink ネットワークは確認できません。確認するには画像を公開する必要があります。"
     },
     "unsealed": {
       "matched": "このパスポートは封印して登録され、{date} に保有者が画像を公開しました。"
@@ -587,12 +587,12 @@
       "label": "あなたのコピーと登録された画像の比較"
     },
     "first": {
-      "heading": "Registered earlier",
-      "lead": "First registered as {title} on {date}.",
-      "closest": "The file you checked is closest to {title}, registered {days, plural, =0 {the same day} =1 {# day later} other {# days later}}.",
-      "held": "Held by {holder}",
-      "aiUse": "AI use: {terms}",
-      "open": "Open the first registration"
+      "heading": "先に登録されています",
+      "lead": "{date} に {title} として最初に登録されました。",
+      "closest": "確認したファイルにいちばん近いのは、{days, plural, =0 {同じ日} other {# 日後}}に登録された {title} です。",
+      "held": "保有者: {holder}",
+      "aiUse": "AI 利用: {terms}",
+      "open": "最初の登録を開く"
     }
   },
   "passport": {
@@ -614,31 +614,31 @@
     "disputed": "異議あり",
     "attestations": {
       "heading": "別の誰かが、もう一度確かめました",
-      "empty": "このパスポートには、まだ再確認が書かれていません。Chainlink のワークフローが画像を再確認すると、ここに一件書き込まれます。",
+      "empty": "このパスポートには、まだ確認が書かれていません。Chainlink のワークフローが画像を確認すると、ここに一件書き込まれます。",
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
       "distance": "64 ビット中 {distance} ビットの差",
       "receiver": "Monad に書き込んだのは Moolam の Chainlink レシーバー",
       "at": "日時",
-      "kicker": "第三者の再確認",
+      "kicker": "Chainlink の確認",
       "body": "その画像は自分のものだと、誰でも言えます。ここは違います。Chainlink の CRE ワークフローが自分で画像をダウンロードし、指紋を取り直して、結果を Monad に書き込みました。",
       "distanceLabel": "Chainlink の報告",
-      "byChainlink": "Chainlink CRE ワークフローがもう一度確認",
+      "byChainlink": "Chainlink CRE ワークフローが確認",
       "delivery": {
         "simulation": "この確認は Chainlink の CRE シミュレーターが 1 台のマシンで実行したもので、Chainlink のネットワーク全体ではありません。",
         "network": "独立した複数の Chainlink のマシンがこの確認を実行し、答えが一致しました。"
       },
       "openTx": "トランザクション {hash}",
-      "noTransaction": "この再確認のトランザクションへのリンクはまだありません。",
+      "noTransaction": "この確認のトランザクションへのリンクはまだありません。",
       "registeredGrid": "登録時の指紋",
       "recomputedGrid": "Chainlink の指紋",
       "verdict": "Chainlink CRE ワークフローがこの画像を取り直し、指紋を計算し直しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
       "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ワークフローが自分で取得したファイルから計算した指紋です。食い違う升目には印が付きます。",
-      "whatIsRecheck": "再確認とは、Chainlink CRE ワークフローがこのファイルを自分で取得し、指紋を計算し直して、その答えを Monad に書き込むことです。自分の画像について自分で書くことはできません。",
+      "whatIsRecheck": "確認とは、Chainlink CRE ワークフローがこのファイルを自分で取得し、指紋を計算し直して、その答えを Monad に書き込むことです。自分の画像について自分で書くことはできません。",
       "private": {
-        "badge": "非公開の再確認",
-        "lead": "Chainlink の機密ワークフローが、Moolam の保持する小さなコピーから非公開で再確認しました。",
-        "leadEarlier": "Chainlink の機密ワークフローが、Moolam が当時保持していた小さなコピーから非公開で再確認しました。",
+        "badge": "非公開の確認",
+        "lead": "Chainlink の機密ワークフローが、Moolam の保持する小さなコピーから非公開で確認しました。",
+        "leadEarlier": "Chainlink の機密ワークフローが、Moolam が当時保持していた小さなコピーから非公開で確認しました。",
         "limit": "実行したのは 1 台のマシン上の Chainlink のシミュレーターで、Chainlink の安全なハードウェアの中ではありません。",
         "verdict": "Chainlink の機密ワークフローが、Moolam が保持していたこの画像の小さな非公開コピーを開き、指紋を照合しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
         "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ワークフローが Moolam の小さな非公開コピーから計算した指紋です。食い違う升目には印が付きます。"
@@ -731,9 +731,9 @@
         "offline": "検証サービスが応答しなかったため、何も送信していません。",
         "signedOut": "このセッションはサインアウトしているため、サービスは編集を受け取りませんでした。",
         "tooLarge": "このファイルは 20 MB の上限を超えています。もっと小さいコピーを選んでください。",
-        "fingerprintUnstable": "この編集は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。そのため Chainlink の再確認でもコピーの検索でも見つかりません。何もピン留めしておらず、何も送信していません。横方向にもっと細部のある編集なら登録できます。",
+        "fingerprintUnstable": "この編集は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。そのため Chainlink の確認でもコピーの検索でも見つかりません。何もピン留めしておらず、何も送信していません。横方向にもっと細部のある編集なら登録できます。",
         "signedFileTooLarge": "パスポートの署名を加えると、このファイルは確認で読み戻せる上限の 20 MB を超えてしまいます。小さく書き出してもう一度お試しください。何もピン留めしておらず、何も送信していません。",
-        "thumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できません。何もピン留めしておらず、何も送信していません。",
+        "thumbnailTooLarge": "この画像は、Chainlink が確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは確認できません。何もピン留めしておらず、何も送信していません。",
         "notAnImage": "これは画像ファイルではありません。JPEG、PNG、WebP を選んでください。",
         "empty": "このファイルは空です。画像をもう一度選んでください。",
         "rateLimited": "今はここからの要求が多すぎます。少し待ってからお試しください。",
@@ -765,15 +765,15 @@
     "passkeyBound": "この制作者のウォレットに結び付いた鍵が、Monad 上でこの画像の指紋に署名しました。",
     "passkeyNone": "この制作者のウォレットにパスキーは結び付けられていません。",
     "platform": {
-      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
-      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
-      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
-      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
-      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
-      "passedOn": "Imagined by {person}. Now held by {holder}.",
-      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
-      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
+      "held": "{platform} で思い描かれました。思い描いた本人が受け取るまで、{platform} がこのパスポートを預かっています。",
+      "heldNote": "{platform} のエージェントが画像を描き、作られた瞬間に {platform} のサーバー鍵が登録しました。Moolam が確認したのは {platform} が両方の鍵を持っていることで、どんな会社かではありません。",
+      "handed": "{platform} で描かれ、{holder} に渡されましたが、まだ本人の確定はありません。",
+      "handedNote": "渡された本人が自分の AI 利用の表明を書くまで、誰にもクレジットは付きません。",
+      "confirmed": "{person} が思い描き、{platform} で描かれました。パスポートは {platform} から本人に渡され、{date} に本人が確定しました。",
+      "confirmedNote": "このクレジットの根拠は、このアカウントが画像を頼んだという {platform} の言葉と、本人による確定です。本人の鍵は画像に署名していません。",
+      "passedOn": "{person} が思い描きました。現在は {holder} が保有しています。",
+      "cosigned": "{person} が思い描きました。描いたのは {platform} のエージェントです。",
+      "cosignedNote": "本人のウォレットに結び付いた鍵が、レジストリが書き込む前にこの画像そのものを承認しました。",
       "outsideKit": "このウォレットは {platform} として Moolam のリストに掲載されていますが、この画像は Moolam プラットフォームキットを経由せずに登録されました。"
     },
     "agentListed": "{platform} のエージェントとして Moolam のリストに掲載",
@@ -786,15 +786,15 @@
     "about": "この画像について",
     "prompt": "プロンプト",
     "fingerprints": "指紋",
-    "fingerprintsBody": "誰でも画像を取得し、指紋を取り直して、これらと突き合わせられます。Chainlink の再確認がしているのは、まさにそれです。ここに、ファイル名やメタデータの主張に頼るものは一つもありません。",
+    "fingerprintsBody": "誰でも画像を取得し、指紋を取り直して、これらと突き合わせられます。Chainlink の確認がしているのは、まさにそれです。ここに、ファイル名やメタデータの主張に頼るものは一つもありません。",
     "exactHash": "ファイルそのものの指紋 (SHA-256)",
     "passportId": "パスポート ID",
     "tokenId": "このパスポートは、同じ ID を持つ Monad 上の NFT でもあります",
     "standing": {
-      "verified": "チェーン上の再確認で一致しました",
-      "mismatched": "再確認で一致しませんでした",
+      "verified": "チェーン上の確認で一致しました",
+      "mismatched": "確認で一致しませんでした",
       "disputed": "異議あり",
-      "unverified": "まだ再確認されていません"
+      "unverified": "まだ確認されていません"
     },
     "check": {
       "kicker": "コピーを確かめる",
@@ -839,8 +839,8 @@
         "link": "このパスポートに異議を申し立てる",
         "close": "閉じる",
         "heading": "主張の裏づけに保証金を置く",
-        "what": "異議には {bond} MON の保証金がかかります。ポリシーが指名した裁定者が判断し、認められれば保証金はあなたの取り分として記録され、認められなければトレジャリーに入ります。",
-        "whatUnknown": "異議には保証金がかかり、その額はポリシーコントラクトが決めます。ポリシーが指名した裁定者が判断し、認められれば保証金はあなたの取り分として記録され、認められなければトレジャリーに入ります。",
+        "what": "異議には {bond} MON の保証金がかかります。ポリシーが指名した裁定者が判断し、認められれば保証金はあなたの取り分として記録されます。",
+        "whatUnknown": "異議には保証金がかかり、その額はポリシーコントラクトが決めます。ポリシーが指名した裁定者が判断し、認められれば保証金はあなたの取り分として記録されます。",
         "bondLabel": "保証金",
         "balanceLabel": "あなたの残高",
         "mon": "{amount} MON",
@@ -902,7 +902,7 @@
           "signIn": "サインイン"
         }
       },
-      "bodySettled": "Someone put a bond behind a claim that this record was wrong, and the resolver named by the policy has settled it."
+      "bodySettled": "この記録は誤りだという主張に誰かが保証金を積み、ポリシーが指名した裁定者がすでに判断しました。"
     },
     "elsewhere": "この記録が置かれている場所",
     "openTransaction": "登録トランザクション",
@@ -1045,23 +1045,23 @@
     "sealed": {
       "label": "封印済み",
       "posterLine": "{date} に登録。画像は公開されていません。Moolam はコピーを保持しません。",
-      "posterLinePrivate": "{date} に登録。画像は公開されていません。Moolam が保持するのは、非公開の再確認のための小さな非公開コピーだけです。",
+      "posterLinePrivate": "{date} に登録。画像は公開されていません。Moolam が保持するのは、非公開の確認のための小さな非公開コピーだけです。",
       "standing": "封印済みで、公開されたコピーはありません",
       "commitmentLabel": "チェーンの約束",
       "commitmentAlgorithm": "{algorithm} で指紋を取得。ファイルの指紋として標準的な方式です",
       "commitmentLine": "ファイルを持っている人は、そのハッシュを計算してパスポートの ID と照合できます。",
-      "recheck": "再確認できる公開コピーがありません。再確認するには画像を公開する必要があります。",
+      "recheck": "公開コピーがないため、Chainlink ネットワークは確認できません。確認するには画像を公開する必要があります。",
       "privateCopy": {
-        "kept": "Moolam が保持している小さなコピーで、非公開の再確認を実行できます。",
-        "gone": "Moolam の非公開コピーは削除されたため、非公開の再確認は実行できません。",
+        "kept": "Moolam が保持している小さなコピーで、非公開の確認を実行できます。",
+        "gone": "Moolam の非公開コピーは削除されたため、非公開の確認は実行できません。",
         "unknown": "Moolam はいま非公開コピーの状態を読み取れませんでした。"
       },
       "edit": "このパスポートは封印されているため、画像を公開するまで編集できません。",
       "about": {
         "noCopy": "封印して登録されました。画像は一度も公開されておらず、Moolam はコピーを一切保持しませんでした。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
-        "kept": "封印して登録されました。画像は一度も公開されていません。制作者の依頼により、Moolam は小さな非公開コピーを 1 つだけ保持しており、Chainlink ワークフローによる非公開の再確認にのみ使います。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
-        "deleted": "封印して登録されました。画像は一度も公開されていません。Moolam は Chainlink ワークフローによる非公開の再確認のために小さな非公開コピーを 1 つ保持していましたが、そのコピーはその後削除されました。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
-        "asked": "封印して登録されました。画像は一度も公開されていません。制作者は、Chainlink ワークフローによる非公開の再確認のために、小さな非公開コピーを 1 つ保持するよう Moolam に依頼しました。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
+        "kept": "封印して登録されました。画像は一度も公開されていません。制作者の依頼により、Moolam は小さな非公開コピーを 1 つだけ保持しており、Chainlink ワークフローによる非公開の確認にのみ使います。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
+        "deleted": "封印して登録されました。画像は一度も公開されていません。Moolam は Chainlink ワークフローによる非公開の確認のために小さな非公開コピーを 1 つ保持していましたが、そのコピーはその後削除されました。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
+        "asked": "封印して登録されました。画像は一度も公開されていません。制作者は、Chainlink ワークフローによる非公開の確認のために、小さな非公開コピーを 1 つ保持するよう Moolam に依頼しました。パスポート ID は署名済みファイルの SHA-256 なので、この記録は中身を見せずに正確なバイト列と結び付いています。",
         "published": "画像を公開せずに封印して登録され、{date} に保有者が公開しました。パスポート ID はファイルの SHA-256 なので、誰でも公開された画像のハッシュを取って照合できます。"
       }
     },
@@ -1095,7 +1095,7 @@
         "noPassport": "この ID のパスポートはレジストリにありません。",
         "notSealed": "このパスポートの画像はすでに公開されています。公開するものは残っていません。",
         "alreadyUnsealed": "このパスポートはすでに公開済みです。ページを開き直すと画像が見られます。",
-        "thumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められません。公開すると、誰も再確認できないパスポートが残ってしまいます。何もピン留めしていません。",
+        "thumbnailTooLarge": "この画像は、Chainlink が確認のために取得できるほど小さなサムネイルに縮められません。公開すると、誰も確認できないパスポートが残ってしまいます。何もピン留めしていません。",
         "quota": "本日は {limit} 件中 {used} 件です。枠は {at} に戻ります。",
         "todayFull": "本日の公開枠は全員分を使い切りました。何もピン留めしておらず、何も消費していません。明日もう一度お試しください。",
         "pinFailed": "画像を IPFS にピン留めできなかったため、何も公開していません。",
@@ -1117,7 +1117,7 @@
         "serviceFault": "これは Moolam 側の障害で、あなたの画像の問題ではありません。何も保存していません。1 分ほどしてからお試しください。",
         "unsealInProgress": "この画像は別のタブか別の端末からすでに公開中です。少し待ってから、パスポートを読み込み直してください。",
         "thumbnailHeldPrivately": "何も公開していません。別のパスポートのために保管している、この同じ画像の非公開コピーが、公開用のコピーの妨げになっています。しばらくしてからお試しください。",
-        "fingerprintUnstable": "この画像は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。そのため公開用のコピーは Chainlink の再確認を通ることができません。何も公開していません。"
+        "fingerprintUnstable": "この画像は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。そのため公開用のコピーは Chainlink の確認を通ることができません。何も公開していません。"
       },
       "actions": {
         "again": "もう一度試す",
@@ -1130,9 +1130,9 @@
     "privateCopy": {
       "kicker": "削除するかどうかはあなたしだい",
       "heading": "Moolam の非公開コピー",
-      "body": "Moolam はこの画像の小さなコピーを 1 枚、長辺 512 ピクセルで保持しています。Chainlink の機密ワークフローが再確認するためです。削除できるのはあなただけです。",
+      "body": "Moolam はこの画像の小さなコピーを 1 枚、長辺 512 ピクセルで保持しています。Chainlink の機密ワークフローが非公開で確認するためです。削除できるのはあなただけです。",
       "delete": "Moolam の非公開コピーを削除する",
-      "confirm": "これは取り消せません。コピーがなければ非公開の再確認は二度と実行できず、パスポートは封印されたままです。",
+      "confirm": "これは取り消せません。コピーがなければ非公開の確認は二度と実行できず、パスポートは封印されたままです。",
       "confirmDelete": "削除",
       "keep": "残す",
       "sending": "非公開コピーを削除しています",
@@ -1163,7 +1163,7 @@
       "madeBy": "作った人",
       "drawnBy": "描いたのは",
       "aiUse": "AI 利用",
-      "rechecked": "再確認",
+      "rechecked": "確認したのは",
       "nothingStated": "表明なし",
       "notYet": "まだです",
       "unread": "読めませんでした",
@@ -1171,10 +1171,10 @@
       "chainlink": "Chainlink",
       "unknownWriter": "不明な書き手",
       "cardNamed": "{agent}、名前はカードの自己申告",
-      "unclaimed": "Not claimed yet",
-      "heldBy": "{platform} holds it",
-      "via": "via {platform}",
-      "handedBy": "handed by {platform}, not confirmed"
+      "unclaimed": "まだ受け取られていません",
+      "heldBy": "{platform} が預かり中",
+      "via": "{platform} 経由",
+      "handedBy": "{platform} から受け渡し、未確定"
     },
     "ownerHint": "作ったのはあなたですか。サインインすると管理できます。",
     "share": {
@@ -1195,9 +1195,9 @@
       "heading": "公開エージェント評価ボード (ERC-8004) のフィードバック",
       "empty": "このエージェントへのフィードバックはまだ記録されていません。Moolam はここに手作業でフィードバックを書きます。確認のたびに書くわけではありません。",
       "error": "レピュテーションレジストリを読めませんでした: {reason}。",
-      "body": "フィードバックは Monad の公開エージェント評価ボード (ERC-8004 レピュテーションレジストリ) にあり、Moolam が手作業で書き込みます。このページはその要約を読みます。隣の信頼スコアは Chainlink の再確認を数えたものなので、二つを足し合わせることはありません。",
+      "body": "フィードバックは Monad の公開エージェント評価ボード (ERC-8004 レピュテーションレジストリ) にあり、Moolam が手作業で書き込みます。このページはその要約を読みます。隣の信頼スコアは Chainlink の確認を数えたものなので、二つを足し合わせることはありません。",
       "registry": "レジストリ {address}",
-      "secondary": "チェーンに手作業で書かれたフィードバックで、再確認のスコアとは別です",
+      "secondary": "チェーンに手作業で書かれたフィードバックで、確認のスコアとは別です",
       "entries": "{count, plural, other {# 件}}",
       "latest": "最新の値"
     },
@@ -1207,17 +1207,17 @@
     "index": {
       "heading": "インデックスが数えたもの",
       "trustScore": "信頼スコア",
-      "trustScoreBody": "100 点満点。一致した再確認、一致しなかった再確認、そして認められた異議から算出します。ならしてあるので、幸運な一件で 100 にはなりません。",
+      "trustScoreBody": "100 点満点。一致した確認、一致しなかった確認、そして認められた異議から算出します。ならしてあるので、幸運な一件で 100 にはなりません。",
       "passportCount": "パスポート",
-      "matchedCount": "一致した再確認",
-      "mismatchedCount": "外れた再確認",
+      "matchedCount": "一致した確認",
+      "mismatchedCount": "外れた確認",
       "disputesUpheld": "認められた異議",
       "since": "初めて見えたのは {when}",
       "empty": "インデックスは、このエージェントがパスポートに署名するところをまだ見ていません。",
       "error": "インデックスを読めませんでした: {reason}。",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "スコアの求め方",
-      "formulaPlain": "一致した再確認はスコアを上げ、外れた再確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。"
+      "formulaPlain": "一致した確認はスコアを上げ、外れた確認は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。"
     },
     "signs": {
       "heading": "このエージェントの署名のしかた",
@@ -1519,8 +1519,8 @@
         "leftOut": "含めない",
         "promptLabel": "プロンプトも公開する",
         "promptNote": "含めない限り、プロンプトは非公開のままです。",
-        "privateLabel": "この画像を Chainlink に非公開で再確認してもらう",
-        "privateNote": "Moolam は長辺 512 ピクセルの小さなコピーを 1 枚、非公開のストレージに保管します。Chainlink の機密ワークフローがそれを開いて指紋を再確認し、判定だけを Monad に書き込みます。",
+        "privateLabel": "この画像を Chainlink に非公開で確認してもらう",
+        "privateNote": "Moolam は長辺 512 ピクセルの小さなコピーを 1 枚、非公開のストレージに保管します。Chainlink の機密ワークフローがそれを開いて指紋を確認し、判定だけを Monad に書き込みます。",
         "privateWho": "ウェブからは誰も開けません。開けるのは Moolam の運営者とストレージ事業者です。今のところワークフローは Chainlink のシミュレーターで動いており、Chainlink の安全なハードウェアの中ではありません。コピーはパスポートのページからいつでも削除できます。"
       },
       "fields": {
@@ -1569,16 +1569,16 @@
           "line": "画像を言葉で説明するものなので、あなたが入れない限りファイルには入りません。"
         },
         "privateRecheck": {
-          "label": "非公開の再確認を求めたこと",
+          "label": "非公開の確認を求めたこと",
           "line": "ピン留めされるファイルに一語だけ入り、パスポートのページがそれを示せます。コピーの場所は決して入りません。"
         },
         "sworn": {
-          "label": "The line you sign under",
-          "line": "The sentence beside the sign button, word for word. It is your own statement, signed with the rest."
+          "label": "署名とともに宣誓する一文",
+          "line": "署名ボタンの横にある一文の、英語の原文です。あなた自身の表明として、ほかの項目と一緒に署名されます。"
         },
         "seenEarlier": {
-          "label": "The earlier passport you were shown",
-          "line": "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it."
+          "label": "あなたに示された先のパスポート",
+          "line": "Moolam がこれとよく似た先のパスポートを示し、それでもあなたが進んだときだけ入ります。その ID によって、あなたがそれを見たことをページが示せます。"
         }
       },
       "plate": {
@@ -1609,9 +1609,9 @@
         "detailPrivate": "画像は公開されていません。Moolam が保持するのは、あなたが求めた小さな非公開コピーだけです。",
         "fingerprintDetail": "このブラウザから出ていない署名済みファイルから取りました。Content Credentials (C2PA) の付与: {manifest}。",
         "privateLabel": "非公開コピーを保持",
-        "privateDetail": "Chainlink の非公開の再確認のためです。<page>パスポートのページからいつでも削除できます。</page>",
+        "privateDetail": "Chainlink の非公開の確認のためです。<page>パスポートのページからいつでも削除できます。</page>",
         "noPrivateLabel": "非公開コピーなし",
-        "noPrivateDetail": "非公開の再確認を求めましたが、サービスはコピーを保持しなかったため、このパスポートにはありません。封印済みで、何も保持されていません。"
+        "noPrivateDetail": "非公開の確認を求めましたが、サービスはコピーを保持しなかったため、このパスポートにはありません。封印済みで、何も保持されていません。"
       }
     },
     "receipt": {
@@ -1711,10 +1711,10 @@
       "sealedRecordRefused": "検証サービスがこの封印された記録の公開を拒みました。何もピン留めされず、何も登録されていません。もう一度お試しください。",
       "sealedFileRefused": "検証サービスがこのパスポートに一致するファイルを返せませんでした。何もピン留めされず、何も登録されていません。もう一度お試しください。",
       "privateRecheckNeedsSealed": "検証サービスは封印されていない画像の非公開コピーを保管しません。何もピン留めされず、何も登録されていません。スタジオを読み込み直して、もう一度お試しください。",
-      "privateCopyNotPrivate": "ストレージ事業者が小さなコピーを非公開にしなかったため、Moolam は止まりました。何もピン留めされず、何も登録されていません。非公開の再確認をオフにすれば、この画像はそれなしで封のまま登録できます。",
+      "privateCopyNotPrivate": "ストレージ事業者が小さなコピーを非公開にしなかったため、Moolam は止まりました。何もピン留めされず、何も登録されていません。非公開の確認をオフにすれば、この画像はそれなしで封のまま登録できます。",
       "privateChainUnreachable": "この画像が新しいか確かめるために Monad へ届かなかったため、非公開コピーは保管されず、何も登録されていません。少し経ってからもう一度お試しください。",
-      "privateThumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できず、封をしたものは後から公開することもできません。何もピン留めされていません。",
-      "fingerprintUnstable": "この画像は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。自分自身の小さなコピーでさえ別の画像として読まれるため、Chainlink の再確認でもコピーの検索でも見つかりません。何もピン留めされず、何も登録されていません。横方向にもっと細部のある画像なら登録できます。",
+      "privateThumbnailTooLarge": "この画像は、Chainlink が確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは確認できず、封をしたものは後から公開することもできません。何もピン留めされていません。",
+      "fingerprintUnstable": "この画像は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。自分自身の小さなコピーでさえ別の画像として読まれるため、Chainlink の確認でもコピーの検索でも見つかりません。何もピン留めされず、何も登録されていません。横方向にもっと細部のある画像なら登録できます。",
       "serviceFault": "これは Moolam 側の障害で、あなたの画像の問題ではありません。何も保存していません。1 分ほどしてからお試しください。"
     },
     "actions": {
@@ -1731,29 +1731,29 @@
     "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。",
     "titleNeeded": "画像にタイトルを付けてください。",
     "lookalike": {
-      "kicker": "Before you sign",
+      "kicker": "署名の前に",
       "found": {
-        "heading": "A picture like this is already registered",
-        "line": "{title} was registered by someone else on {date}. If it is yours too, carry on. If it is not, stop here: your passport would show it came later, and anyone can challenge it.",
-        "note": "If you go ahead, your passport records that you were shown this one."
+        "heading": "これとよく似た画像がすでに登録されています",
+        "line": "{title} は {date} に別の人が登録しています。それもあなたのものなら、そのまま進んでください。そうでなければ、ここで止めてください。あなたのパスポートには後から来たことが示され、誰でも異議を申し立てられます。",
+        "note": "進めると、これを示されたことがあなたのパスポートに記録されます。"
       },
       "yours": {
-        "heading": "You registered a picture like this before",
-        "line": "If this is a new version, register it as an edit of that passport, so the two stay linked."
+        "heading": "これとよく似た画像を以前に登録しています",
+        "line": "新しい版なら、そのパスポートの編集として登録してください。二つがつながったままになります。"
       },
-      "none": "Moolam's search found no earlier passport like this one, as of {time}.",
-      "unchecked": "Moolam could not search for earlier passports just now, so this picture was not compared with them. You can still register it.",
-      "open": "Open that passport",
-      "untitled": "An untitled passport"
+      "none": "{time} の時点で、Moolam の検索はこれとよく似た先のパスポートを見つけませんでした。",
+      "unchecked": "いま Moolam は先のパスポートを検索できなかったため、この画像はそれらと比べられていません。それでも登録はできます。",
+      "open": "そのパスポートを開く",
+      "untitled": "無題のパスポート"
     },
     "webCheck": {
-      "notice": "A public photo is checked against the web. Moolam sends its small public copy to Google, which looks for the same picture on web pages. Sealed pictures and pictures the agent draws are never sent.",
+      "notice": "公開する写真はウェブと照合されます。Moolam はその小さな公開コピーを Google に送り、Google がウェブページ上で同じ画像を探します。封印する画像と、エージェントが描く画像は送りません。",
       "found": {
-        "heading": "Already on the web",
-        "line": "Google found this picture on {count, plural, =1 {# web page} other {# web pages}} when Moolam looked. If you go ahead, your passport lists them.",
-        "more": "{count, plural, =1 {# more page} other {# more pages}} counted, not listed."
+        "heading": "すでにウェブ上にあります",
+        "line": "Moolam が調べたところ、Google はこの画像を {count, plural, other {# 件のウェブページ}}で見つけました。進めると、あなたのパスポートにそれらが載ります。",
+        "more": "ほかに {count, plural, other {# ページ}}を数えましたが、一覧には載せていません。"
       },
-      "passport": "Already on the web: the registrant's web check found this picture on {count, plural, =1 {# page} other {# pages}} before it was registered."
+      "passport": "すでにウェブ上にあります。登録前に、登録者のウェブ照合がこの画像を {count, plural, other {# ページ}}で見つけました。"
     }
   },
   "docs": {
@@ -1855,7 +1855,7 @@
     "stopped": "まだつながりません。レジストリ自体は Monad 上にあり、パスポートのページはそれを直接読みます。"
   },
   "recheck": {
-    "button": "再確認を依頼する",
+    "button": "Chainlink に確認を依頼する",
     "again": "もう一度試す",
     "checkNow": "もう一度確認する",
     "note": "無料です。Chainlink のワークフローが画像を取り直し、その判定を Monad に書き込みます。判定はたいてい数分以内にチェーンに記録されます。",
@@ -1865,8 +1865,8 @@
     "already": "{at} にすでに依頼されています。待ち行列の {position} 番目です。",
     "alreadyWaiting": "{at} にすでに依頼されています。待ち行列で順番待ちです。",
     "running": "実行中です。ワークフローが画像を取得し、指紋を計算し直しています。",
-    "done": "完了しました。{at} に再確認されています。",
-    "doneNoTime": "完了しました。この画像は再確認されています。",
+    "done": "完了しました。{at} に確認されています。",
+    "doneNoTime": "完了しました。この画像は確認されています。",
     "failed": "実行できませんでした: {reason}",
     "failedNoReason": "実行できませんでした。理由は示されていません。",
     "stopped": "このページは 30 分で確認をやめました。もう一度見るには押してください。",
@@ -1879,7 +1879,7 @@
       "pending": "保留中"
     },
     "failure": {
-      "noPassport": "検証サービスはこのパスポートを知らないため、再確認するものがありません。",
+      "noPassport": "検証サービスはこのパスポートを知らないため、確認するものがありません。",
       "sealed": "このパスポートの画像は公開されていないため、ワークフローが取得するものがありません。",
       "queueFull": "まだ誰も処理していない依頼で待ち行列がいっぱいです。しばらくしてからお試しください。",
       "rateLimited": "ここからの依頼が多すぎます。1 分ほどお待ちください。",
@@ -1888,7 +1888,7 @@
     },
     "notePrivate": "無料です。Chainlink の機密ワークフローが Moolam の保持する小さな非公開コピーを開き、指紋を照合して、その判定を Monad に書き込みます。判定はたいてい数分以内にチェーンに記録されます。",
     "runningPrivate": "実行中です。ワークフローが非公開コピーを開き、指紋を照合しています。",
-    "recheckedOn": "{date} に再確認済み",
+    "recheckedOn": "{date} に確認済み",
     "confirming": "待ち行列ではこの実行は完了済みです。結果が Monad で読めるようになった時点で、完了と表示します。"
   },
   "mine": {
@@ -1910,8 +1910,8 @@
     "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。",
     "makeFirst": "最初の画像を登録する",
     "signedInAs": "{account} でサインイン中",
-    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
-    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
+    "confirmedLine": "{platform} で描かれ、パスポートは {platform} からあなたに渡されました。{date} にあなたが確定しました。",
+    "handedLine": "{platform} からあなたに渡されました。自分のものだと確定するには、パスポートのページで AI 利用の表明を書いてください。",
     "held": {
       "heading": "あなたが保有し、ほかの人が作ったもの",
       "label": "保有中、あなたが作ったものではない",
@@ -1956,10 +1956,10 @@
         "label": "描いたエージェント、自己申告"
       },
       "platform": {
-        "label": "Drawn on",
-        "listed": "Drawn on, listed by Moolam",
-        "withheld": "Drawn on, badge withheld",
-        "unlisted": "Drawn on, not listed by Moolam",
+        "label": "描かれた場所",
+        "listed": "描かれた場所、Moolam のリストに掲載",
+        "withheld": "描かれた場所、バッジは非表示",
+        "unlisted": "描かれた場所、Moolam のリストに未掲載",
         "reading": "記録を読み取りしだい、Moolam のリストと照合します。"
       },
       "terms": {
@@ -1985,7 +1985,7 @@
       "unchecked": "この名前の背後にある会社を、Moolam は確認していません。"
     },
     "platform": {
-      "listedLine": "エージェント {agent} の保有者と、プラットフォーム自身のウォレットの両方の署名を得て掲載されました。",
+      "listedLine": "エージェント {agent} の保有者と、プラットフォームが画像を登録するウォレットの両方の署名を得て掲載されました。",
       "withheldName": "名前は非表示",
       "withheldLine": "エージェント {agent} は、そのプラットフォームが掲載されたあとで保有者が変わりました。そのため Moolam はこの組み合わせを保証せず、名前も表示しません。",
       "unlistedName": "Moolam のリストに未掲載",
@@ -2163,7 +2163,7 @@
     "listedLabel": "Moolam のリストに掲載",
     "unlistedLabel": "Moolam のリストに未掲載",
     "unlistedName": "未掲載のサイト",
-    "listedLine": "このサイトのエージェントの保有者と、このサイト自身のウォレットの両方の署名を得て掲載されました。",
+    "listedLine": "このサイトのエージェントの保有者と、このサイトが画像を登録するウォレットの両方の署名を得て掲載されました。",
     "unlistedLine": "Moolam はこのサイトについて何も知りません。このサイトから来た場合にだけ共有してください。",
     "usesListed": "{name} は、あなたのために作られた画像のパスポートを渡すためにこのアドレスを使います。アドレスがあれば、サイトはあなたに何かを渡せます。あなたの代わりに署名することも、あなたのアカウントから支払うこともできません。",
     "usesUnlisted": "このサイトは、あなたのために作られた画像のパスポートを渡すためにこのアドレスを使います。アドレスがあれば、サイトはあなたに何かを渡せます。あなたの代わりに署名することも、あなたのアカウントから支払うこともできません。",
@@ -2181,589 +2181,589 @@
     "invalidLine": "このページを開いたリンクには https のサイトが示されていないため、アドレスの送り先がありません。何も共有していません。"
   },
   "checkout": {
-    "lockListed": "Sent by {platform}, listed by Moolam",
-    "lockUnnamed": "Sent by a site Moolam does not name",
-    "more": "See everything you are signing",
-    "doneListed": "Done. Taking you back to {platform}.",
-    "doneUnlisted": "Done. Taking you back to the site that sent you.",
-    "close": "Close this window"
+    "lockListed": "{platform} から送信、Moolam のリストに掲載",
+    "lockUnnamed": "Moolam が名前を示さないサイトから送信",
+    "more": "署名する内容をすべて見る",
+    "doneListed": "完了しました。{platform} に戻ります。",
+    "doneUnlisted": "完了しました。あなたをここへ送ったサイトに戻ります。",
+    "close": "このウィンドウを閉じる"
   },
   "claims": {
-    "heading": "Waiting for you",
-    "line": "Platforms you used are holding these pictures for your email. Say which are yours.",
-    "count": "{count, plural, one {# picture} other {# pictures}}",
-    "holding": "{platform} is holding {count, plural, one {# picture} other {# pictures}} for {email}",
-    "yourEmail": "your email",
+    "heading": "あなたを待っています",
+    "line": "あなたが使ったプラットフォームが、あなたのメールアドレス宛てにこれらの画像を預かっています。どれがあなたのものか答えてください。",
+    "count": "{count, plural, other {画像 # 枚}}",
+    "holding": "{platform} が {email} 宛てに{count, plural, other {画像 # 枚}}を預かっています",
+    "yourEmail": "あなたのメールアドレス",
     "verifiedBy": {
-      "google": "{platform} says it checked this address with a Google sign-in.",
-      "emailCode": "{platform} says it checked this address with a code sent to it.",
-      "platform": "{platform} says it checked this address in its own way."
+      "google": "{platform} は、Google のサインインでこのアドレスを確認したと言っています。",
+      "emailCode": "{platform} は、このアドレスに送ったコードで確認したと言っています。",
+      "platform": "{platform} は、独自の方法でこのアドレスを確認したと言っています。"
     },
-    "noPreview": "No preview",
-    "termsLabel": "AI use for these pictures",
-    "sendFuture": "Send my future {platform} pictures straight to my account",
-    "mine": "These are mine",
-    "notMine": "Not mine",
-    "notMineNote": "Not mine also stops {platform} offering you pictures. You can allow it again here.",
-    "saving": "Saving your answer",
-    "handingOver": "Waiting for {platform} to hand them over",
-    "handoverNote": "This page looks again on its own",
-    "lookAgain": "Look again",
-    "readFailed": "We could not check whether platforms are holding pictures for you.",
-    "handoverFailed": "{platform} could not hand {count, plural, one {this picture} other {these pictures}} over. Ask {platform} to send {count, plural, one {it} other {them}} again.",
+    "noPreview": "プレビューなし",
+    "termsLabel": "これらの画像の AI 利用",
+    "sendFuture": "今後の {platform} の画像を自分のアカウントに直接送る",
+    "mine": "私のものです",
+    "notMine": "私のものではありません",
+    "notMineNote": "「私のものではありません」を選ぶと、{platform} からの画像の案内も止まります。ここでまた許可できます。",
+    "saving": "答えを保存しています",
+    "handingOver": "{platform} が引き渡すのを待っています",
+    "handoverNote": "このページは自動でもう一度確認します",
+    "lookAgain": "もう一度確認",
+    "readFailed": "プラットフォームがあなた宛てに画像を預かっているか、確認できませんでした。",
+    "handoverFailed": "{platform} は{count, plural, =1 {この画像} other {これらの画像}}を引き渡せませんでした。{count, plural, =1 {それ} other {それら}}をもう一度送るよう {platform} に依頼してください。",
     "confirm": {
-      "heading": "Confirm these as yours",
-      "line": "One press writes these AI-use terms from your own wallet, and Moolam pays the fee. Until then the passports say the platform handed them to you, not that you made them.",
-      "termsLabel": "The terms you chose",
-      "byUse": "Your own answer for each use",
-      "conditions": "Conditions",
-      "button": "{count, plural, one {Confirm it} other {Confirm all #}}",
-      "checking": "Checking your wallet holds them",
-      "sending": "Sending from your wallet",
-      "confirming": "Waiting for Monad to show it",
-      "done": "Confirmed. They now name you as the person who imagined them.",
-      "receipt": "See the transaction",
-      "changed": "These pictures moved since this page read them, so nothing was sent. Read them again before you confirm.",
-      "unreadable": "Monad did not answer, so this page cannot tell yet which of these your wallet holds.",
-      "readAgain": "Read them again",
-      "again": "Try again",
-      "recheck": "Look again"
+      "heading": "自分のものとして確定する",
+      "line": "一度押すと、あなた自身のウォレットからこの AI 利用の表明が書き込まれ、手数料は Moolam が払います。それまでパスポートには、プラットフォームがあなたに渡したとだけ示され、あなたが作ったとは示されません。",
+      "termsLabel": "選んだ表明",
+      "byUse": "用途ごとのあなたの答え",
+      "conditions": "条件",
+      "button": "{count, plural, =1 {確定する} other {# 件すべて確定する}}",
+      "checking": "ウォレットが保有しているか確認しています",
+      "sending": "ウォレットから送信しています",
+      "confirming": "Monad に現れるのを待っています",
+      "done": "確定しました。これらのパスポートには、思い描いた本人としてあなたの名前が載ります。",
+      "receipt": "トランザクションを見る",
+      "changed": "このページが読み取ったあとで画像が移動したため、何も送信していません。確定する前に読み直してください。",
+      "unreadable": "Monad が応答しなかったため、このうちどれをあなたのウォレットが保有しているか、このページにはまだ分かりません。",
+      "readAgain": "読み直す",
+      "again": "もう一度試す",
+      "recheck": "もう一度確認"
     },
     "settings": {
-      "heading": "Your platform choices",
-      "standing": "Future {platform} pictures go straight to you",
-      "stop": "Stop",
-      "muted": "You said no to {platform}",
-      "allow": "Allow again"
+      "heading": "プラットフォームごとの設定",
+      "standing": "今後の {platform} の画像はあなたに直接届きます",
+      "stop": "止める",
+      "muted": "{platform} を断りました",
+      "allow": "また許可する"
     },
     "refusal": {
-      "unavailable": "Moolam cannot look up waiting pictures right now. Nothing was changed.",
-      "signIn": "Your sign-in has run out, so Moolam cannot tell this is you.",
-      "limit": "You have asked about waiting pictures many times today. It opens again tomorrow.",
-      "globalLimit": "Moolam has reached today's limit for everyone. It opens again at midnight UTC.",
-      "privy": "Moolam could not read your sign-in details just now. Nothing was changed.",
-      "noWallet": "Your account has no Moolam wallet yet, so there is nowhere to send these. Sign in again and it is made for you.",
-      "destination": "Moolam will not send these to this account's wallet, because the platform or Moolam itself uses that address.",
-      "notFound": "Some of these pictures are no longer waiting for you.",
-      "notOpen": "Some of these were already answered, here or in another window.",
-      "full": "Your list of platform choices is full. Stop or allow one of them first.",
-      "recordRefused": "Moolam could not save that answer. Nothing was changed.",
-      "badRequest": "Moolam could not read that request. Nothing was changed.",
-      "offline": "Moolam's verify service did not answer. Nothing was changed.",
-      "badResponse": "Moolam's verify service answered in a way this page does not understand."
+      "unavailable": "いま Moolam は待っている画像を調べられません。何も変更していません。",
+      "signIn": "サインインの期限が切れたため、Moolam はあなただと確かめられません。",
+      "limit": "今日は待っている画像について何度も問い合わせました。明日また使えます。",
+      "globalLimit": "Moolam は全員分の今日の上限に達しました。UTC の午前 0 時にまた使えます。",
+      "privy": "いま Moolam はあなたのサインイン情報を読めませんでした。何も変更していません。",
+      "noWallet": "あなたのアカウントにはまだ Moolam のウォレットがないため、送り先がありません。もう一度サインインすれば自動で作られます。",
+      "destination": "そのアドレスはプラットフォームか Moolam 自身が使っているため、Moolam はこのアカウントのウォレットに送りません。",
+      "notFound": "このうちいくつかの画像は、もうあなたを待っていません。",
+      "notOpen": "このうちいくつかは、ここか別のウィンドウですでに答えています。",
+      "full": "プラットフォームごとの設定がいっぱいです。先にどれかを止めるか許可してください。",
+      "recordRefused": "Moolam はその答えを保存できませんでした。何も変更していません。",
+      "badRequest": "Moolam はその依頼を読めませんでした。何も変更していません。",
+      "offline": "Moolam の検証サービスが応答しませんでした。何も変更していません。",
+      "badResponse": "Moolam の検証サービスが、このページでは理解できない形で応答しました。"
     },
     "next": {
-      "again": "Try again",
-      "signIn": "Sign in again",
-      "reload": "Read the list again"
+      "again": "もう一度試す",
+      "signIn": "もう一度サインイン",
+      "reload": "一覧を読み直す"
     }
   },
   "business": {
     "meta": {
-      "title": "Passports for AI picture platforms",
-      "description": "Every picture made on your AI picture site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey. Free during early access."
+      "title": "AI 画像プラットフォームのためのパスポート",
+      "description": "あなたの AI 画像サイトで作られたすべての画像に、思い描いた本人の名前が載る Monad 上のパスポートを。本人のパスキーで署名されます。早期アクセス中は無料です。"
     },
     "hero": {
-      "kicker": "Moolam for platforms",
-      "headline": "Your users imagined it.",
-      "tail": "Let them sign it.",
-      "promise": "Every picture made on your site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey.",
-      "guide": "Read the integration guide",
-      "live": "See it live on Dreamloom",
+      "kicker": "プラットフォーム向け Moolam",
+      "headline": "思い描いたのは、あなたのユーザー。",
+      "tail": "署名も、本人の手で。",
+      "promise": "あなたのサイトで作られたすべての画像に、思い描いた本人の名前が載る Monad 上のパスポートを付けられます。本人のパスキーで署名されます。",
+      "guide": "導入ガイドを読む",
+      "live": "Dreamloom で実際の動きを見る",
       "meta": {
-        "audience": "For AI picture platforms",
-        "chain": "Monad mainnet",
-        "tap": "One passkey tap"
+        "audience": "AI 画像プラットフォーム向け",
+        "chain": "Monad メインネット",
+        "tap": "パスキーをワンタップ"
       }
     },
     "demo": {
-      "illustration": "Illustration",
-      "label": "Illustration: a person makes a picture on Dreamloom, signs it as the creator with one passkey tap in a small Moolam window, and the passport lands naming them, then Chainlink checks it.",
+      "illustration": "イメージ図",
+      "label": "イメージ図: Dreamloom で画像を作った人が、小さな Moolam のウィンドウでパスキーをワンタップして制作者として署名すると、その人の名前が載ったパスポートが届き、続いて Chainlink が確認します。",
       "address": "dreamloom",
-      "draw": "Draw",
-      "drawing": "Drawing…",
-      "prompt": "A human standing alone on the moon",
-      "press": "Sign it as the creator",
+      "draw": "描く",
+      "drawing": "描いています…",
+      "prompt": "月の上にひとりで立つ人",
+      "press": "制作者として署名する",
       "brand": "Moolam",
-      "window": "Sign as the creator",
-      "windowLine": "Dreamloom's agent drew it. You imagined it.",
-      "passkey": "Sign with passkey",
-      "passkeyWaiting": "Passkey",
-      "passport": "Passport on Monad",
-      "credit": "Imagined by Ram. Drawn on Dreamloom.",
-      "checked": "Checked by Chainlink",
-      "pause": "Pause the illustration",
-      "play": "Play the illustration",
-      "pauseShort": "Pause",
-      "playShort": "Play",
-      "step": "Step {number}: {label}",
+      "window": "制作者として署名",
+      "windowLine": "描いたのは Dreamloom のエージェント。思い描いたのはあなたです。",
+      "passkey": "パスキーで署名",
+      "passkeyWaiting": "パスキー",
+      "passport": "Monad 上のパスポート",
+      "credit": "Ram が思い描き、Dreamloom で描かれました。",
+      "checked": "Chainlink 確認済み",
+      "pause": "イメージ図を一時停止",
+      "play": "イメージ図を再生",
+      "pauseShort": "一時停止",
+      "playShort": "再生",
+      "step": "ステップ {number}: {label}",
       "stages": {
         "prompt": {
-          "label": "Prompt",
-          "line": "A person types what they imagine on Dreamloom."
+          "label": "プロンプト",
+          "line": "Dreamloom で、思い描いたものを入力します。"
         },
         "picture": {
-          "label": "Picture",
-          "line": "Dreamloom's agent draws the picture."
+          "label": "画像",
+          "line": "Dreamloom のエージェントが画像を描きます。"
         },
         "press": {
-          "label": "Press",
-          "line": "They press Sign it as the creator."
+          "label": "押す",
+          "line": "「制作者として署名する」を押します。"
         },
         "window": {
-          "label": "Window",
-          "line": "A small Moolam window opens over Dreamloom's page."
+          "label": "ウィンドウ",
+          "line": "Dreamloom のページの上に、小さな Moolam のウィンドウが開きます。"
         },
         "passkey": {
-          "label": "Passkey",
-          "line": "One passkey tap approves this exact picture."
+          "label": "パスキー",
+          "line": "パスキーをワンタップすると、この画像そのものが承認されます。"
         },
         "passport": {
-          "label": "Passport",
-          "line": "The passport lands, naming them."
+          "label": "パスポート",
+          "line": "その人の名前が載ったパスポートが届きます。"
         },
         "chainlink": {
           "label": "Chainlink",
-          "line": "Chainlink checks the picture on its own."
+          "line": "Chainlink が自分で画像を確認します。"
         }
       }
     },
     "why": {
-      "kicker": "Why platforms add it",
-      "title": "Three reasons your users will ask for it",
+      "kicker": "プラットフォームが導入する理由",
+      "title": "ユーザーが求める三つの理由",
       "reasons": {
         "credit": {
-          "title": "Credit your users can prove",
-          "body": "The person's own passkey approves the picture before Monad records it. The credit rests on their key, not on your word, so nobody can argue with it later.",
-          "proof": "How the credit reads"
+          "title": "ユーザーが証明できるクレジット",
+          "body": "Monad が記録する前に、本人のパスキーが画像を承認します。クレジットの根拠はあなたの言葉ではなく本人の鍵なので、あとから誰も異を唱えられません。",
+          "proof": "クレジットの表示"
         },
         "name": {
-          "title": "Your name travels with every copy",
-          "body": "Each passport says where the picture was drawn. Strip it, shrink it or screenshot it: the fingerprint still finds the passport, and your name with it.",
-          "proof": "How copies are found"
+          "title": "あなたの名前が、どのコピーにもついていく",
+          "body": "どのパスポートにも、画像が描かれた場所が載ります。メタデータを消しても、縮小しても、スクリーンショットにしても、指紋がパスポートを見つけ、あなたの名前も一緒に見つかります。",
+          "proof": "コピーの見つけ方"
         },
         "terms": {
-          "title": "AI-use terms that answer for themselves",
-          "body": "The person states on Monad whether AI may train on the picture. Any AI agent can read that answer through Moolam's MCP server before it uses the picture.",
-          "proof": "The MCP server"
+          "title": "自分で答える AI 利用の表明",
+          "body": "AI がその画像で学習してよいかを、本人が Monad 上で表明します。どの AI エージェントも、画像を使う前に Moolam の MCP サーバーを通してその答えを読めます。",
+          "proof": "MCP サーバー"
         }
       }
     },
     "ways": {
-      "kicker": "Three ways to hand it over",
-      "title": "Pick how the passport reaches your user",
+      "kicker": "渡し方は三つ",
+      "title": "パスポートをユーザーに届ける方法を選ぶ",
       "rows": {
-        "person": "What the person does",
-        "credit": "When they are credited",
-        "cost": "What it costs you on Monad",
-        "build": "What you build"
+        "person": "本人がすること",
+        "credit": "クレジットが付くとき",
+        "cost": "Monad でかかる費用",
+        "build": "あなたが作るもの"
       },
-      "recommended": "Recommended",
-      "next": "Coming with the next release",
+      "recommended": "おすすめ",
+      "next": "次のリリースで提供",
       "items": {
         "cosign": {
-          "name": "Sign it yourself",
-          "person": "Presses Sign it as the creator, signs in to Moolam the first time, and taps their passkey. After that, one tap a picture.",
-          "credit": "From the first block. Their own key approved the picture.",
-          "cost": "Nothing. Moolam pays their fee.",
-          "build": "Open one link in a small window."
+          "name": "自分で署名する",
+          "person": "「制作者として署名する」を押し、初回だけ Moolam にサインインして、パスキーをタップします。以後は画像ごとにワンタップです。",
+          "credit": "最初のブロックから。本人の鍵が画像を承認しています。",
+          "cost": "なし。本人の手数料は Moolam が払います。",
+          "build": "小さなウィンドウでリンクを一つ開くだけ。"
         },
         "email": {
-          "name": "Leave it for their email",
-          "person": "Signs in to Moolam with the email you verified, presses These are mine, picks their AI-use terms, then confirms.",
-          "credit": "When they confirm from their own wallet, after your hand-over.",
-          "cost": "About 0.063 MON a picture: register, terms, hand-over.",
-          "build": "One field on registerAsPlatform, and a delivery worker."
+          "name": "メールアドレス宛てに預ける",
+          "person": "あなたが確認したメールアドレスで Moolam にサインインし、「私のものです」を押して AI 利用の表明を選び、確定します。",
+          "credit": "あなたが引き渡したあと、本人が自分のウォレットから確定したとき。",
+          "cost": "画像 1 枚あたり約 0.063 MON: 登録、表明、引き渡し。",
+          "build": "registerAsPlatform の項目一つと、配信ワーカー。"
         },
         "connect": {
-          "name": "Connect once",
-          "person": "Opens Moolam's connect page once and sends you their Moolam address. Later pictures reach them with no step.",
-          "credit": "When they state their own terms on a passport you handed them.",
-          "cost": "About 0.063 MON a picture, the same three transactions.",
-          "build": "A button that opens the connect page, and a place to keep each address."
+          "name": "一度だけ接続する",
+          "person": "Moolam の接続ページを一度開き、自分の Moolam アドレスをあなたに送ります。以後の画像は何もしなくても本人に届きます。",
+          "credit": "あなたが渡したパスポートに、本人が自分の表明を書いたとき。",
+          "cost": "画像 1 枚あたり約 0.063 MON。同じ三つのトランザクションです。",
+          "build": "接続ページを開くボタンと、各アドレスの保管場所。"
         }
       },
-      "whyTitle": "Why we recommend sign it yourself",
-      "why": "It is the only way that puts the person's own key on the picture: their passkey approves this exact picture before Monad records it. It costs you nothing on chain, because Moolam pays their fee.",
-      "proof": "Compare the three in the guide"
+      "whyTitle": "「自分で署名する」をすすめる理由",
+      "why": "本人の鍵が画像に載るのは、この方法だけです。Monad が記録する前に、本人のパスキーがこの画像そのものを承認します。手数料は Moolam が払うので、チェーン上の費用はかかりません。",
+      "proof": "ガイドで三つを比べる"
     },
     "person": {
-      "kicker": "What your user does",
-      "title": "Every step, in the recommended way",
+      "kicker": "ユーザーがすること",
+      "title": "おすすめの方法での全ステップ",
       "steps": {
         "make": {
-          "title": "Makes a picture on your site",
-          "body": "They type a prompt and your agent draws it, exactly as today."
+          "title": "あなたのサイトで画像を作る",
+          "body": "プロンプトを入力し、あなたのエージェントが描きます。今とまったく同じです。"
         },
         "press": {
-          "title": "Presses Sign it as the creator",
-          "body": "One button beside the picture. Nothing else on your page changes."
+          "title": "「制作者として署名する」を押す",
+          "body": "画像の横にボタンが一つ。ページのほかの部分は何も変わりません。"
         },
         "window": {
-          "title": "Sees a small Moolam window",
-          "body": "It opens over your page like a checkout, and names your platform from Moolam's signed list."
+          "title": "小さな Moolam のウィンドウが開く",
+          "body": "決済画面のようにページの上に開き、Moolam の署名済みリストからあなたのプラットフォーム名を示します。"
         },
         "signIn": {
-          "title": "Signs in, the first time only",
-          "body": "A Moolam account and a passkey, made once on that device."
+          "title": "初回だけサインインする",
+          "body": "Moolam のアカウントとパスキーを、その端末で一度だけ作ります。"
         },
         "passkey": {
-          "title": "Taps their passkey",
-          "body": "Face, fingerprint or screen lock approves this exact picture. Moolam pays the Monad fee."
+          "title": "パスキーをタップする",
+          "body": "顔、指紋、画面ロックのどれかで、この画像そのものを承認します。Monad の手数料は Moolam が払います。"
         },
         "passport": {
-          "title": "Has the passport",
-          "body": "The window closes. Monad holds a passport naming them, and the picture waits on their My pictures."
+          "title": "パスポートを手にする",
+          "body": "ウィンドウが閉じます。本人の名前が載ったパスポートが Monad にあり、画像は本人の「自分の画像」に並びます。"
         }
       }
     },
     "build": {
-      "kicker": "Build it",
-      "title": "Three calls on your server",
-      "before": "Before the first picture: register an ERC-8004 agent on Monad and join Moolam's list. You get a Moolam key that identifies your platform.",
-      "beforeLink": "Joining the list",
-      "package": "The kit is a TypeScript package for your server, @moolam/platform. It is not on npm yet.",
-      "step": "Step {number}",
-      "codeLabel": "Code for step {number}: {title}",
+      "kicker": "組み込む",
+      "title": "サーバーで呼ぶのは三つ",
+      "before": "最初の画像の前に: Monad で ERC-8004 エージェントを登録し、Moolam のリストに参加します。あなたのプラットフォームを識別する Moolam の鍵が発行されます。",
+      "beforeLink": "リストへの参加",
+      "package": "キットはサーバー用の TypeScript パッケージ、@moolam/platform です。まだ npm にはありません。",
+      "step": "ステップ {number}",
+      "codeLabel": "ステップ {number} のコード: {title}",
       "steps": {
         "start": {
-          "title": "Start the co-sign",
-          "body": "Your server hands Moolam the picture. Moolam signs its Content Credentials, fingerprints it and gives back a link for your user."
+          "title": "共同署名を始める",
+          "body": "あなたのサーバーが Moolam に画像を渡します。Moolam はその Content Credentials に署名し、指紋を取り、ユーザー用のリンクを返します。"
         },
         "send": {
-          "title": "Send the link, sign as your agent",
-          "body": "Open the link in a small window. Once your user has signed in, your agent signs the same picture."
+          "title": "リンクを送り、エージェントとして署名する",
+          "body": "リンクを小さなウィンドウで開きます。ユーザーがサインインしたら、あなたのエージェントが同じ画像に署名します。"
         },
         "wait": {
-          "title": "Wait for the passport",
-          "body": "It returns once Monad holds this passport with your user as its creator and your agent as its maker."
+          "title": "パスポートを待つ",
+          "body": "ユーザーを制作者、あなたのエージェントを描き手とするパスポートが Monad に記録されると、戻ってきます。"
         }
       },
       "mcp": {
-        "title": "For AI agents",
-        "body": "One line connects Claude, or any client that speaks MCP, to Moolam's read-only server: check a picture, read its passport and its AI-use terms.",
-        "codeLabel": "Command that adds Moolam's MCP server to Claude Code"
+        "title": "AI エージェント向け",
+        "body": "一行で、Claude や MCP に対応したどのクライアントも Moolam の読み取り専用サーバーにつながります。画像を確認し、そのパスポートと AI 利用の表明を読めます。",
+        "codeLabel": "Moolam の MCP サーバーを Claude Code に追加するコマンド"
       },
-      "guide": "The full integration guide"
+      "guide": "導入ガイドの全文"
     },
     "live": {
-      "kicker": "Live today",
-      "title": "Dreamloom runs it on Monad mainnet",
-      "body": "Dreamloom is a demo AI picture site built to show the kit. It is on Moolam's signed list, its agent signs every picture it draws, and its passports are real.",
+      "kicker": "稼働中",
+      "title": "Dreamloom が Monad メインネットで使っています",
+      "body": "Dreamloom は、キットを見せるために作ったデモの AI 画像サイトです。Moolam の署名済みリストに載り、そのエージェントは描いたすべての画像に署名し、そのパスポートは本物です。",
       "figures": {
-        "platformPassports": "passports signed by {platform}'s agent",
-        "totalPassports": "passports on Moolam",
-        "stated": "carry their holder's AI-use terms",
-        "platforms": "{count, plural, =1 {platform on Moolam's signed list} other {platforms on Moolam's signed list}}"
+        "platformPassports": "{platform} のエージェントが署名したパスポート",
+        "totalPassports": "Moolam 上のパスポート",
+        "stated": "保有者の AI 利用の表明つき",
+        "platforms": "{count, plural, other {Moolam の署名済みリストに載るプラットフォーム}}"
       },
-      "source": "Read from Moolam's index and its signed list, held for a minute.",
-      "unread": "Not read just now",
-      "now": "Live now: the platform routes and the MCP server on Moolam's verify service, and Dreamloom.",
-      "next": "Coming with the next release: leave it for their email, and the co-sign and connect windows on moolam.vercel.app.",
-      "agent": "Agent {id}",
-      "pictureAlt": "{title}, a picture drawn on {platform} with its passport on Monad",
-      "pictureAltUntitled": "A picture drawn on {platform} with its passport on Monad",
-      "open": "Open Dreamloom"
+      "source": "Moolam のインデックスと署名済みリストから読み取り、1 分間保持しています。",
+      "unread": "いまは読み取れません",
+      "now": "稼働中: Moolam の検証サービス上のプラットフォーム用ルートと MCP サーバー、そして Dreamloom。",
+      "next": "次のリリースで提供: メールアドレス宛てに預ける方法と、moolam.vercel.app の共同署名と接続のウィンドウ。",
+      "agent": "エージェント {id}",
+      "pictureAlt": "{title}、{platform} で描かれ、Monad 上にパスポートを持つ画像",
+      "pictureAltUntitled": "{platform} で描かれ、Monad 上にパスポートを持つ画像",
+      "open": "Dreamloom を開く"
     },
     "pricing": {
-      "kicker": "Pricing",
-      "title": "Free while you find out",
-      "banner": "Free during early access. Paid plans start only when Moolam has real demand, with 30 days' notice.",
+      "kicker": "料金",
+      "title": "試すあいだは無料",
+      "banner": "早期アクセス中は無料です。有料プランは Moolam に本当の需要が生まれてから、30 日前に知らせたうえで始めます。",
       "plans": {
         "free": {
-          "name": "Free",
+          "name": "無料",
           "price": "$0",
-          "unit": "a month",
-          "body": "The first 1,000 passports every month."
+          "unit": "/ 月",
+          "body": "毎月、最初の 1,000 件のパスポート。"
         },
         "payg": {
-          "name": "Pay as you go",
+          "name": "従量課金",
           "price": "$0.005",
-          "unit": "a passport",
-          "body": "Half a cent a passport after the first 1,000."
+          "unit": "/ パスポート",
+          "body": "最初の 1,000 件のあと、パスポート 1 件につき 0.5 セント。"
         },
         "monthly": {
-          "name": "Monthly",
+          "name": "月額",
           "price": "$99",
-          "unit": "a month",
-          "body": "Up to 50,000 passports a month."
+          "unit": "/ 月",
+          "body": "月 50,000 件のパスポートまで。"
         }
       },
-      "fee": "Moolam pays the Monad fee for every passport a person signs, about 0.07 MON today.",
-      "proof": "Measured costs on mainnet"
+      "fee": "本人が署名するパスポートの Monad 手数料は、すべて Moolam が払います。現在は約 0.07 MON です。",
+      "proof": "メインネットで測った費用"
     },
     "security": {
-      "kicker": "Security and proof",
-      "title": "We tried to break it first",
-      "lead": "Every promise the kit, the MCP server and Dreamloom make was attacked from outside, against the live services.",
-      "attacks": "attacks sent",
-      "refused": "refused",
-      "controls": "controls passed",
-      "findings": "got through",
-      "honest": "Self-audited: Moolam ran this pass itself, and no outside firm has audited the kit yet. The kit checks your key and your agent owner's signature on chain at that moment. It does not check who the company behind an agent is.",
-      "unread": "The attack transcript could not be read just now.",
-      "threat": "Read the threat model",
-      "transcript": "The full attack transcript"
+      "kicker": "セキュリティと証拠",
+      "title": "まず私たちが壊そうとしました",
+      "lead": "キット、MCP サーバー、Dreamloom が掲げる約束のすべてを、稼働中のサービスに対して外から攻撃しました。",
+      "attacks": "送り込んだ攻撃",
+      "refused": "拒否された",
+      "controls": "合格した対策",
+      "findings": "すり抜けた",
+      "honest": "自己監査です。この検証は Moolam 自身が行い、外部の会社はまだキットを監査していません。キットはその時点で、あなたの鍵とエージェント保有者の署名をチェーン上で確認します。エージェントの背後にいる会社が誰かは確認しません。",
+      "unread": "いま攻撃の記録を読み取れませんでした。",
+      "threat": "脅威モデルを読む",
+      "transcript": "攻撃記録の全文"
     },
     "call": {
-      "kicker": "Join",
-      "title": "Put your platform on the list",
-      "body": "Send Moolam your platform's name, your ERC-8004 agent and your site's address, sign the entry, and your users can sign their first picture.",
-      "primary": "How to join the list",
-      "secondary": "See it live on Dreamloom"
+      "kicker": "参加する",
+      "title": "あなたのプラットフォームをリストに",
+      "body": "プラットフォーム名、ERC-8004 エージェント、サイトのアドレスを Moolam に送り、登録内容に署名すれば、ユーザーは最初の画像に署名できます。",
+      "primary": "リストへの参加方法",
+      "secondary": "Dreamloom で実際の動きを見る"
     }
   },
   "menu": {
-    "label": "Menu",
+    "label": "メニュー",
     "sides": {
-      "personal": "For personal",
-      "business": "For business"
+      "personal": "個人向け",
+      "business": "ビジネス向け"
     },
     "items": {
       "verify": {
-        "name": "Verify an image",
-        "line": "Drop in any picture and see who made it."
+        "name": "画像を検証",
+        "line": "どんな画像でもドロップすれば、誰が作ったかが分かります。"
       },
       "studio": {
-        "name": "Register an image",
-        "line": "Make a picture and give it a passport on Monad."
+        "name": "画像を登録",
+        "line": "画像を作り、Monad 上のパスポートを与えます。"
       },
       "mine": {
-        "name": "My pictures",
-        "line": "Every passport you hold, and what you allow."
+        "name": "自分の画像",
+        "line": "あなたが保有するすべてのパスポートと、許可している内容。"
       },
       "explore": {
-        "name": "Explore",
-        "line": "Every passport ever registered, newest first."
+        "name": "一覧",
+        "line": "これまでに登録されたすべてのパスポートを、新しい順に。"
       },
       "how": {
-        "name": "How it works",
-        "line": "One passport, from first pixel to proof."
+        "name": "しくみ",
+        "line": "一つのパスポートを、最初のピクセルから証明まで。"
       },
       "business": {
-        "name": "Moolam for business",
-        "line": "Credit the person behind every picture your site makes."
+        "name": "ビジネス向け Moolam",
+        "line": "あなたのサイトで生まれるすべての画像に、その背後にいる人のクレジットを。"
       },
       "kit": {
-        "name": "Platform kit",
-        "line": "One package and four routes on your server."
+        "name": "プラットフォームキット",
+        "line": "パッケージ一つと、サーバー上の四つのルート。"
       },
       "mcp": {
-        "name": "AI agents and MCP",
-        "line": "Let Claude or any agent read a passport."
+        "name": "AI エージェントと MCP",
+        "line": "Claude やどのエージェントにもパスポートを読ませる。"
       },
       "agents": {
-        "name": "Agents board",
-        "line": "Every image agent, ranked by its record."
+        "name": "エージェント一覧",
+        "line": "すべての画像エージェントを、実績順に。"
       },
       "pricing": {
-        "name": "Pricing",
-        "line": "What a passport costs you on Monad mainnet."
+        "name": "料金",
+        "line": "Monad メインネットでパスポートにかかる費用。"
       },
       "dreamloom": {
-        "name": "Live demo: Dreamloom",
-        "line": "A real picture site running the kit today."
+        "name": "ライブデモ: Dreamloom",
+        "line": "いまキットが動いている、本物の画像サイト。"
       },
       "security": {
-        "name": "Security and proof",
-        "line": "What the code defends, and the attacks we ran."
+        "name": "セキュリティと証拠",
+        "line": "コードが守っているものと、私たちが試した攻撃。"
       }
     },
-    "here": "You are here",
-    "open": "Open",
-    "arrows": "Arrows move",
-    "escape": "Esc closes",
-    "close": "Close the menu",
-    "account": "My account"
+    "here": "現在のページ",
+    "open": "開く",
+    "arrows": "矢印キーで移動",
+    "escape": "Esc で閉じる",
+    "close": "メニューを閉じる",
+    "account": "自分のアカウント"
   },
   "mark": {
-    "label": "Trust mark",
+    "label": "信頼の印",
     "states": {
       "upheld": {
-        "word": "Challenge upheld",
-        "line": "Moolam upheld a challenge against this record. Treat it, and its AI-use terms, as wrong."
+        "word": "異議が認められた",
+        "line": "Moolam はこの記録への異議を認めました。記録も、その AI 利用の表明も、誤りとして扱ってください。"
       },
       "mismatch": {
-        "word": "Does not match",
-        "line": "Chainlink's network fetched the picture this passport points to, and it is not the picture that was registered."
+        "word": "一致しない",
+        "line": "Chainlink のネットワークがこのパスポートの指す画像を取得したところ、登録された画像ではありませんでした。"
       },
       "lookalike": {
-        "word": "Registered after a look-alike",
-        "line": "An earlier passport, {title}, looks like the same picture. It was registered on {date}, before this one."
+        "word": "よく似た画像の後に登録",
+        "line": "先のパスポート {title} が、同じ画像に見えます。このパスポートより前の {date} に登録されています。"
       },
       "challenged": {
-        "word": "Challenged",
-        "line": "Someone put {bond} MON behind a claim that this record is wrong. The holder can answer until {date}."
+        "word": "異議申し立て中",
+        "line": "この記録は誤りだという主張に、誰かが {bond} MON を積みました。保有者は {date} まで答えられます。"
       },
       "waiting": {
-        "word": "Waiting for Chainlink",
-        "line": "Registered {when}. Chainlink's network checks every new public passport, and has not checked this one yet."
+        "word": "Chainlink の確認待ち",
+        "line": "{when} に登録。Chainlink のネットワークは新しい公開パスポートをすべて確認しますが、これはまだ確認していません。"
       },
       "checked": {
-        "word": "Checked by Chainlink",
-        "line": "Chainlink's network fetched this picture itself, measured it again, and it matches its passport: {bits} of 64 bits apart. Written on Monad on {date}."
+        "word": "Chainlink 確認済み",
+        "line": "Chainlink のネットワークがこの画像を自分で取得して測り直し、パスポートと一致しました。64 ビット中 {bits} ビットの差です。{date} に Monad に書き込まれました。"
       },
       "sealed": {
-        "word": "Sealed",
-        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+        "word": "封印済み",
+        "line": "一度も公開されていないため、Chainlink のネットワークは確認できません。指紋は公開されているので、コピーからでも検証で見つかります。"
       },
       "nothing": {
-        "word": "Nothing to check",
-        "line": "This passport names no picture, so Chainlink has nothing to fetch."
+        "word": "確認するものなし",
+        "line": "このパスポートは画像を指していないため、Chainlink が取得するものはありません。"
       }
     },
-    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
+    "secondPrint": "Chainlink のネットワークによると、見た目の指紋は一致し、配置の指紋は一致しませんでした。両方が一致する必要があるため、このパスポートは通りません。",
     "simulator": {
-      "word": "Test run",
-      "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
+      "word": "テスト実行",
+      "line": "Chainlink のシミュレーターによる、1 台のマシンでのテスト実行です。記録には残りますが、印が付くことはありません。"
     },
-    "unread": "The mark could not be read just now, so none is shown. Try again in a moment.",
-    "readDecision": "Read the decision",
-    "openEarlier": "Open the earlier passport"
+    "unread": "いま印を読み取れなかったため、何も表示していません。少ししてからお試しください。",
+    "readDecision": "裁定を読む",
+    "openEarlier": "先のパスポートを開く"
   },
   "claim": {
-    "label": "Where the claim comes from",
-    "studio": "Made in Moolam's studio. The agent signed the picture the moment it was drawn.",
-    "platform": "Drawn on {platform}. Its agent signed the picture the moment it was made.",
-    "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
-    "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
-    "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
-    "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
-    "seenEarlier": "Before signing, they were shown an earlier passport like this one.",
-    "platformStatement": "{platform}'s statement"
+    "label": "主張の出どころ",
+    "studio": "Moolam のスタジオで作成。描かれた瞬間にエージェントが画像に署名しました。",
+    "platform": "{platform} で描画。作られた瞬間に {platform} のエージェントが画像に署名しました。",
+    "camera": "撮影時にカメラがこの画像に署名しました。示しているのはカメラであって、人ではありません。",
+    "self": "{date} に {address} がアップロード。これはその人の主張で、{until} まで異議を申し立てられます。",
+    "selfLater": "{date} に {address} がアップロード。これはその人の主張で、今も誰でも証拠を添えて異議を申し立てられます。",
+    "outside": "Moolam のスタジオの外で登録: 宣誓もウェブ照合もありません。",
+    "seenEarlier": "署名の前に、これとよく似た先のパスポートが示されていました。",
+    "platformStatement": "{platform} の表明"
   },
   "lookalike": {
     "found": {
-      "heading": "Earlier passport found",
-      "line": "Chainlink's network measured this picture itself and found {title}, registered on {date}, {bits} of 64 bits apart. Written on Monad on {at}."
+      "heading": "先のパスポートが見つかりました",
+      "line": "Chainlink のネットワークがこの画像を自分で測り、{date} に登録された {title} を見つけました。64 ビット中 {bits} ビットの差です。{at} に Monad に書き込まれました。"
     },
     "searching": {
-      "heading": "Earlier passport, not confirmed yet",
-      "line": "Moolam's search found an earlier passport like this: {title}, registered on {date}. Chainlink has not confirmed it yet."
+      "heading": "先のパスポート、未確認",
+      "line": "Moolam の検索が、これとよく似た先のパスポートを見つけました: {date} に登録された {title}。Chainlink はまだ確かめていません。"
     },
-    "order": "Registered first is not the same as made first. Anyone can challenge either passport with evidence.",
+    "order": "先に登録したことは、先に作ったことと同じではありません。どちらのパスポートにも、誰でも証拠を添えて異議を申し立てられます。",
     "later": {
-      "line": "A later passport looks the same: {title}, registered on {date}.",
-      "count": "{count, plural, =1 {# later passport looks} other {# later passports look}} the same."
+      "line": "後のパスポートが同じに見えます: {date} に登録された {title}。",
+      "count": "{count, plural, other {後のパスポート # 件}}が同じに見えます。"
     },
-    "none": "Chainlink found no earlier look-alike among the candidates Moolam's search proposed.",
-    "sealed": "An earlier sealed passport carries a fingerprint like this picture's. Its picture was never shown, so nobody can compare the two."
+    "none": "Moolam の検索が挙げた候補の中に、Chainlink は先のよく似た画像を見つけませんでした。",
+    "sealed": "封印して先に登録されたパスポートに、この画像とよく似た指紋があります。その画像は一度も公開されていないため、誰も二つを比べられません。"
   },
   "sworn": {
-    "label": "By signing, you state",
-    "line": "I made this picture, or I hold the rights to register it.",
-    "note": "This line goes into the passport you sign, for anyone to read."
+    "label": "署名することで、次のことを表明します",
+    "line": "この画像は私が作ったもの、または私が登録する権利を持つものです。",
+    "note": "この一文は英語の原文のまま、署名するパスポートに入り、誰でも読めます。"
   },
   "challenge": {
     "rules": {
-      "heading": "What a challenge needs",
-      "earlier": "The earlier work: the picture you say this passport copies.",
-      "proof": "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier passport.",
-      "verify": "A Verify answer that shows it is the same picture.",
-      "licensed": "That it is not a copy you licensed to them.",
-      "burden": "The challenger carries the burden. Without this evidence, the record stands."
+      "heading": "異議に必要なもの",
+      "earlier": "先の作品: このパスポートがコピーしたとあなたが言う画像。",
+      "proof": "それが先に存在した、または示されていた証拠: 日付つきの投稿、カメラ自身のファイル、または先のパスポート。",
+      "verify": "同じ画像であることを示す、検証の答え。",
+      "licensed": "あなたが相手に使用を許したコピーではないこと。",
+      "burden": "証明の責任は申立人にあります。この証拠がなければ、記録はそのまま有効です。"
     },
     "decider": {
-      "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
-      "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
-      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way.",
-      "heading": "Who decides",
-      "treasury": "A rejected challenge's bond is credited to the treasury the policy names, {treasury}."
+      "who": "現在、異議はこのルールに沿って Moolam が裁定し、すべての裁定を理由とともに公開します。Moolam は一つの会社であって、裁判所ではありません。",
+      "seat": "裁定者は Monad 上で指名された一つのアドレスです。変更するには、公開のまま 24 時間待つ必要があります。",
+      "bond": "退けられた異議の保証金は焼却されるため、どちらの結果でも Moolam は何も得ません。",
+      "heading": "誰が裁定するか",
+      "treasury": "退けられた異議の保証金は、ポリシーが指名するトレジャリー {treasury} の取り分になります。"
     },
     "answer": {
-      "heading": "Answer this challenge",
-      "prompt": "Someone has challenged your passport. You have until {date} to answer before Moolam decides. Say why the record is right, and how someone else could check it.",
-      "placeholder": "What you know, and how someone else could check it.",
-      "left": "{left} left",
-      "hint": "Up to 4,000 bytes. Your wallet signs it, and it is pinned for good where anyone can read it.",
-      "button": "Sign and send my answer",
+      "heading": "この異議に答える",
+      "prompt": "あなたのパスポートに異議が申し立てられました。Moolam が裁定する前に、{date} まで答えられます。記録が正しい理由と、ほかの人がそれをどう確かめられるかを書いてください。",
+      "placeholder": "知っていることと、ほかの人がそれをどう確かめられるか。",
+      "left": "残り {left}",
+      "hint": "4,000 バイトまで。あなたのウォレットが署名し、誰でも読める場所に恒久的にピン留めされます。",
+      "button": "署名して答えを送る",
       "states": {
-        "signing": "Waiting for your wallet to sign",
-        "sending": "Sending your answer",
-        "done": "Your answer is pinned and shown on this passport."
+        "signing": "ウォレットの署名を待っています",
+        "sending": "答えを送信しています",
+        "done": "あなたの答えはピン留めされ、このパスポートに表示されています。"
       },
       "shown": {
-        "label": "The holder's answer",
-        "by": "Signed by {holder}",
-        "none": "The holder has not answered yet. They have until {date}.",
-        "missed": "The holder did not answer within the 14 days.",
-        "unread": "The holder's answer could not be read just now. Try again in a moment."
+        "label": "保有者の答え",
+        "by": "{holder} が署名",
+        "none": "保有者はまだ答えていません。期限は {date} です。",
+        "missed": "保有者は 14 日以内に答えませんでした。",
+        "unread": "いま保有者の答えを読み取れませんでした。少ししてからお試しください。"
       },
       "refusals": {
-        "noOpenDispute": "There is no open challenge on this passport to answer.",
-        "windowClosed": "The 14 days to answer this challenge have passed.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "noHolder": "Monad shows no holder for this passport, so nobody can answer for it.",
-        "notHolder": "This wallet does not hold this passport, so it cannot answer for it.",
-        "signatureUsed": "That signature was already used. Sign again.",
-        "alreadyAnswered": "This challenge already has its answer. Each challenge takes one.",
-        "answering": "An answer to this challenge is being sent from another window. Look again in a moment.",
-        "unavailable": "Moolam cannot take answers right now. Nothing was sent. Try again later.",
-        "chainUnreachable": "Moolam could not read Monad just now. Nothing was sent. Try again in a moment.",
-        "pinFailed": "Your answer could not be pinned, so nothing was saved. Try again.",
-        "busy": "Too many answers are arriving right now. Wait a minute and try again.",
-        "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
-        "empty": "Write your answer first.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "declined": "You closed the wallet prompt, so nothing was signed.",
-        "unknown": "The answer did not go through."
+        "noOpenDispute": "このパスポートには、答えるべき未決の異議はありません。",
+        "windowClosed": "この異議に答えられる 14 日間は過ぎました。",
+        "expired": "署名が届く前に期限切れになりました。もう一度署名してください。",
+        "noHolder": "Monad にはこのパスポートの保有者が示されていないため、誰も答えられません。",
+        "notHolder": "このウォレットはこのパスポートを保有していないため、答えられません。",
+        "signatureUsed": "その署名はすでに使われています。もう一度署名してください。",
+        "alreadyAnswered": "この異議にはすでに答えがあります。答えられるのは一つの異議につき一度です。",
+        "answering": "この異議への答えが、別のウィンドウから送信中です。少ししてからもう一度確認してください。",
+        "unavailable": "いま Moolam は答えを受け付けられません。何も送信していません。しばらくしてからお試しください。",
+        "chainUnreachable": "いま Moolam は Monad を読めませんでした。何も送信していません。少ししてからお試しください。",
+        "pinFailed": "答えをピン留めできなかったため、何も保存していません。もう一度お試しください。",
+        "busy": "いま答えが集中しています。1 分ほど待ってからもう一度お試しください。",
+        "tooLong": "答えが 4,000 バイトを超えています。短くしてもう一度署名してください。",
+        "empty": "先に答えを書いてください。",
+        "notPrintable": "見えない文字は送れません。取り除いてからもう一度署名してください。",
+        "declined": "ウォレットの確認画面を閉じたため、何も署名されていません。",
+        "unknown": "答えは通りませんでした。"
       }
     },
     "decision": {
-      "heading": "The decision",
-      "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
-      "rejected": "Rejected on {date}. The record stands.",
-      "reasons": "Read the reasons",
-      "noReasons": "No reasons were published with this decision.",
-      "upheldUndated": "Upheld. Moolam agreed with the challenge.",
-      "rejectedUndated": "Rejected. The record stands.",
-      "unread": "The published reasons could not be read just now. Try again in a moment."
+      "heading": "裁定",
+      "upheld": "{date} に認められました。Moolam は異議に同意しました。",
+      "rejected": "{date} に退けられました。記録はそのまま有効です。",
+      "reasons": "理由を読む",
+      "noReasons": "この裁定には理由が公開されていません。",
+      "upheldUndated": "認められました。Moolam は異議に同意しました。",
+      "rejectedUndated": "退けられました。記録はそのまま有効です。",
+      "unread": "いま公開された理由を読み取れませんでした。少ししてからお試しください。"
     },
     "held": {
-      "heading": "{count, plural, =1 {A picture you hold is challenged} other {# pictures you hold are challenged}}",
-      "opened": "Challenged on {date}"
+      "heading": "{count, plural, =1 {保有している画像に異議が出ています} other {保有している画像 # 枚に異議が出ています}}",
+      "opened": "{date} に異議申し立て"
     },
     "publish": {
-      "kicker": "Publish the reasons",
-      "label": "The reasons",
-      "placeholder": "What the evidence showed, which rule decided it, and how anyone can check it.",
-      "left": "{left} left",
-      "hint": "Up to 8,000 bytes, line breaks kept. Your wallet signs them, and they are pinned for good where anyone can read them.",
-      "button": "Sign and publish, one more transaction",
-      "why": "Settling wrote the outcome on Monad, not the reasons. Publishing them is one more transaction from this wallet: it writes the pinned reasons' address beside this decision, so anyone who opens the passport can read why.",
+      "kicker": "理由を公開する",
+      "label": "理由",
+      "placeholder": "証拠が示したこと、どのルールで決まったか、誰でもどう確かめられるか。",
+      "left": "残り {left}",
+      "hint": "8,000 バイトまで、改行はそのまま。あなたのウォレットが署名し、誰でも読める場所に恒久的にピン留めされます。",
+      "button": "署名して公開する (トランザクションをもう一件)",
+      "why": "裁定で Monad に書かれたのは結果で、理由ではありません。理由の公開は、このウォレットからのもう一件のトランザクションです。ピン留めした理由のアドレスをこの裁定の隣に書き込むので、パスポートを開いた人は誰でも理由を読めます。",
       "states": {
-        "signing": "Waiting for your wallet to sign the reasons",
-        "pinning": "Pinning the reasons",
-        "sending": "Sending the publish transaction",
-        "confirming": "Waiting for Monad's receipt",
-        "pending": "The publish went out and no receipt shows it yet. It may still land, so it must not be sent again."
+        "signing": "ウォレットが理由に署名するのを待っています",
+        "pinning": "理由をピン留めしています",
+        "sending": "公開のトランザクションを送信しています",
+        "confirming": "Monad の受領確認を待っています",
+        "pending": "公開は送信されましたが、まだ受領確認に現れていません。これから記録される可能性があるため、再送してはいけません。"
       },
-      "recheck": "Ask Monad again",
-      "done": "Published. Monad's receipt carries this decision's reasons, and the passport page links them.",
-      "openReasons": "Read the reasons",
-      "openTx": "Transaction {hash}",
+      "recheck": "Monad にもう一度尋ねる",
+      "done": "公開しました。Monad の受領確認にこの裁定の理由が載り、パスポートのページからリンクされています。",
+      "openReasons": "理由を読む",
+      "openTx": "トランザクション {hash}",
       "owed": {
-        "heading": "Decisions waiting for their reasons",
-        "line": "{outcome, select, upheld {Upheld} other {Rejected}} on {date}"
+        "heading": "理由の公開を待つ裁定",
+        "line": "{date} に{outcome, select, upheld {認めた} other {退けた}}"
       },
       "refusals": {
-        "empty": "Write the reasons first.",
-        "tooLong": "The reasons are over 8,000 bytes. Shorten them and sign again.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "notResolver": "This wallet is not the resolver the policy names, so nothing was pinned or sent.",
-        "notSettled": "Monad does not show this dispute settled, so it has no decision to explain yet.",
-        "mismatch": "Monad shows this dispute settled another way or opened at another time. Reload the desk and look again.",
-        "alreadyPublished": "The reasons for this decision are already published.",
-        "pinning": "These reasons are being pinned from another window. Look again in a moment.",
-        "busy": "Too many reasons were pinned today, or too many requests came at once. Try again later.",
-        "pinFailed": "The reasons could not be pinned, so nothing was published. Send them again.",
-        "unavailable": "Moolam cannot pin reasons right now. Nothing was published. Try again later.",
-        "chainUnreachable": "Monad could not be read just now. Nothing was sent. Try again in a moment.",
-        "declined": "You closed the wallet prompt, so nothing was signed or sent.",
-        "invalidAddress": "MoolamDecisions would not take this address, so nothing was sent.",
-        "reverted": "Monad mined the publish and its receipt does not carry these reasons. Nothing was published.",
-        "unknown": "The publish did not go through."
+        "empty": "先に理由を書いてください。",
+        "tooLong": "理由が 8,000 バイトを超えています。短くしてもう一度署名してください。",
+        "notPrintable": "見えない文字は送れません。取り除いてからもう一度署名してください。",
+        "expired": "署名が届く前に期限切れになりました。もう一度署名してください。",
+        "notResolver": "このウォレットはポリシーが指名した裁定者ではないため、何もピン留めも送信もしていません。",
+        "notSettled": "Monad ではこの異議はまだ決着していないため、説明すべき裁定はまだありません。",
+        "mismatch": "Monad では、この異議は別の結果で決着したか、別の時刻に申し立てられています。画面を再読み込みして、もう一度確認してください。",
+        "alreadyPublished": "この裁定の理由はすでに公開されています。",
+        "pinning": "この理由は別のウィンドウからピン留め中です。少ししてからもう一度確認してください。",
+        "busy": "今日ピン留めされた理由が多すぎるか、依頼が一度に集中しました。しばらくしてからお試しください。",
+        "pinFailed": "理由をピン留めできなかったため、何も公開していません。もう一度送ってください。",
+        "unavailable": "いま Moolam は理由をピン留めできません。何も公開していません。しばらくしてからお試しください。",
+        "chainUnreachable": "いま Monad を読めませんでした。何も送信していません。少ししてからお試しください。",
+        "declined": "ウォレットの確認画面を閉じたため、何も署名も送信もしていません。",
+        "invalidAddress": "MoolamDecisions がこのアドレスを受け付けなかったため、何も送信していません。",
+        "reverted": "Monad は公開をブロックに取り込みましたが、その受領確認にこの理由は載っていません。何も公開されていません。",
+        "unknown": "公開は通りませんでした。"
       }
     }
   }

@@ -4,7 +4,7 @@
     "creator": "创作者",
     "generatorAgent": "生成智能体",
     "verify": "验证",
-    "attestation": "由创作者以外的一方写在链上的复核",
+    "attestation": "由创作者以外的一方写在链上的核验",
     "editChain": "编辑链条",
     "dispute": "争议",
     "passkey": "通行密钥",
@@ -16,13 +16,24 @@
     "block": "区块",
     "image": "图片",
     "verifyService": "验证服务",
-    "recheck": "复核",
-    "secondOpinion": "第二意见",
+    "check": "核验",
+    "trustMark": "信任标记",
     "challenge": "质疑",
     "challenger": "质疑者",
     "passportId": "护照 id",
     "agentCard": "名片",
-    "daySlider": "日期滑块"
+    "daySlider": "日期滑块",
+    "lookalike": "相似图片",
+    "cosign": "共同签名",
+    "signItYourself": "亲自签名",
+    "aiUseTerms": "AI 使用条款",
+    "sealed": "封存",
+    "imagined": "构思",
+    "credit": "署名",
+    "claim": "认领",
+    "handOver": "转交",
+    "holder": "持有者",
+    "resolver": "仲裁者"
   },
   "meta": {
     "title": "Moolam",
@@ -73,19 +84,19 @@
         "title": "验证任何图片",
         "line": "上传一张图片，Moolam 会告诉你它在 Monad 上有没有护照，以及作者允许了什么。",
         "action": "验证图片",
-        "elsewhere": "在电脑上位于顶部的栏里，在手机上位于底部的栏里。"
+        "elsewhere": "在电脑上，它在顶部菜单的“面向个人”下面。在手机上，它在底部的栏里。"
       },
       "make": {
         "title": "做一张，拿到它的护照",
         "line": "在工作室登记一张图片。两次签名，大约一秒，留下一条没人能悄悄改动的记录。",
         "action": "登记图片",
-        "elsewhere": "在电脑上位于顶部的栏里，在手机上是中间那个标签。"
+        "elsewhere": "在电脑上，它在顶部菜单的“面向个人”下面。在手机上，它是中间那个标签。"
       },
       "find": {
         "title": "找到你自己的",
         "line": "你登记过的每一张图片，在你登录的任何设备上，都连同护照和历史一起出现。",
         "action": "我的图片",
-        "elsewhere": "在顶部的栏里和其他项并排，在手机上是最后一个标签。"
+        "elsewhere": "在电脑上，它是右上角的“我的账户”。在手机上，它是最后一个标签。"
       }
     }
   },
@@ -135,11 +146,11 @@
     "kicker": "浏览",
     "title": "登记处",
     "rail": "Monad 上的每一本护照",
-    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，就能看到它的指纹、Content Credentials 和复核记录。",
+    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，就能看到它的指纹、Content Credentials 和核验记录。",
     "counts": {
       "total": "护照",
       "generated": "生成",
-      "rechecked": "已复核",
+      "rechecked": "已核验",
       "stated": "有 AI 使用声明"
     },
     "countsError": "无法读取计数：{reason}。",
@@ -159,11 +170,11 @@
       "generated": "生成",
       "captured": "拍摄",
       "edits": "编辑",
-      "rechecked": "已复核",
+      "rechecked": "已核验",
       "manifest": "带 Content Credentials",
       "disputed": "争议成立",
-      "lookalike": "Registered after a look-alike",
-      "later": "Has later look-alikes"
+      "lookalike": "晚于相似图片登记",
+      "later": "有更晚的相似图片"
     },
     "ai": {
       "label": "AI 使用",
@@ -183,17 +194,17 @@
     "clearAgent": "清除智能体筛选",
     "marks": {
       "manifest": "带 Content Credentials",
-      "rechecked": "已在链上复核",
-      "chainlink": "由 Chainlink 工作流复核",
+      "rechecked": "已在链上核验",
+      "chainlink": "由 Chainlink 工作流核验",
       "disputed": "争议成立",
-      "platform": "Drawn on {platform}"
+      "platform": "在 {platform} 上绘制"
     },
     "legend": {
       "manifest": "带 Content Credentials",
-      "rechecked": "已在链上复核",
+      "rechecked": "已在链上核验",
       "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
       "consent": "AI 使用声明，四种用途四个标记",
-      "platform": "Drawn on a platform Moolam lists"
+      "platform": "在 Moolam 名单上的平台绘制"
     },
     "untitled": "无标题",
     "noPicture": "网关上没有图片",
@@ -225,7 +236,7 @@
     "kicker": "智能体",
     "title": "智能体",
     "lede": "索引见过在护照上签名的每一个生成智能体，以及为它记下的全部数字。签得最多的排在前面。",
-    "scoreMeaning": "0 到 100 的信任分：Chainlink 的复核有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
+    "scoreMeaning": "0 到 100 的信任分：Chainlink 的核验有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "这个分数怎么算出来",
     "formulaDoc": "索引在哪里算它",
@@ -235,13 +246,13 @@
     "since": "首次出现于 {when}",
     "trustScore": "信任分",
     "passports": "护照",
-    "matched": "复核一致",
-    "mismatched": "复核不一致",
+    "matched": "核验一致",
+    "mismatched": "核验不一致",
     "upheld": "争议成立",
     "seeWorks": "查看它的护照",
     "empty": "索引还没有见过任何智能体在护照上签名。",
     "error": "无法读取索引：{reason}。",
-    "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。",
+    "formulaPlain": "每一次一致的核验都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。",
     "strip": {
       "label": "这个智能体签过的最新图片"
     }
@@ -273,11 +284,11 @@
       "verdictFigure": "64 位中 {count} 位",
       "verdictSame": "不同：是同一张图。",
       "verdictMissed": "不同，验证服务没有找到它。",
-      "recheckOn": "Chainlink 于 {date} 复核了登记的图片本身：",
+      "recheckOn": "一个 Chainlink 工作流于 {date} 核验了登记的图片本身：",
       "recheckBits": "与记录相比，64 位中有 {count} 位不同",
       "recheckMissed": "不匹配，{bits}",
       "chainlink": "Chainlink：",
-      "recheckNone": "登记的图片还没有写入复核",
+      "recheckNone": "登记的图片还没有写入核验",
       "statedOn": "持有者关于 AI 使用的声明，{date}：",
       "aiUse": "AI 使用：",
       "openPassport": "打开护照：{title}",
@@ -285,7 +296,7 @@
       "billing": {
         "monad": "运行于 Monad 主网",
         "privy": "Privy 通行密钥",
-        "chainlink": "Chainlink 复核",
+        "chainlink": "Chainlink 已核验",
         "envio": "Envio 索引"
       },
       "unstarted": "这次检查没有开始。请刷新页面，再按一次。"
@@ -295,35 +306,35 @@
     "title": "Moolam",
     "chapter": {
       "kicker": "影片",
-      "title": "护照如何运作"
+      "title": "一张图片如何拿到护照"
     },
     "scrollCue": "向下滚动",
     "noWebgl": "这个浏览器无法以 3D 播放影片，所以故事在这里以页面呈现。上面的每个数字都是实时读取的，和影片里一样。",
     "sealed": {
       "kicker": "签名",
-      "title": "创作者的通行密钥为它签了名。",
-      "body": "Monad 把它记进了区块 {block}。两个签名，一条记录，大约一秒。",
-      "bodyNoBlock": "Monad 把它记了下来。两个签名，一条记录，大约一秒。",
+      "title": "这个人的通行密钥签了名。Monad 把它记了下来。",
+      "body": "区块 {block}。大约一秒就写成一条记录，谁也改不了。",
+      "bodyNoBlock": "大约一秒就写成一条记录，谁也改不了。",
       "readout": "护照 {passport}，登记于 {date}",
       "unread": "这本护照无法从登记处读出。",
-      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
+      "readoutSworn": "签名时的声明：这张图片是我做的，或者我有权登记它。"
     },
     "stated": {
-      "kicker": "声明",
+      "kicker": "条款",
       "title": "{summary}。",
-      "body": "创作者对 AI 使用的这句话，连同日期，写在了护照旁边的 Monad 上。此后的任何一天都可以问链，它按那一天回答。",
-      "readout": "{written} 写在 Monad 上，此后一直有效",
+      "body": "这个人给 AI 定的条款，连同日期，写在了护照旁边的 Monad 上。这个人可以修改条款，而历史会一直留着。",
+      "readout": "条款于 {written} 写入 Monad，此后一直有效。",
       "registered": "{when} 登记",
       "today": "今天"
     },
     "shared": {
       "kicker": "流传",
-      "title": "平台会在上传时抹掉凭证。",
+      "title": "平台会在上传时抹掉标签。",
       "body": "副本照样继续流传：重新压缩、缩到十分之一、旋转、镜像、走一遍社交平台的管线。它们全都丢掉了那份说明来处的文件。"
     },
     "verified": {
-      "kicker": "验证",
-      "title": "每一份副本仍然找得回自己的记录。",
+      "kicker": "找到",
+      "title": "每一份副本仍然找得回自己的护照。",
       "match": "匹配度",
       "copies": {
         "rotate-90": "转了四分之一圈的副本",
@@ -336,8 +347,8 @@
       "similarity": "64 位中有 {value} 位不同：{result}",
       "matched": "匹配",
       "notMatched": "不匹配",
-      "attestation": "一个 Chainlink CRE 工作流复核了它，并把答案写在链上：{result}，相差 {distance} 位。",
-      "noAttestation": "这本护照还没有任何复核被写上链。",
+      "attestation": "一个 Chainlink 工作流核验了它，并把答案写在链上：{result}，相差 {distance} 位。",
+      "noAttestation": "这本护照还没有任何核验被写上链。",
       "provenance": "阶梯上的数字由 Moolam 验证服务在另一张已登记的图片上测得，护照 {passport}，{date}。",
       "provenanceSelf": "数字由 Moolam 验证服务在这本护照上测得，{date}。"
     },
@@ -359,20 +370,20 @@
       "noMatchBody": "登记处里没有护照与这张图片相符。一份刚从生成器出来、从未登记过的文件，看起来正是这样。",
       "noManifest": "这个文件里已经没有 Content Credentials 了。记录照样找到了它。",
       "openPassport": "打开它的护照",
-      "titleTouch": "Check any copy of any image"
+      "titleTouch": "检查任何图片的任何副本"
     },
     "close": {
       "kicker": "Moolam",
       "title": "登记一次，处处认得。",
-      "body": "为每一张生成图片配一本护照，成图的那一刻就写进 Monad，由 Chainlink 工作流复核，并且能从任何在互联网上活下来的副本追回。",
+      "body": "每一张图片一本护照：由做出它的人签名，写在 Monad 上，从任何副本都能再找到。由 Chainlink 核验。",
       "verify": "验证图片",
       "proof": "查看证据",
       "passports": "护照",
-      "attestations": "链上复核",
+      "attestations": "Monad 上的 Chainlink 核验",
       "chain": "在 Monad 上，链 {chainId}",
       "unread": "未读到",
       "error": "此刻无法读取索引。请稍后刷新页面。",
-      "checked": "Checked by Chainlink"
+      "checked": "Chainlink 已核验"
     },
     "skip": "跳过影片",
     "failed": {
@@ -380,54 +391,54 @@
       "retry": "再试一次"
     },
     "imagined": {
-      "kicker": "Imagined",
-      "title": "A person imagined this.",
-      "body": "Agent {agent} drew it. The credit goes to the person, never the tool.",
-      "bodyPlatform": "Drawn by {platform}'s agent. The credit goes to the person, never the tool.",
-      "tag": "Imagined by {creator}",
-      "titlePhoto": "A person took this.",
-      "bodyPhoto": "No agent touched it. They registered it themselves.",
-      "titleHeld": "Imagined on {platform}.",
-      "bodyHeld": "{platform} holds it until the person who imagined it claims it."
+      "kicker": "构思",
+      "title": "这是一个人构思出来的。",
+      "body": "智能体 {agent} 把它画了出来。署名归于人，从不归于工具。",
+      "bodyPlatform": "由 {platform} 的智能体画出。署名归于人，从不归于工具。",
+      "tag": "由 {creator} 构思",
+      "titlePhoto": "这是一个人拍下的。",
+      "bodyPhoto": "没有智能体碰过它。是拍下它的人自己登记的。",
+      "titleHeld": "在 {platform} 上构思。",
+      "bodyHeld": "在构思它的人认领之前，由 {platform} 持有。"
     },
     "asked": {
-      "kicker": "Asked",
-      "question": "May I train on this?",
-      "title": "Any AI can ask first.",
-      "body": "An AI agent asks Moolam's server and gets the holder's terms back, read from Monad. It cannot say it did not know.",
-      "readout": "Answered from the same register through Moolam's MCP server, get_ai_use_terms."
+      "kicker": "询问",
+      "question": "我可以用它来训练吗？",
+      "title": "任何 AI 都可以先问一声。",
+      "body": "AI 智能体向 Moolam 的服务器询问，拿回从 Monad 读出的持有者条款。它没法说自己不知道。",
+      "readout": "通过 Moolam 的 MCP 服务器 (get_ai_use_terms)，从同一份登记簿作答。"
     },
     "checked": {
-      "kicker": "Checked",
-      "mark": "Checked by Chainlink",
-      "title": "Chainlink checks it. We do not.",
-      "body": "Chainlink's network fetches the picture, measures it again, and its nodes must agree. Only their verdict turns this mark on.",
-      "readout": "Checked by Chainlink on {date}: {result}, {distance} of 64 bits apart.",
-      "score": "Agent {agent}'s score: {score}",
-      "testTitle": "Chainlink measured it again.",
-      "testBody": "A Chainlink workflow fetched the picture, measured it and wrote the answer on Monad: {result}, {distance} bits apart. This run was a test on one machine."
+      "kicker": "核验",
+      "mark": "Chainlink 已核验",
+      "title": "由 Chainlink 核验，不是我们。",
+      "body": "Chainlink 的网络取回图片，重新测量，各个节点必须达成一致。只有它们的结论才能点亮这个标记。",
+      "readout": "Chainlink 于 {date} 核验：{result}，64 位中有 {distance} 位不同。",
+      "score": "智能体 {agent} 的分数：{score}",
+      "testTitle": "Chainlink 重新测量了它。",
+      "testBody": "一个 Chainlink 工作流取回图片、做了测量，并把答案写到 Monad 上：{result}，相差 {distance} 位。这次运行是在一台机器上的测试。"
     },
     "lookalike": {
-      "kicker": "Look-alike",
-      "title": "Register a copy, and you are second.",
-      "body": "If someone registers a copy of a picture already here, Chainlink finds the earlier passport and marks the new one as later. Anyone can challenge it.",
-      "readout": "{later} was registered {gap} after {earlier}. {bits} of 64 bits apart, found by Chainlink on {date}.",
-      "aside": "Two other passports, not the one this film follows."
+      "kicker": "相似图片",
+      "title": "登记一份副本，你只能排第二。",
+      "body": "如果有人登记了一张已经在这里的图片的副本，Chainlink 会找到更早的护照，并把新的那本标为在后。任何人都可以质疑它。",
+      "readout": "{later} 的登记时间比 {earlier} 晚 {gap}。64 位中有 {bits} 位不同，由 Chainlink 于 {date} 发现。",
+      "aside": "这是另外两本护照，不是这部影片跟着的那一本。"
     },
     "yourself": {
-      "kicker": "Sign it yourself",
-      "label": "Drawn on {platform}",
-      "tag": "Imagined by {person}",
-      "title": "Made on another AI site? Sign it yourself.",
-      "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
-      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+      "kicker": "亲自签名",
+      "label": "在 {platform} 上绘制",
+      "tag": "由 {person} 构思",
+      "title": "在别的 AI 网站上做的？亲自签名。",
+      "body": "图片网站可以加入 Moolam。网站的智能体代表工具签名，你点一下就以创作者身份签名，从第一个区块起，署名就是你的。",
+      "readout": "在 {platforms, plural, other {# 个平台}}上绘制了 {count, plural, other {# 张图片}}。这一张：{title}。"
     },
     "waiting": {
-      "kicker": "Waiting for you",
-      "tag": "Waiting for you",
-      "title": "No Moolam account yet? It waits for you.",
-      "body": "A site can leave your passports under the email it verified. Sign in with Google or an emailed code, press These are mine, then Confirm, and they are yours.",
-      "readout": "No figure here, on purpose: who a picture is waiting for is private."
+      "kicker": "等你认领",
+      "tag": "等你认领",
+      "title": "还没有 Moolam 账户？它会等你。",
+      "body": "网站可以把你的护照留在它核实过的邮箱名下。用 Google 或邮件验证码登录，按下“这些是我的”，再按“确认”，它们就是你的了。",
+      "readout": "这里特意不放数字：一张图片在等谁，是私事。"
     }
   },
   "verify": {
@@ -531,14 +542,14 @@
     "samples": "或者试试这几张",
     "sampleFailed": "这张图片没有从任何网关取回。请再试一次，或选择你自己的文件。",
     "recheck": {
-      "label": "第二意见",
+      "label": "Chainlink 的核验",
       "never": "尚未",
-      "count": "{count, plural, other {# 次复核}}",
-      "none": "尚未复核。",
+      "count": "{count, plural, other {# 次核验}}",
+      "none": "尚未核验。",
       "noneNote": "还没有独立的工作流取回这张图片并重新计算指纹。",
-      "matched": "由 Chainlink (CRE 工作流) 于 {at} 复核：它自己取回图片，重新取了指纹，结果一致，64 位中有 {count} 位不同。",
-      "mismatched": "由 Chainlink (CRE 工作流) 于 {at} 复核：它自己取回图片，重新取了指纹，结果不一致，64 位中有 {count} 位不同。",
-      "link": "查看这次复核"
+      "matched": "由一个 Chainlink CRE 工作流于 {at} 核验：它自己取回图片，重新取了指纹，结果一致，64 位中有 {count} 位不同。",
+      "mismatched": "由一个 Chainlink CRE 工作流于 {at} 核验：它自己取回图片，重新取了指纹，结果不一致，64 位中有 {count} 位不同。",
+      "link": "查看 Chainlink 的核验"
     },
     "dispute": {
       "none": "没有针对这本护照的未决质疑。",
@@ -550,7 +561,7 @@
     "sealed": {
       "matched": "与一本已封存的护照匹配。登记的图片没有公开。",
       "label": "已封存",
-      "recheck": "没有可供复核的公开副本。要复核就得先公开图片。"
+      "recheck": "没有公开副本，所以 Chainlink 网络无法核验它。核验需要图片先公开。"
     },
     "unsealed": {
       "matched": "这本护照以封存方式登记，持有者在 {date} 公开了图片。"
@@ -583,12 +594,12 @@
       "label": "对比你的副本和登记的图片"
     },
     "first": {
-      "heading": "Registered earlier",
-      "lead": "First registered as {title} on {date}.",
-      "closest": "The file you checked is closest to {title}, registered {days, plural, =0 {the same day} =1 {# day later} other {# days later}}.",
-      "held": "Held by {holder}",
-      "aiUse": "AI use: {terms}",
-      "open": "Open the first registration"
+      "heading": "更早的登记",
+      "lead": "最早于 {date} 以 {title} 登记。",
+      "closest": "你检查的文件与 {title} 最接近，它{days, plural, =0 {是同一天登记的} other {晚了 # 天才登记}}。",
+      "held": "由 {holder} 持有",
+      "aiUse": "AI 使用：{terms}",
+      "open": "打开最早的登记"
     }
   },
   "passport": {
@@ -610,16 +621,16 @@
     "disputed": "有争议",
     "attestations": {
       "heading": "由别人重新核对过",
-      "empty": "这本护照还没有写入任何复核。Chainlink 的工作流复核图片时会写入一条。",
+      "empty": "这本护照还没有写入任何核验。Chainlink 的工作流核验图片时会写入一条。",
       "matched": "匹配",
       "notMatched": "不匹配",
       "distance": "64 位中有 {distance} 位不同",
       "receiver": "由 Moolam 的 Chainlink 接收方写入 Monad",
       "at": "时间",
-      "kicker": "第二意见",
+      "kicker": "Chainlink 的核验",
       "body": "谁都能说一张图是自己的。这一部分不一样：Chainlink 的 CRE 工作流自己下载了这张图，重新取了指纹，并把结果写到 Monad 上。",
       "distanceLabel": "Chainlink 报告的结果",
-      "byChainlink": "由 Chainlink CRE 工作流重新核对",
+      "byChainlink": "由 Chainlink CRE 工作流核验",
       "delivery": {
         "simulation": "这次检查由 Chainlink 的 CRE 模拟器在一台机器上运行，没有在 Chainlink 的网络上运行。",
         "network": "多台相互独立的 Chainlink 机器运行了这次检查，并对答案达成一致。"
@@ -630,11 +641,11 @@
       "recomputedGrid": "Chainlink 的指纹",
       "verdict": "一个 Chainlink CRE 工作流重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
       "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
-      "whatIsRecheck": "复核，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再把答案写到 Monad 上。谁也没法给自己的图写一条。",
+      "whatIsRecheck": "核验，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再把答案写到 Monad 上。谁也没法给自己的图写一条。",
       "private": {
-        "badge": "私下复核",
-        "lead": "由 Chainlink 机密工作流私下复核，依据的是 Moolam 保留的小副本。",
-        "leadEarlier": "由 Chainlink 机密工作流私下复核，依据的是 Moolam 当时保留的小副本。",
+        "badge": "私下核验",
+        "lead": "由 Chainlink 机密工作流私下核验，依据的是 Moolam 保留的小副本。",
+        "leadEarlier": "由 Chainlink 机密工作流私下核验，依据的是 Moolam 当时保留的小副本。",
         "limit": "它在 Chainlink 的模拟器里、在一台机器上运行，没有在 Chainlink 的安全硬件里运行。",
         "verdict": "一个 Chainlink 机密工作流打开了 Moolam 为这张图保留的小的私有副本，比对了指纹：<apart>64 位中差 {bits} 位</apart>。",
         "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。"
@@ -727,9 +738,9 @@
         "offline": "验证服务没有回应，所以什么都没有发出。",
         "signedOut": "这个会话已经退出登录，服务不会接受这次编辑。",
         "tooLarge": "这个文件超过了 20 MB 的上限。请选一份小一点的副本。",
-        "fingerprintUnstable": "这次编辑的画面左右方向变化太少，生成不了经得起复制的指纹，所以 Chainlink 的复核和任何对其副本的搜索都会错过它。什么都没有固定，也没有发出。横向细节更多的编辑版本可以登记。",
+        "fingerprintUnstable": "这次编辑的画面左右方向变化太少，生成不了经得起复制的指纹，所以 Chainlink 的核验和任何对其副本的搜索都会错过它。什么都没有固定，也没有发出。横向细节更多的编辑版本可以登记。",
         "signedFileTooLarge": "加上护照的签名会让这个文件超过 20 MB，这是一次核对能读回的上限。导出一份小一点的再试。什么都没有固定，也没有发出。",
-        "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，所以它的护照永远无法复核。什么都没有固定，也没有发出。",
+        "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 核验时取回，所以它的护照永远无法核验。什么都没有固定，也没有发出。",
         "notAnImage": "这不是图片文件。请选 JPEG、PNG 或 WebP。",
         "empty": "这个文件是空的。请重新选择图片。",
         "rateLimited": "这里的请求暂时太多。稍等片刻再试。",
@@ -761,15 +772,15 @@
     "passkeyBound": "绑定在这位创作者钱包上的一把密钥，在 Monad 上为这张图片的指纹签了名。",
     "passkeyNone": "这位创作者的钱包没有绑定通行密钥。",
     "platform": {
-      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
-      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
-      "handed": "Drawn on {platform} and handed to {holder}, who has not confirmed it.",
-      "handedNote": "Nobody is credited until the person it was handed to states their own AI-use terms.",
-      "confirmed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them. They confirmed it on {date}.",
-      "confirmedNote": "The credit rests on {platform}'s word that this account asked for the picture and on the person's own confirmation. Their key did not sign the picture.",
-      "passedOn": "Imagined by {person}. Now held by {holder}.",
-      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
-      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
+      "held": "在 {platform} 上构思。在构思它的人认领之前，这本护照由 {platform} 持有。",
+      "heldNote": "{platform} 的智能体画出了这张图片，图片一生成，它的服务器密钥就完成了登记。Moolam 核实的是 {platform} 持有这两把密钥，而不是这家公司是谁。",
+      "handed": "在 {platform} 上绘制，已转交给 {holder}，对方尚未确认。",
+      "handedNote": "在接手的人声明自己的 AI 使用条款之前，这张图片不署任何人的名。",
+      "confirmed": "由 {person} 构思。在 {platform} 上绘制，护照由 {platform} 交给了本人。本人于 {date} 确认。",
+      "confirmedNote": "这份署名依据两点：{platform} 说是这个账户要的这张图片，以及本人自己的确认。本人的密钥没有为这张图片签名。",
+      "passedOn": "由 {person} 构思。现在由 {holder} 持有。",
+      "cosigned": "由 {person} 构思。由 {platform} 的智能体绘制。",
+      "cosignedNote": "在登记处写入之前，绑定在本人钱包上的一把密钥批准了正是这张图片。",
       "outsideKit": "这个钱包在 Moolam 名单上列为 {platform}，但这张图片是在 Moolam 平台工具包之外登记的。"
     },
     "agentListed": "由 Moolam 列入名单，是 {platform} 的智能体",
@@ -782,15 +793,15 @@
     "about": "关于这张图",
     "prompt": "提示词",
     "fingerprints": "这些指纹",
-    "fingerprintsBody": "任何人都可以取回图片、重新取指纹，再与这些比对。Chainlink 的复核做的正是这件事。这里没有一样东西依赖文件名，也不依赖元数据自己的说法。",
+    "fingerprintsBody": "任何人都可以取回图片、重新取指纹，再与这些比对。Chainlink 的核验做的正是这件事。这里没有一样东西依赖文件名，也不依赖元数据自己的说法。",
     "exactHash": "文件精确指纹 (SHA-256)",
     "passportId": "护照 id",
     "tokenId": "这本护照同时也是 Monad 上的一个 NFT，id 相同",
     "standing": {
-      "verified": "已在链上复核，结果一致",
-      "mismatched": "有一次复核没对上",
+      "verified": "已在链上核验，结果一致",
+      "mismatched": "有一次核验没对上",
       "disputed": "有争议",
-      "unverified": "尚未复核"
+      "unverified": "尚未核验"
     },
     "check": {
       "kicker": "核对一份副本",
@@ -835,8 +846,8 @@
         "link": "对这本护照提出质疑",
         "close": "收起",
         "heading": "用保证金为你的说法背书",
-        "what": "提出质疑需要 {bond} MON 保证金。由政策指定的仲裁者裁决：若他认同你，保证金会记回你名下；若不认同，保证金归金库。",
-        "whatUnknown": "提出质疑需要保证金，金额由政策合约设定。由政策指定的仲裁者裁决：若他认同你，保证金会记回你名下；若不认同，保证金归金库。",
+        "what": "提出质疑需要 {bond} MON 保证金。由政策指定的仲裁者裁决，若他认同你，保证金会记回你名下。",
+        "whatUnknown": "提出质疑需要保证金，金额由政策合约设定。由政策指定的仲裁者裁决，若他认同你，保证金会记回你名下。",
         "bondLabel": "保证金",
         "balanceLabel": "你的账户",
         "mon": "{amount} MON",
@@ -898,7 +909,7 @@
           "signIn": "登录"
         }
       },
-      "bodySettled": "Someone put a bond behind a claim that this record was wrong, and the resolver named by the policy has settled it."
+      "bodySettled": "有人押了保证金，主张这条记录有误；政策指定的仲裁者已经作出裁决。"
     },
     "elsewhere": "这条记录还在哪里",
     "openTransaction": "登记交易",
@@ -1041,23 +1052,23 @@
     "sealed": {
       "label": "已封存",
       "posterLine": "{date} 登记。图片没有公开。Moolam 不留任何副本。",
-      "posterLinePrivate": "{date} 登记。图片没有公开。Moolam 只保留一份小的私有副本，用于私下复核。",
+      "posterLinePrivate": "{date} 登记。图片没有公开。Moolam 只保留一份小的私有副本，用于私下核验。",
       "standing": "已封存，没有公开副本",
       "commitmentLabel": "链上的承诺",
       "commitmentAlgorithm": "用 {algorithm} 取的指纹，这是一种标准的文件指纹",
       "commitmentLine": "拿着这个文件的人都可以算出它的哈希，再与护照 id 对照。",
-      "recheck": "没有可供复核的公开副本。要复核就得先公开图片。",
+      "recheck": "没有公开副本，所以 Chainlink 网络无法核验它。核验需要图片先公开。",
       "privateCopy": {
-        "kept": "可以在 Moolam 保留的小副本上做一次私下复核。",
-        "gone": "Moolam 的私有副本已删除，所以无法再做私下复核。",
+        "kept": "可以在 Moolam 保留的小副本上做一次私下核验。",
+        "gone": "Moolam 的私有副本已删除，所以无法再做私下核验。",
         "unknown": "Moolam 暂时读不到私有副本的状态。"
       },
       "edit": "这本护照已封存，在图片公开之前无法编辑。",
       "about": {
         "noCopy": "以封存方式登记：图片从未公开，Moolam 也没有留任何副本。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "kept": "以封存方式登记：图片从未公开。应创作者的要求，Moolam 保留一份小的私有副本，只用于 Chainlink 工作流的私下复核。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "deleted": "以封存方式登记：图片从未公开。Moolam 曾为 Chainlink 工作流的私下复核保留一份小的私有副本，这份副本后来已删除。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "asked": "以封存方式登记：图片从未公开。创作者请 Moolam 保留一份小的私有副本，用于 Chainlink 工作流的私下复核。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "kept": "以封存方式登记：图片从未公开。应创作者的要求，Moolam 保留一份小的私有副本，只用于 Chainlink 工作流的私下核验。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "deleted": "以封存方式登记：图片从未公开。Moolam 曾为 Chainlink 工作流的私下核验保留一份小的私有副本，这份副本后来已删除。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "asked": "以封存方式登记：图片从未公开。创作者请 Moolam 保留一份小的私有副本，用于 Chainlink 工作流的私下核验。护照 id 是签名文件的 SHA-256，所以这条记录不展示内容，也锁定了确切的字节。",
         "published": "以封存方式登记，当时没有公开图片，持有者在 {date} 把它公开。护照 id 是文件的 SHA-256，所以谁都可以对公开的图片算哈希并对照。"
       }
     },
@@ -1091,7 +1102,7 @@
         "noPassport": "登记处里没有这个 id 的护照。",
         "notSealed": "这本护照的图片已经公开，没有什么可公开的了。",
         "alreadyUnsealed": "这本护照已经公开过了。重新打开页面就能看到图片。",
-        "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，公开后会留下一本谁也无法复核的护照。什么都没有固定。",
+        "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 核验时取回，公开后会留下一本谁也无法核验的护照。什么都没有固定。",
         "quota": "今天已经用掉 {limit} 次中的 {used} 次。额度会在 {at} 恢复。",
         "todayFull": "今天大家共用的公开额度已经用完。什么都没固定，也什么都没花掉。明天再试。",
         "pinFailed": "图片没能固定到 IPFS，所以什么都没有公开。",
@@ -1113,7 +1124,7 @@
         "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。",
         "unsealInProgress": "这张图片已经在另一个标签页或设备上公开中。稍等片刻，再刷新护照页。",
         "thumbnailHeldPrivately": "什么都没公开。这张图片的一份私有副本为另一本护照保留着，挡住了它的公开副本。稍后再试。",
-        "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹，所以它的公开副本永远通不过 Chainlink 的复核。什么都没公开。"
+        "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹，所以它的公开副本永远通不过 Chainlink 的核验。什么都没公开。"
       },
       "actions": {
         "again": "再试一次",
@@ -1126,9 +1137,9 @@
     "privateCopy": {
       "kicker": "由你来删除",
       "heading": "Moolam 的私有副本",
-      "body": "Moolam 保留这张图片的一份小副本，长边 512 像素，供 Chainlink 机密工作流复核。只有你能删除它。",
+      "body": "Moolam 保留这张图片的一份小副本，长边 512 像素，供 Chainlink 机密工作流私下核验。只有你能删除它。",
       "delete": "删除 Moolam 的私有副本",
-      "confirm": "这一步无法撤回。没有副本就再也不能做私下复核，护照仍然保持封存。",
+      "confirm": "这一步无法撤回。没有副本就再也不能做私下核验，护照仍然保持封存。",
       "confirmDelete": "删除",
       "keep": "保留",
       "sending": "正在删除私有副本",
@@ -1159,7 +1170,7 @@
       "madeBy": "创作者",
       "drawnBy": "作画",
       "aiUse": "AI 使用",
-      "rechecked": "复核",
+      "rechecked": "核验",
       "nothingStated": "未声明",
       "notYet": "尚未",
       "unread": "未能读取",
@@ -1167,10 +1178,10 @@
       "chainlink": "Chainlink",
       "unknownWriter": "未知写入方",
       "cardNamed": "{agent}，名字是它在名片上的自称",
-      "unclaimed": "Not claimed yet",
-      "heldBy": "{platform} holds it",
-      "via": "via {platform}",
-      "handedBy": "handed by {platform}, not confirmed"
+      "unclaimed": "尚未认领",
+      "heldBy": "由 {platform} 持有",
+      "via": "经由 {platform}",
+      "handedBy": "由 {platform} 转交，尚未确认"
     },
     "ownerHint": "这是你做的吗？登录后就能管理。",
     "share": {
@@ -1191,9 +1202,9 @@
       "heading": "公开智能体评价板上的反馈 (ERC-8004)",
       "empty": "这个智能体还没有任何反馈记录。反馈由 Moolam 手动写在这里，并不是每次核对后都有。",
       "error": "声誉登记处无法读取：{reason}。",
-      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，由 Moolam 手动写上去。本页读取它的汇总。旁边的信任分统计的是 Chainlink 的复核，所以两者从不相加。",
+      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，由 Moolam 手动写上去。本页读取它的汇总。旁边的信任分统计的是 Chainlink 的核验，所以两者从不相加。",
       "registry": "登记处 {address}",
-      "secondary": "手动写在链上的反馈，不计入复核分数",
+      "secondary": "手动写在链上的反馈，不计入核验分数",
       "entries": "{count, plural, other {# 条}}",
       "latest": "最新数值"
     },
@@ -1203,17 +1214,17 @@
     "index": {
       "heading": "索引数出来的结果",
       "trustScore": "信任分",
-      "trustScoreBody": "满分 100，由一致的复核、不一致的复核以及任何成立的争议算出。做过平滑处理，一次走运的核对不会直接变成 100。",
+      "trustScoreBody": "满分 100，由一致的核验、不一致的核验以及任何成立的争议算出。做过平滑处理，一次走运的核验不会直接变成 100。",
       "passportCount": "护照",
-      "matchedCount": "复核一致",
-      "mismatchedCount": "复核不一致",
+      "matchedCount": "核验一致",
+      "mismatchedCount": "核验不一致",
       "disputesUpheld": "争议成立",
       "since": "首次出现于 {when}",
       "empty": "索引还没见过这个智能体为哪本护照签过名。",
       "error": "无法读取索引：{reason}。",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "这个分数怎么算出来",
-      "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
+      "formulaPlain": "每一次一致的核验都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
     },
     "signs": {
       "heading": "这个智能体怎么签名",
@@ -1515,8 +1526,8 @@
         "leftOut": "不放进去",
         "promptLabel": "连提示词一起公开",
         "promptNote": "只要你不加进去，提示词就一直是私密的。",
-        "privateLabel": "让 Chainlink 私下复核这张图片",
-        "privateNote": "Moolam 在私有存储上保留一份长边 512 像素的小副本。一个 Chainlink 机密工作流打开它，复核指纹，只把结论写到 Monad。",
+        "privateLabel": "让 Chainlink 私下核验这张图片",
+        "privateNote": "Moolam 在私有存储上保留一份长边 512 像素的小副本。一个 Chainlink 机密工作流打开它，核验指纹，只把结论写到 Monad。",
         "privateWho": "没有人能从网上打开它。Moolam 的运营者和存储服务商可以。目前工作流运行在 Chainlink 的模拟器里，不在 Chainlink 的安全硬件里。你随时可以在护照页删除这份副本。"
       },
       "fields": {
@@ -1565,16 +1576,16 @@
           "line": "它用文字描述图片，所以你不放进去，它就不进文件。"
         },
         "privateRecheck": {
-          "label": "你要求了私下复核",
+          "label": "你要求了私下核验",
           "line": "固定的文件里只有一个词，好让护照页能说明这一点。副本的地址从不在里面。"
         },
         "sworn": {
-          "label": "The line you sign under",
-          "line": "The sentence beside the sign button, word for word. It is your own statement, signed with the rest."
+          "label": "你签名时的那句声明",
+          "line": "签名按钮旁边那句话的英文原文。这是你自己的声明，和其余内容一起签名。"
         },
         "seenEarlier": {
-          "label": "The earlier passport you were shown",
-          "line": "Only when Moolam showed you an earlier passport like this one and you went ahead: its id, so the page can say you saw it."
+          "label": "你看到过的那本更早护照",
+          "line": "只有当 Moolam 向你展示过一本与此相似的更早护照，而你仍然继续时才会写入：它的 id，好让页面说明你看到过它。"
         }
       },
       "plate": {
@@ -1605,9 +1616,9 @@
         "detailPrivate": "图片没有公开。Moolam 只保留你要求的那份私有小副本。",
         "fingerprintDetail": "取自签名后的文件，它从未离开这个浏览器。是否已加上 Content Credentials (C2PA)：{manifest}。",
         "privateLabel": "已保留私有副本",
-        "privateDetail": "供 Chainlink 私下复核。<page>你随时可以在护照页删除它。</page>",
+        "privateDetail": "供 Chainlink 私下核验。<page>你随时可以在护照页删除它。</page>",
         "noPrivateLabel": "没有私有副本",
-        "noPrivateDetail": "你要求了私下复核，但服务没有保留副本，所以这本护照没有副本。它已封存，任何部分都没有被保留。"
+        "noPrivateDetail": "你要求了私下核验，但服务没有保留副本，所以这本护照没有副本。它已封存，任何部分都没有被保留。"
       }
     },
     "receipt": {
@@ -1707,10 +1718,10 @@
       "sealedRecordRefused": "验证服务拒绝公开这条封存记录，所以什么都没有固定，也没有登记。请再试一次。",
       "sealedFileRefused": "验证服务无法交还与这本护照相符的文件，所以什么都没有固定，也没有登记。请再试一次。",
       "privateRecheckNeedsSealed": "验证服务不会为没有封存的图片保留私有副本，所以什么都没有固定，也没有登记。刷新工作室后再试一次。",
-      "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下复核，就能不带它把这张图片封存登记。",
+      "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下核验，就能不带它把这张图片封存登记。",
       "privateChainUnreachable": "Moolam 连不上 Monad，无法确认这张图片是新的，所以没有保留私有副本，也什么都没有登记。稍后再试一次。",
-      "privateThumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，所以它的护照永远无法复核，封存的护照以后也永远无法公开。什么都没有固定。",
-      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的复核和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。",
+      "privateThumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 核验时取回，所以它的护照永远无法核验，封存的护照以后也永远无法公开。什么都没有固定。",
+      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的核验和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。",
       "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
     },
     "actions": {
@@ -1727,29 +1738,29 @@
     "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。",
     "titleNeeded": "请给这张图片取个标题。",
     "lookalike": {
-      "kicker": "Before you sign",
+      "kicker": "签名之前",
       "found": {
-        "heading": "A picture like this is already registered",
-        "line": "{title} was registered by someone else on {date}. If it is yours too, carry on. If it is not, stop here: your passport would show it came later, and anyone can challenge it.",
-        "note": "If you go ahead, your passport records that you were shown this one."
+        "heading": "已经有一张这样的图片登记过了",
+        "line": "{title} 已由别人于 {date} 登记。如果它也是你的，就继续。如果不是，就到此为止：你的护照会显示你这张登记在后，而且任何人都可以质疑它。",
+        "note": "如果你继续，你的护照会记下你看到过这一本。"
       },
       "yours": {
-        "heading": "You registered a picture like this before",
-        "line": "If this is a new version, register it as an edit of that passport, so the two stay linked."
+        "heading": "你以前登记过一张这样的图片",
+        "line": "如果这是一个新版本，就把它登记为那本护照的编辑版本，让两者保持关联。"
       },
-      "none": "Moolam's search found no earlier passport like this one, as of {time}.",
-      "unchecked": "Moolam could not search for earlier passports just now, so this picture was not compared with them. You can still register it.",
-      "open": "Open that passport",
-      "untitled": "An untitled passport"
+      "none": "截至 {time}，Moolam 的搜索没有找到与这张相似的更早护照。",
+      "unchecked": "Moolam 此刻无法搜索更早的护照，所以这张图片没有和它们比对。你仍然可以登记它。",
+      "open": "打开那本护照",
+      "untitled": "一本无标题的护照"
     },
     "webCheck": {
-      "notice": "A public photo is checked against the web. Moolam sends its small public copy to Google, which looks for the same picture on web pages. Sealed pictures and pictures the agent draws are never sent.",
+      "notice": "公开的照片会和网上的图片比对。Moolam 把它的小公开副本发给 Google，由 Google 在网页上查找同一张图片。封存的图片和智能体画的图片从不发送。",
       "found": {
-        "heading": "Already on the web",
-        "line": "Google found this picture on {count, plural, =1 {# web page} other {# web pages}} when Moolam looked. If you go ahead, your passport lists them.",
-        "more": "{count, plural, =1 {# more page} other {# more pages}} counted, not listed."
+        "heading": "已经在网上",
+        "line": "Moolam 查找时，Google 在 {count, plural, other {# 个网页}}上找到了这张图片。如果你继续，你的护照会列出这些网页。",
+        "more": "另有 {count, plural, other {# 个网页}}只计数，未列出。"
       },
-      "passport": "Already on the web: the registrant's web check found this picture on {count, plural, =1 {# page} other {# pages}} before it was registered."
+      "passport": "已经在网上：登记之前，登记者的网上比对在 {count, plural, other {# 个网页}}上找到了这张图片。"
     }
   },
   "docs": {
@@ -1851,7 +1862,7 @@
     "stopped": "仍然联系不上。登记处本身在 Monad 上，护照页直接读取它。"
   },
   "recheck": {
-    "button": "申请复核",
+    "button": "请 Chainlink 核验",
     "again": "再试一次",
     "checkNow": "再看一次",
     "note": "免费。Chainlink 的工作流会重新取回图片，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
@@ -1861,8 +1872,8 @@
     "already": "{at} 已经有人申请过。排在队列第 {position} 位。",
     "alreadyWaiting": "{at} 已经有人申请过。正在队列里等待。",
     "running": "正在运行：工作流正在取回图片并重新计算指纹。",
-    "done": "完成：{at} 已复核。",
-    "doneNoTime": "完成：这张图片已经复核过。",
+    "done": "完成：{at} 已核验。",
+    "doneNoTime": "完成：这张图片已经核验过。",
     "failed": "没能运行：{reason}",
     "failedNoReason": "没能运行。没有说明原因。",
     "stopped": "这个页面在半小时后停止查看。按一下再看一次。",
@@ -1875,7 +1886,7 @@
       "pending": "待确认"
     },
     "failure": {
-      "noPassport": "验证服务不认识这本护照，所以没有可复核的东西。",
+      "noPassport": "验证服务不认识这本护照，所以没有可核验的东西。",
       "sealed": "这本护照的图片从未公开，所以工作流没有可取回的东西。",
       "queueFull": "队列里都是还没人执行的申请。请稍后再试。",
       "rateLimited": "这里的请求太多了，等一分钟。",
@@ -1884,8 +1895,8 @@
     },
     "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
     "runningPrivate": "正在运行：工作流正在打开私有副本并比对指纹。",
-    "recheckedOn": "已于 {date} 复核",
-    "confirming": "队列显示这次复核已结束。等它的结论能在 Monad 上读到，才会显示为完成。"
+    "recheckedOn": "已于 {date} 核验",
+    "confirming": "队列显示这次运行已结束。等它的结论能在 Monad 上读到，才会显示为完成。"
   },
   "mine": {
     "title": "你的图片",
@@ -1906,8 +1917,8 @@
     "showcaseCaption": "Monad 上一本真实的护照。你的护照也会像这样出现在这里。",
     "makeFirst": "登记你的第一张图片",
     "signedInAs": "已登录：{account}",
-    "confirmedLine": "Drawn on {platform}, which handed the passport to you. You confirmed it on {date}.",
-    "handedLine": "Handed to you by {platform}. State its AI-use terms on the passport page to confirm it is yours.",
+    "confirmedLine": "在 {platform} 上绘制，护照由 {platform} 交给了你。你已于 {date} 确认。",
+    "handedLine": "由 {platform} 交给你。在护照页声明它的 AI 使用条款，即可确认它是你的。",
     "held": {
       "heading": "你持有，别人做的",
       "label": "你持有，不是你做的",
@@ -1952,10 +1963,10 @@
         "label": "由智能体绘制，名字为其自称"
       },
       "platform": {
-        "label": "Drawn on",
-        "listed": "Drawn on, listed by Moolam",
-        "withheld": "Drawn on, badge withheld",
-        "unlisted": "Drawn on, not listed by Moolam",
+        "label": "绘制平台",
+        "listed": "绘制平台，由 Moolam 列入名单",
+        "withheld": "绘制平台，标识不予显示",
+        "unlisted": "绘制平台，未列入 Moolam 名单",
         "reading": "读到记录之后，会对照 Moolam 名单核对。"
       },
       "terms": {
@@ -1981,7 +1992,7 @@
       "unchecked": "Moolam 没有核实这个名字背后的公司。"
     },
     "platform": {
-      "listedLine": "列入名单时，智能体 {agent} 的持有者和这个平台自己的钱包都签了名。",
+      "listedLine": "列入名单时，智能体 {agent} 的持有者和平台用来登记图片的钱包都签了名。",
       "withheldName": "名称不予显示",
       "withheldLine": "智能体 {agent} 在它的平台列入名单之后更换了持有者，所以 Moolam 不为二者的配对担保，也不写出平台的名称。",
       "unlistedName": "不在 Moolam 名单上",
@@ -2159,7 +2170,7 @@
     "listedLabel": "由 Moolam 列入名单",
     "unlistedLabel": "不在 Moolam 名单上",
     "unlistedName": "未列入名单的网站",
-    "listedLine": "列入名单时，这个网站的智能体持有者和网站自己的钱包都签了名。",
+    "listedLine": "列入名单时，这个网站的智能体持有者和它用来登记图片的钱包都签了名。",
     "unlistedLine": "Moolam 对这个网站一无所知。只有当你是从这个网站来到这里的，才分享。",
     "usesListed": "{name} 用它把为你生成的图片的护照交给你。有了地址，网站可以给你东西，但不能替你签名，也不能从你的账户里花钱。",
     "usesUnlisted": "这个网站用它把为你生成的图片的护照交给你。有了地址，网站可以给你东西，但不能替你签名，也不能从你的账户里花钱。",
@@ -2177,589 +2188,589 @@
     "invalidLine": "打开本页的链接没有指明任何 https 网站，所以地址无处可发。什么都没有分享。"
   },
   "checkout": {
-    "lockListed": "Sent by {platform}, listed by Moolam",
-    "lockUnnamed": "Sent by a site Moolam does not name",
-    "more": "See everything you are signing",
-    "doneListed": "Done. Taking you back to {platform}.",
-    "doneUnlisted": "Done. Taking you back to the site that sent you.",
-    "close": "Close this window"
+    "lockListed": "由 {platform} 发来，已列入 Moolam 名单",
+    "lockUnnamed": "由一个 Moolam 未具名的网站发来",
+    "more": "查看你要签署的全部内容",
+    "doneListed": "完成。正在带你回到 {platform}。",
+    "doneUnlisted": "完成。正在返回带你来这里的网站。",
+    "close": "关闭这个窗口"
   },
   "claims": {
-    "heading": "Waiting for you",
-    "line": "Platforms you used are holding these pictures for your email. Say which are yours.",
-    "count": "{count, plural, one {# picture} other {# pictures}}",
-    "holding": "{platform} is holding {count, plural, one {# picture} other {# pictures}} for {email}",
-    "yourEmail": "your email",
+    "heading": "等你认领",
+    "line": "你用过的平台正为你的邮箱保管这些图片。告诉我们哪些是你的。",
+    "count": "{count, plural, other {# 张图片}}",
+    "holding": "{platform} 正在为 {email} 保管 {count, plural, other {# 张图片}}",
+    "yourEmail": "你的邮箱",
     "verifiedBy": {
-      "google": "{platform} says it checked this address with a Google sign-in.",
-      "emailCode": "{platform} says it checked this address with a code sent to it.",
-      "platform": "{platform} says it checked this address in its own way."
+      "google": "{platform} 表示，它通过 Google 登录核实了这个地址。",
+      "emailCode": "{platform} 表示，它用一个发到这个地址的验证码核实了它。",
+      "platform": "{platform} 表示，它用自己的方式核实了这个地址。"
     },
-    "noPreview": "No preview",
-    "termsLabel": "AI use for these pictures",
-    "sendFuture": "Send my future {platform} pictures straight to my account",
-    "mine": "These are mine",
-    "notMine": "Not mine",
-    "notMineNote": "Not mine also stops {platform} offering you pictures. You can allow it again here.",
-    "saving": "Saving your answer",
-    "handingOver": "Waiting for {platform} to hand them over",
-    "handoverNote": "This page looks again on its own",
-    "lookAgain": "Look again",
-    "readFailed": "We could not check whether platforms are holding pictures for you.",
-    "handoverFailed": "{platform} could not hand {count, plural, one {this picture} other {these pictures}} over. Ask {platform} to send {count, plural, one {it} other {them}} again.",
+    "noPreview": "无预览",
+    "termsLabel": "这些图片的 AI 使用",
+    "sendFuture": "以后我在 {platform} 上的图片直接发到我的账户",
+    "mine": "这些是我的",
+    "notMine": "不是我的",
+    "notMineNote": "选择“不是我的”，{platform} 也就不会再向你提供图片。你可以在这里重新允许。",
+    "saving": "正在保存你的回答",
+    "handingOver": "等待 {platform} 把它们转交过来",
+    "handoverNote": "本页会自己再查看",
+    "lookAgain": "再看一次",
+    "readFailed": "我们没能查到是否有平台在为你保管图片。",
+    "handoverFailed": "{platform} 没能把{count, plural, =1 {这张图片} other {这些图片}}转交过来。请让 {platform} 重新发送{count, plural, =1 {它} other {它们}}。",
     "confirm": {
-      "heading": "Confirm these as yours",
-      "line": "One press writes these AI-use terms from your own wallet, and Moolam pays the fee. Until then the passports say the platform handed them to you, not that you made them.",
-      "termsLabel": "The terms you chose",
-      "byUse": "Your own answer for each use",
-      "conditions": "Conditions",
-      "button": "{count, plural, one {Confirm it} other {Confirm all #}}",
-      "checking": "Checking your wallet holds them",
-      "sending": "Sending from your wallet",
-      "confirming": "Waiting for Monad to show it",
-      "done": "Confirmed. They now name you as the person who imagined them.",
-      "receipt": "See the transaction",
-      "changed": "These pictures moved since this page read them, so nothing was sent. Read them again before you confirm.",
-      "unreadable": "Monad did not answer, so this page cannot tell yet which of these your wallet holds.",
-      "readAgain": "Read them again",
-      "again": "Try again",
-      "recheck": "Look again"
+      "heading": "确认这些是你的",
+      "line": "按一下，就会从你自己的钱包写入这些 AI 使用条款，费用由 Moolam 支付。在此之前，护照只说是平台把它们交给了你，而不是说它们是你做的。",
+      "termsLabel": "你选的条款",
+      "byUse": "每种用途由你分别作答",
+      "conditions": "条件",
+      "button": "{count, plural, =1 {确认} other {确认全部 # 张}}",
+      "checking": "正在核对你的钱包是否持有它们",
+      "sending": "正在从你的钱包发送",
+      "confirming": "等待 Monad 显示它",
+      "done": "已确认。它们现在写明你是构思它们的人。",
+      "receipt": "查看交易",
+      "changed": "本页读取之后，这些图片有了变动，所以什么都没有发送。确认之前请重新读取。",
+      "unreadable": "Monad 没有回应，所以本页暂时无法判断你的钱包持有其中哪些。",
+      "readAgain": "重新读取",
+      "again": "再试一次",
+      "recheck": "再看一次"
     },
     "settings": {
-      "heading": "Your platform choices",
-      "standing": "Future {platform} pictures go straight to you",
-      "stop": "Stop",
-      "muted": "You said no to {platform}",
-      "allow": "Allow again"
+      "heading": "你对各个平台的选择",
+      "standing": "以后 {platform} 的图片直接交给你",
+      "stop": "停止",
+      "muted": "你拒绝了 {platform}",
+      "allow": "重新允许"
     },
     "refusal": {
-      "unavailable": "Moolam cannot look up waiting pictures right now. Nothing was changed.",
-      "signIn": "Your sign-in has run out, so Moolam cannot tell this is you.",
-      "limit": "You have asked about waiting pictures many times today. It opens again tomorrow.",
-      "globalLimit": "Moolam has reached today's limit for everyone. It opens again at midnight UTC.",
-      "privy": "Moolam could not read your sign-in details just now. Nothing was changed.",
-      "noWallet": "Your account has no Moolam wallet yet, so there is nowhere to send these. Sign in again and it is made for you.",
-      "destination": "Moolam will not send these to this account's wallet, because the platform or Moolam itself uses that address.",
-      "notFound": "Some of these pictures are no longer waiting for you.",
-      "notOpen": "Some of these were already answered, here or in another window.",
-      "full": "Your list of platform choices is full. Stop or allow one of them first.",
-      "recordRefused": "Moolam could not save that answer. Nothing was changed.",
-      "badRequest": "Moolam could not read that request. Nothing was changed.",
-      "offline": "Moolam's verify service did not answer. Nothing was changed.",
-      "badResponse": "Moolam's verify service answered in a way this page does not understand."
+      "unavailable": "Moolam 现在无法查找等你认领的图片。什么都没有改变。",
+      "signIn": "你的登录已经过期，所以 Moolam 无法确认这是你。",
+      "limit": "你今天已经多次查询等你认领的图片。明天会重新开放。",
+      "globalLimit": "Moolam 今天所有人共用的额度已经用完。UTC 午夜会重新开放。",
+      "privy": "Moolam 此刻读不到你的登录信息。什么都没有改变。",
+      "noWallet": "你的账户还没有 Moolam 钱包，所以这些图片无处可发。重新登录，就会为你建好钱包。",
+      "destination": "Moolam 不会把这些图片发到这个账户的钱包，因为平台或 Moolam 自己在用那个地址。",
+      "notFound": "其中有些图片已经不在等你认领了。",
+      "notOpen": "其中有些已经回答过了，在这里或在另一个窗口里。",
+      "full": "你的平台选择列表已满。请先停止或重新允许其中一项。",
+      "recordRefused": "Moolam 没能保存这个回答。什么都没有改变。",
+      "badRequest": "Moolam 读不懂这个请求。什么都没有改变。",
+      "offline": "Moolam 的验证服务没有回应。什么都没有改变。",
+      "badResponse": "Moolam 的验证服务返回的内容，本页读不懂。"
     },
     "next": {
-      "again": "Try again",
-      "signIn": "Sign in again",
-      "reload": "Read the list again"
+      "again": "再试一次",
+      "signIn": "重新登录",
+      "reload": "重新读取列表"
     }
   },
   "business": {
     "meta": {
-      "title": "Passports for AI picture platforms",
-      "description": "Every picture made on your AI picture site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey. Free during early access."
+      "title": "为 AI 图片平台而设的护照",
+      "description": "在你的 AI 图片网站上做出的每一张图片，都可以带着一本 Monad 护照离开：护照写明构思它的人，并由本人用自己的通行密钥签名。抢先体验期间免费。"
     },
     "hero": {
-      "kicker": "Moolam for platforms",
-      "headline": "Your users imagined it.",
-      "tail": "Let them sign it.",
-      "promise": "Every picture made on your site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey.",
-      "guide": "Read the integration guide",
-      "live": "See it live on Dreamloom",
+      "kicker": "面向平台的 Moolam",
+      "headline": "你的用户构思了它。",
+      "tail": "让他们亲自签名。",
+      "promise": "在你网站上做出的每一张图片，都可以带着一本 Monad 护照离开：护照写明构思它的人，并由本人用自己的通行密钥签名。",
+      "guide": "阅读接入指南",
+      "live": "在 Dreamloom 上看实际运行",
       "meta": {
-        "audience": "For AI picture platforms",
-        "chain": "Monad mainnet",
-        "tap": "One passkey tap"
+        "audience": "面向 AI 图片平台",
+        "chain": "Monad 主网",
+        "tap": "点一下通行密钥"
       }
     },
     "demo": {
-      "illustration": "Illustration",
-      "label": "Illustration: a person makes a picture on Dreamloom, signs it as the creator with one passkey tap in a small Moolam window, and the passport lands naming them, then Chainlink checks it.",
+      "illustration": "示意图",
+      "label": "示意图：一个人在 Dreamloom 上做了一张图片，在一个小小的 Moolam 窗口里点一下通行密钥，以创作者身份签名，写明本人的护照随即落地，然后由 Chainlink 核验。",
       "address": "dreamloom",
-      "draw": "Draw",
-      "drawing": "Drawing…",
-      "prompt": "A human standing alone on the moon",
-      "press": "Sign it as the creator",
+      "draw": "绘制",
+      "drawing": "正在绘制…",
+      "prompt": "一个人独自站在月球上",
+      "press": "以创作者身份签名",
       "brand": "Moolam",
-      "window": "Sign as the creator",
-      "windowLine": "Dreamloom's agent drew it. You imagined it.",
-      "passkey": "Sign with passkey",
-      "passkeyWaiting": "Passkey",
-      "passport": "Passport on Monad",
-      "credit": "Imagined by Ram. Drawn on Dreamloom.",
-      "checked": "Checked by Chainlink",
-      "pause": "Pause the illustration",
-      "play": "Play the illustration",
-      "pauseShort": "Pause",
-      "playShort": "Play",
-      "step": "Step {number}: {label}",
+      "window": "以创作者身份签名",
+      "windowLine": "Dreamloom 的智能体画出了它。是你构思了它。",
+      "passkey": "用通行密钥签名",
+      "passkeyWaiting": "通行密钥",
+      "passport": "Monad 上的护照",
+      "credit": "由 Ram 构思。在 Dreamloom 上绘制。",
+      "checked": "Chainlink 已核验",
+      "pause": "暂停示意图",
+      "play": "播放示意图",
+      "pauseShort": "暂停",
+      "playShort": "播放",
+      "step": "第 {number} 步：{label}",
       "stages": {
         "prompt": {
-          "label": "Prompt",
-          "line": "A person types what they imagine on Dreamloom."
+          "label": "提示词",
+          "line": "一个人在 Dreamloom 上写下自己构思的画面。"
         },
         "picture": {
-          "label": "Picture",
-          "line": "Dreamloom's agent draws the picture."
+          "label": "图片",
+          "line": "Dreamloom 的智能体画出图片。"
         },
         "press": {
-          "label": "Press",
-          "line": "They press Sign it as the creator."
+          "label": "按下",
+          "line": "这个人按下“以创作者身份签名”。"
         },
         "window": {
-          "label": "Window",
-          "line": "A small Moolam window opens over Dreamloom's page."
+          "label": "窗口",
+          "line": "一个小小的 Moolam 窗口在 Dreamloom 的页面上打开。"
         },
         "passkey": {
-          "label": "Passkey",
-          "line": "One passkey tap approves this exact picture."
+          "label": "通行密钥",
+          "line": "点一下通行密钥，批准的正是这张图片。"
         },
         "passport": {
-          "label": "Passport",
-          "line": "The passport lands, naming them."
+          "label": "护照",
+          "line": "护照落地，写明这个人。"
         },
         "chainlink": {
           "label": "Chainlink",
-          "line": "Chainlink checks the picture on its own."
+          "line": "Chainlink 独立核验这张图片。"
         }
       }
     },
     "why": {
-      "kicker": "Why platforms add it",
-      "title": "Three reasons your users will ask for it",
+      "kicker": "平台为什么要加上它",
+      "title": "你的用户会想要它的三个理由",
       "reasons": {
         "credit": {
-          "title": "Credit your users can prove",
-          "body": "The person's own passkey approves the picture before Monad records it. The credit rests on their key, not on your word, so nobody can argue with it later.",
-          "proof": "How the credit reads"
+          "title": "用户能证明的署名",
+          "body": "在 Monad 记录之前，由本人自己的通行密钥批准这张图片。署名依据的是本人的密钥，而不是你的说法，所以以后谁也无从争辩。",
+          "proof": "署名怎么显示"
         },
         "name": {
-          "title": "Your name travels with every copy",
-          "body": "Each passport says where the picture was drawn. Strip it, shrink it or screenshot it: the fingerprint still finds the passport, and your name with it.",
-          "proof": "How copies are found"
+          "title": "你的名字随每一份副本流传",
+          "body": "每一本护照都写明图片是在哪里绘制的。去掉元数据、缩小或截图，指纹照样能找到护照，你的名字也随之出现。",
+          "proof": "副本是怎样被找到的"
         },
         "terms": {
-          "title": "AI-use terms that answer for themselves",
-          "body": "The person states on Monad whether AI may train on the picture. Any AI agent can read that answer through Moolam's MCP server before it uses the picture.",
-          "proof": "The MCP server"
+          "title": "自己会作答的 AI 使用条款",
+          "body": "本人在 Monad 上声明 AI 能否用这张图片训练。任何 AI 智能体在使用这张图片之前，都能通过 Moolam 的 MCP 服务器读到这个回答。",
+          "proof": "MCP 服务器"
         }
       }
     },
     "ways": {
-      "kicker": "Three ways to hand it over",
-      "title": "Pick how the passport reaches your user",
+      "kicker": "三种转交方式",
+      "title": "选择护照怎样到达你的用户手中",
       "rows": {
-        "person": "What the person does",
-        "credit": "When they are credited",
-        "cost": "What it costs you on Monad",
-        "build": "What you build"
+        "person": "本人要做什么",
+        "credit": "什么时候署名",
+        "cost": "你在 Monad 上的花费",
+        "build": "你要开发什么"
       },
-      "recommended": "Recommended",
-      "next": "Coming with the next release",
+      "recommended": "推荐",
+      "next": "随下一个版本推出",
       "items": {
         "cosign": {
-          "name": "Sign it yourself",
-          "person": "Presses Sign it as the creator, signs in to Moolam the first time, and taps their passkey. After that, one tap a picture.",
-          "credit": "From the first block. Their own key approved the picture.",
-          "cost": "Nothing. Moolam pays their fee.",
-          "build": "Open one link in a small window."
+          "name": "亲自签名",
+          "person": "按下“以创作者身份签名”，第一次时登录 Moolam，再点一下通行密钥。之后每张图片只需点一下。",
+          "credit": "从第一个区块起。本人自己的密钥批准了这张图片。",
+          "cost": "不花钱。Moolam 替本人付费。",
+          "build": "在一个小窗口里打开一个链接。"
         },
         "email": {
-          "name": "Leave it for their email",
-          "person": "Signs in to Moolam with the email you verified, presses These are mine, picks their AI-use terms, then confirms.",
-          "credit": "When they confirm from their own wallet, after your hand-over.",
-          "cost": "About 0.063 MON a picture: register, terms, hand-over.",
-          "build": "One field on registerAsPlatform, and a delivery worker."
+          "name": "留在本人的邮箱名下",
+          "person": "用你核实过的邮箱登录 Moolam，按下“这些是我的”，选好自己的 AI 使用条款，然后确认。",
+          "credit": "你转交之后，本人从自己的钱包确认时。",
+          "cost": "每张图片约 0.063 MON：登记、条款、转交。",
+          "build": "在 registerAsPlatform 上加一个字段，再加一个负责交付的后台任务。"
         },
         "connect": {
-          "name": "Connect once",
-          "person": "Opens Moolam's connect page once and sends you their Moolam address. Later pictures reach them with no step.",
-          "credit": "When they state their own terms on a passport you handed them.",
-          "cost": "About 0.063 MON a picture, the same three transactions.",
-          "build": "A button that opens the connect page, and a place to keep each address."
+          "name": "只连接一次",
+          "person": "打开一次 Moolam 的连接页，把自己的 Moolam 地址发给你。之后的图片无需任何操作就会到本人手里。",
+          "credit": "本人在你转交的护照上声明自己的条款时。",
+          "cost": "每张图片约 0.063 MON，同样是这三笔交易。",
+          "build": "一个打开连接页的按钮，以及一个保存每个地址的地方。"
         }
       },
-      "whyTitle": "Why we recommend sign it yourself",
-      "why": "It is the only way that puts the person's own key on the picture: their passkey approves this exact picture before Monad records it. It costs you nothing on chain, because Moolam pays their fee.",
-      "proof": "Compare the three in the guide"
+      "whyTitle": "我们为什么推荐亲自签名",
+      "why": "只有这种方式能让本人自己的密钥落在图片上：在 Monad 记录之前，本人的通行密钥批准的正是这张图片。你在链上不花任何费用，因为 Moolam 替本人付费。",
+      "proof": "在指南里比较这三种方式"
     },
     "person": {
-      "kicker": "What your user does",
-      "title": "Every step, in the recommended way",
+      "kicker": "你的用户要做什么",
+      "title": "推荐方式下的每一步",
       "steps": {
         "make": {
-          "title": "Makes a picture on your site",
-          "body": "They type a prompt and your agent draws it, exactly as today."
+          "title": "在你的网站上做一张图片",
+          "body": "写下提示词，由你的智能体画出来，和现在完全一样。"
         },
         "press": {
-          "title": "Presses Sign it as the creator",
-          "body": "One button beside the picture. Nothing else on your page changes."
+          "title": "按下“以创作者身份签名”",
+          "body": "图片旁边多一个按钮。你页面上的其他内容都不变。"
         },
         "window": {
-          "title": "Sees a small Moolam window",
-          "body": "It opens over your page like a checkout, and names your platform from Moolam's signed list."
+          "title": "看到一个小小的 Moolam 窗口",
+          "body": "它像结账窗口一样在你的页面上打开，并按 Moolam 的签名名单写出你的平台名称。"
         },
         "signIn": {
-          "title": "Signs in, the first time only",
-          "body": "A Moolam account and a passkey, made once on that device."
+          "title": "登录，只在第一次",
+          "body": "一个 Moolam 账户和一把通行密钥，在那台设备上只需创建一次。"
         },
         "passkey": {
-          "title": "Taps their passkey",
-          "body": "Face, fingerprint or screen lock approves this exact picture. Moolam pays the Monad fee."
+          "title": "点一下通行密钥",
+          "body": "面容、指纹或屏幕锁批准的正是这张图片。Monad 的费用由 Moolam 支付。"
         },
         "passport": {
-          "title": "Has the passport",
-          "body": "The window closes. Monad holds a passport naming them, and the picture waits on their My pictures."
+          "title": "拿到护照",
+          "body": "窗口关闭。Monad 上有了一本写明本人的护照，图片就在本人的“我的图片”里等着。"
         }
       }
     },
     "build": {
-      "kicker": "Build it",
-      "title": "Three calls on your server",
-      "before": "Before the first picture: register an ERC-8004 agent on Monad and join Moolam's list. You get a Moolam key that identifies your platform.",
-      "beforeLink": "Joining the list",
-      "package": "The kit is a TypeScript package for your server, @moolam/platform. It is not on npm yet.",
-      "step": "Step {number}",
-      "codeLabel": "Code for step {number}: {title}",
+      "kicker": "开始接入",
+      "title": "你服务器上的三个调用",
+      "before": "第一张图片之前：在 Monad 上登记一个 ERC-8004 智能体，并加入 Moolam 的名单。你会拿到一把标识你平台的 Moolam 密钥。",
+      "beforeLink": "加入名单",
+      "package": "这个工具包是给你服务器用的 TypeScript 包 @moolam/platform，还没有发布到 npm。",
+      "step": "第 {number} 步",
+      "codeLabel": "第 {number} 步的代码：{title}",
       "steps": {
         "start": {
-          "title": "Start the co-sign",
-          "body": "Your server hands Moolam the picture. Moolam signs its Content Credentials, fingerprints it and gives back a link for your user."
+          "title": "发起共同签名",
+          "body": "你的服务器把图片交给 Moolam。Moolam 为它签上 Content Credentials、取指纹，再交回一个给用户的链接。"
         },
         "send": {
-          "title": "Send the link, sign as your agent",
-          "body": "Open the link in a small window. Once your user has signed in, your agent signs the same picture."
+          "title": "发送链接，以你的智能体签名",
+          "body": "在小窗口里打开这个链接。用户登录之后，你的智能体为同一张图片签名。"
         },
         "wait": {
-          "title": "Wait for the passport",
-          "body": "It returns once Monad holds this passport with your user as its creator and your agent as its maker."
+          "title": "等待护照",
+          "body": "等 Monad 上有了这本护照，并写明你的用户是创作者、你的智能体是绘制者，它才会返回。"
         }
       },
       "mcp": {
-        "title": "For AI agents",
-        "body": "One line connects Claude, or any client that speaks MCP, to Moolam's read-only server: check a picture, read its passport and its AI-use terms.",
-        "codeLabel": "Command that adds Moolam's MCP server to Claude Code"
+        "title": "面向 AI 智能体",
+        "body": "一行命令就能把 Claude 或任何支持 MCP 的客户端连到 Moolam 的只读服务器：检查图片，读取它的护照和 AI 使用条款。",
+        "codeLabel": "把 Moolam 的 MCP 服务器添加到 Claude Code 的命令"
       },
-      "guide": "The full integration guide"
+      "guide": "完整的接入指南"
     },
     "live": {
-      "kicker": "Live today",
-      "title": "Dreamloom runs it on Monad mainnet",
-      "body": "Dreamloom is a demo AI picture site built to show the kit. It is on Moolam's signed list, its agent signs every picture it draws, and its passports are real.",
+      "kicker": "今天已上线",
+      "title": "Dreamloom 在 Monad 主网上运行它",
+      "body": "Dreamloom 是为展示这个工具包而做的演示 AI 图片网站。它在 Moolam 的签名名单上，它的智能体为它画的每一张图片签名，它的护照都是真的。",
       "figures": {
-        "platformPassports": "passports signed by {platform}'s agent",
-        "totalPassports": "passports on Moolam",
-        "stated": "carry their holder's AI-use terms",
-        "platforms": "{count, plural, =1 {platform on Moolam's signed list} other {platforms on Moolam's signed list}}"
+        "platformPassports": "由 {platform} 的智能体签名的护照",
+        "totalPassports": "Moolam 上的护照",
+        "stated": "带有持有者的 AI 使用条款",
+        "platforms": "{count, plural, other {Moolam 签名名单上的平台}}"
       },
-      "source": "Read from Moolam's index and its signed list, held for a minute.",
-      "unread": "Not read just now",
-      "now": "Live now: the platform routes and the MCP server on Moolam's verify service, and Dreamloom.",
-      "next": "Coming with the next release: leave it for their email, and the co-sign and connect windows on moolam.vercel.app.",
-      "agent": "Agent {id}",
-      "pictureAlt": "{title}, a picture drawn on {platform} with its passport on Monad",
-      "pictureAltUntitled": "A picture drawn on {platform} with its passport on Monad",
-      "open": "Open Dreamloom"
+      "source": "读自 Moolam 的索引和签名名单，缓存一分钟。",
+      "unread": "此刻未能读取",
+      "now": "现已上线：Moolam 验证服务上的平台接口和 MCP 服务器，以及 Dreamloom。",
+      "next": "随下一个版本推出：留在本人的邮箱名下，以及 moolam.vercel.app 上的共同签名窗口和连接窗口。",
+      "agent": "智能体 {id}",
+      "pictureAlt": "{title}，一张在 {platform} 上绘制、在 Monad 上有护照的图片",
+      "pictureAltUntitled": "一张在 {platform} 上绘制、在 Monad 上有护照的图片",
+      "open": "打开 Dreamloom"
     },
     "pricing": {
-      "kicker": "Pricing",
-      "title": "Free while you find out",
-      "banner": "Free during early access. Paid plans start only when Moolam has real demand, with 30 days' notice.",
+      "kicker": "价格",
+      "title": "先免费用，看清楚再说",
+      "banner": "抢先体验期间免费。只有当 Moolam 有了真实的需求，才会推出付费方案，并提前 30 天通知。",
       "plans": {
         "free": {
-          "name": "Free",
+          "name": "免费",
           "price": "$0",
-          "unit": "a month",
-          "body": "The first 1,000 passports every month."
+          "unit": "每月",
+          "body": "每月前 1,000 本护照。"
         },
         "payg": {
-          "name": "Pay as you go",
+          "name": "按量付费",
           "price": "$0.005",
-          "unit": "a passport",
-          "body": "Half a cent a passport after the first 1,000."
+          "unit": "每本护照",
+          "body": "前 1,000 本之后，每本护照半美分。"
         },
         "monthly": {
-          "name": "Monthly",
+          "name": "包月",
           "price": "$99",
-          "unit": "a month",
-          "body": "Up to 50,000 passports a month."
+          "unit": "每月",
+          "body": "每月最多 50,000 本护照。"
         }
       },
-      "fee": "Moolam pays the Monad fee for every passport a person signs, about 0.07 MON today.",
-      "proof": "Measured costs on mainnet"
+      "fee": "本人签署的每一本护照，其 Monad 费用都由 Moolam 支付，目前每本约 0.07 MON。",
+      "proof": "主网上实测的费用"
     },
     "security": {
-      "kicker": "Security and proof",
-      "title": "We tried to break it first",
-      "lead": "Every promise the kit, the MCP server and Dreamloom make was attacked from outside, against the live services.",
-      "attacks": "attacks sent",
-      "refused": "refused",
-      "controls": "controls passed",
-      "findings": "got through",
-      "honest": "Self-audited: Moolam ran this pass itself, and no outside firm has audited the kit yet. The kit checks your key and your agent owner's signature on chain at that moment. It does not check who the company behind an agent is.",
-      "unread": "The attack transcript could not be read just now.",
-      "threat": "Read the threat model",
-      "transcript": "The full attack transcript"
+      "kicker": "安全与证明",
+      "title": "我们先试着攻破它",
+      "lead": "工具包、MCP 服务器和 Dreamloom 做出的每一项承诺，都在线上服务上受过来自外部的攻击。",
+      "attacks": "已发出的攻击",
+      "refused": "被拒绝",
+      "controls": "对照检查通过",
+      "findings": "成功突破",
+      "honest": "自行审计：这一轮由 Moolam 自己完成，还没有外部公司审计过这个工具包。工具包会在那一刻于链上核对你的密钥和你的智能体持有者的签名。它不核实智能体背后的公司是谁。",
+      "unread": "此刻读不到攻击记录。",
+      "threat": "阅读威胁模型",
+      "transcript": "完整的攻击记录"
     },
     "call": {
-      "kicker": "Join",
-      "title": "Put your platform on the list",
-      "body": "Send Moolam your platform's name, your ERC-8004 agent and your site's address, sign the entry, and your users can sign their first picture.",
-      "primary": "How to join the list",
-      "secondary": "See it live on Dreamloom"
+      "kicker": "加入",
+      "title": "把你的平台加入名单",
+      "body": "把你平台的名称、你的 ERC-8004 智能体和你网站的地址发给 Moolam，签署名单条目，你的用户就能签下他们的第一张图片。",
+      "primary": "如何加入名单",
+      "secondary": "在 Dreamloom 上看实际运行"
     }
   },
   "menu": {
-    "label": "Menu",
+    "label": "菜单",
     "sides": {
-      "personal": "For personal",
-      "business": "For business"
+      "personal": "面向个人",
+      "business": "面向企业"
     },
     "items": {
       "verify": {
-        "name": "Verify an image",
-        "line": "Drop in any picture and see who made it."
+        "name": "验证图片",
+        "line": "放入任何图片，看看是谁做的。"
       },
       "studio": {
-        "name": "Register an image",
-        "line": "Make a picture and give it a passport on Monad."
+        "name": "登记图片",
+        "line": "做一张图片，在 Monad 上给它一本护照。"
       },
       "mine": {
-        "name": "My pictures",
-        "line": "Every passport you hold, and what you allow."
+        "name": "我的图片",
+        "line": "你持有的每一本护照，以及你允许了什么。"
       },
       "explore": {
-        "name": "Explore",
-        "line": "Every passport ever registered, newest first."
+        "name": "浏览",
+        "line": "登记过的每一本护照，最新的在前。"
       },
       "how": {
-        "name": "How it works",
-        "line": "One passport, from first pixel to proof."
+        "name": "运作方式",
+        "line": "一本护照，从第一个像素到证明。"
       },
       "business": {
-        "name": "Moolam for business",
-        "line": "Credit the person behind every picture your site makes."
+        "name": "面向企业的 Moolam",
+        "line": "为你网站做出的每一张图片，署上背后那个人的名。"
       },
       "kit": {
-        "name": "Platform kit",
-        "line": "One package and four routes on your server."
+        "name": "平台工具包",
+        "line": "一个包，加上你服务器上的四个接口。"
       },
       "mcp": {
-        "name": "AI agents and MCP",
-        "line": "Let Claude or any agent read a passport."
+        "name": "AI 智能体与 MCP",
+        "line": "让 Claude 或任何智能体读取护照。"
       },
       "agents": {
-        "name": "Agents board",
-        "line": "Every image agent, ranked by its record."
+        "name": "智能体榜",
+        "line": "每一个图片智能体，按各自的记录排名。"
       },
       "pricing": {
-        "name": "Pricing",
-        "line": "What a passport costs you on Monad mainnet."
+        "name": "价格",
+        "line": "一本护照在 Monad 主网上要花你多少钱。"
       },
       "dreamloom": {
-        "name": "Live demo: Dreamloom",
-        "line": "A real picture site running the kit today."
+        "name": "在线演示：Dreamloom",
+        "line": "一个现在就在用这个工具包的真实图片网站。"
       },
       "security": {
-        "name": "Security and proof",
-        "line": "What the code defends, and the attacks we ran."
+        "name": "安全与证明",
+        "line": "代码防住了什么，以及我们发起过的攻击。"
       }
     },
-    "here": "You are here",
-    "open": "Open",
-    "arrows": "Arrows move",
-    "escape": "Esc closes",
-    "close": "Close the menu",
-    "account": "My account"
+    "here": "你在这里",
+    "open": "打开",
+    "arrows": "方向键移动",
+    "escape": "Esc 关闭",
+    "close": "关闭菜单",
+    "account": "我的账户"
   },
   "mark": {
-    "label": "Trust mark",
+    "label": "信任标记",
     "states": {
       "upheld": {
-        "word": "Challenge upheld",
-        "line": "Moolam upheld a challenge against this record. Treat it, and its AI-use terms, as wrong."
+        "word": "质疑成立",
+        "line": "Moolam 支持了针对这条记录的一次质疑。请把这条记录及其 AI 使用条款都当作错误的。"
       },
       "mismatch": {
-        "word": "Does not match",
-        "line": "Chainlink's network fetched the picture this passport points to, and it is not the picture that was registered."
+        "word": "不匹配",
+        "line": "Chainlink 的网络取回了这本护照指向的图片，它不是当初登记的那张图片。"
       },
       "lookalike": {
-        "word": "Registered after a look-alike",
-        "line": "An earlier passport, {title}, looks like the same picture. It was registered on {date}, before this one."
+        "word": "晚于相似图片登记",
+        "line": "更早的一本护照 {title} 看起来是同一张图片。它于 {date} 登记，早于这一本。"
       },
       "challenged": {
-        "word": "Challenged",
-        "line": "Someone put {bond} MON behind a claim that this record is wrong. The holder can answer until {date}."
+        "word": "受到质疑",
+        "line": "有人押了 {bond} MON 保证金，主张这条记录有误。持有者在 {date} 之前可以回应。"
       },
       "waiting": {
-        "word": "Waiting for Chainlink",
-        "line": "Registered {when}. Chainlink's network checks every new public passport, and has not checked this one yet."
+        "word": "等待 Chainlink 核验",
+        "line": "{when} 登记。Chainlink 的网络会核验每一本新的公开护照，这一本还没有核验。"
       },
       "checked": {
-        "word": "Checked by Chainlink",
-        "line": "Chainlink's network fetched this picture itself, measured it again, and it matches its passport: {bits} of 64 bits apart. Written on Monad on {date}."
+        "word": "Chainlink 已核验",
+        "line": "Chainlink 的网络自己取回了这张图片，重新测量，结果与它的护照相符：64 位中有 {bits} 位不同。于 {date} 写入 Monad。"
       },
       "sealed": {
-        "word": "Sealed",
-        "line": "Never published, so Chainlink's network cannot check it. Its fingerprints are public, and a copy still finds it in Verify."
+        "word": "已封存",
+        "line": "从未公开，所以 Chainlink 的网络无法核验它。它的指纹是公开的，用一份副本在验证页依然能找到它。"
       },
       "nothing": {
-        "word": "Nothing to check",
-        "line": "This passport names no picture, so Chainlink has nothing to fetch."
+        "word": "无可核验",
+        "line": "这本护照没有指向任何图片，所以 Chainlink 没有东西可取回。"
       }
     },
-    "secondPrint": "Chainlink's network found the look fingerprint matches and the layout fingerprint does not. Both have to match, so this passport does not pass.",
+    "secondPrint": "Chainlink 的网络发现外观指纹相符，而布局指纹不符。两者都必须相符，所以这本护照没有通过。",
     "simulator": {
-      "word": "Test run",
-      "line": "A test run on one machine, in Chainlink's simulator. It stays in the record and never turns on the mark."
+      "word": "测试运行",
+      "line": "这是在 Chainlink 模拟器里、一台机器上的测试运行。它会留在记录里，但永远不会点亮这个标记。"
     },
-    "unread": "The mark could not be read just now, so none is shown. Try again in a moment.",
-    "readDecision": "Read the decision",
-    "openEarlier": "Open the earlier passport"
+    "unread": "此刻读不到标记，所以这里不显示。请稍后再试。",
+    "readDecision": "查看裁决",
+    "openEarlier": "打开更早的那本护照"
   },
   "claim": {
-    "label": "Where the claim comes from",
-    "studio": "Made in Moolam's studio. The agent signed the picture the moment it was drawn.",
-    "platform": "Drawn on {platform}. Its agent signed the picture the moment it was made.",
-    "camera": "A camera signed this picture when it was taken. That names a camera, not a person.",
-    "self": "Uploaded by {address} on {date}. That is their claim, open to challenge until {until}.",
-    "selfLater": "Uploaded by {address} on {date}. That is their claim, and anyone can still challenge it with evidence.",
-    "outside": "Registered outside Moolam's studio: no sworn statement, no web check.",
-    "seenEarlier": "Before signing, they were shown an earlier passport like this one.",
-    "platformStatement": "{platform}'s statement"
+    "label": "这个说法从何而来",
+    "studio": "在 Moolam 的工作室里做成。图片画好的那一刻，智能体就为它签了名。",
+    "platform": "在 {platform} 上绘制。图片生成的那一刻，平台的智能体就为它签了名。",
+    "camera": "这张图片拍摄时由相机签了名。这只说明是哪台相机，而不是哪个人。",
+    "self": "由 {address} 于 {date} 上传。这是上传者自己的说法，在 {until} 之前都可以被质疑。",
+    "selfLater": "由 {address} 于 {date} 上传。这是上传者自己的说法，任何人仍然可以拿证据质疑它。",
+    "outside": "在 Moolam 工作室之外登记：没有签名声明，也没有网上比对。",
+    "seenEarlier": "签名之前，登记者看到过一本与此相似的更早护照。",
+    "platformStatement": "{platform} 的声明"
   },
   "lookalike": {
     "found": {
-      "heading": "Earlier passport found",
-      "line": "Chainlink's network measured this picture itself and found {title}, registered on {date}, {bits} of 64 bits apart. Written on Monad on {at}."
+      "heading": "找到更早的护照",
+      "line": "Chainlink 的网络自己测量了这张图片，找到了 {date} 登记的 {title}，64 位中有 {bits} 位不同。于 {at} 写入 Monad。"
     },
     "searching": {
-      "heading": "Earlier passport, not confirmed yet",
-      "line": "Moolam's search found an earlier passport like this: {title}, registered on {date}. Chainlink has not confirmed it yet."
+      "heading": "更早的护照，尚未确认",
+      "line": "Moolam 的搜索找到了一本与此相似的更早护照：{title}，{date} 登记。Chainlink 还没有确认。"
     },
-    "order": "Registered first is not the same as made first. Anyone can challenge either passport with evidence.",
+    "order": "先登记不等于先做出来。任何人都可以拿证据质疑这两本护照中的任何一本。",
     "later": {
-      "line": "A later passport looks the same: {title}, registered on {date}.",
-      "count": "{count, plural, =1 {# later passport looks} other {# later passports look}} the same."
+      "line": "有一本更晚的护照看起来一样：{title}，{date} 登记。",
+      "count": "{count, plural, other {# 本更晚的护照}}看起来一样。"
     },
-    "none": "Chainlink found no earlier look-alike among the candidates Moolam's search proposed.",
-    "sealed": "An earlier sealed passport carries a fingerprint like this picture's. Its picture was never shown, so nobody can compare the two."
+    "none": "在 Moolam 搜索提出的候选中，Chainlink 没有找到更早的相似图片。",
+    "sealed": "一本更早的封存护照带有与这张图片相似的指纹。它的图片从未公开，所以谁也无法比对两者。"
   },
   "sworn": {
-    "label": "By signing, you state",
-    "line": "I made this picture, or I hold the rights to register it.",
-    "note": "This line goes into the passport you sign, for anyone to read."
+    "label": "签名即表示你声明",
+    "line": "这张图片是我做的，或者我有权登记它。",
+    "note": "这句话会以英文原文写进你签署的护照，任何人都能读到。"
   },
   "challenge": {
     "rules": {
-      "heading": "What a challenge needs",
-      "earlier": "The earlier work: the picture you say this passport copies.",
-      "proof": "Proof it existed or was shown earlier: a dated post, the camera's own file, or an earlier passport.",
-      "verify": "A Verify answer that shows it is the same picture.",
-      "licensed": "That it is not a copy you licensed to them.",
-      "burden": "The challenger carries the burden. Without this evidence, the record stands."
+      "heading": "提出质疑需要什么",
+      "earlier": "更早的作品：你认为这本护照抄袭的那张图片。",
+      "proof": "它更早就存在或公开过的证据：一篇带日期的帖子、相机自己的文件，或者一本更早的护照。",
+      "verify": "一份验证结果，表明两者是同一张图片。",
+      "licensed": "说明这不是你授权给对方的副本。",
+      "burden": "举证责任在质疑者。没有这些证据，记录维持原样。"
     },
     "decider": {
-      "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
-      "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
-      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way.",
-      "heading": "Who decides",
-      "treasury": "A rejected challenge's bond is credited to the treasury the policy names, {treasury}."
+      "who": "目前由 Moolam 按这些规则裁决质疑，并公布每一项裁决及其理由。Moolam 只是一家公司，不是法院。",
+      "seat": "仲裁者是 Monad 上指定的一个地址。更换它需要公开等待 24 小时。",
+      "bond": "被驳回的质疑，其保证金会被销毁，所以无论结果如何，Moolam 都得不到任何好处。",
+      "heading": "由谁裁决",
+      "treasury": "被驳回的质疑，其保证金记入政策指定的金库 {treasury}。"
     },
     "answer": {
-      "heading": "Answer this challenge",
-      "prompt": "Someone has challenged your passport. You have until {date} to answer before Moolam decides. Say why the record is right, and how someone else could check it.",
-      "placeholder": "What you know, and how someone else could check it.",
-      "left": "{left} left",
-      "hint": "Up to 4,000 bytes. Your wallet signs it, and it is pinned for good where anyone can read it.",
-      "button": "Sign and send my answer",
+      "heading": "回应这次质疑",
+      "prompt": "有人质疑了你的护照。你可以在 {date} 之前回应，之后由 Moolam 裁决。说明这条记录为什么是对的，以及别人可以怎样核实。",
+      "placeholder": "你知道的事，以及别人可以怎样核实。",
+      "left": "还剩 {left}",
+      "hint": "最多 4,000 字节。由你的钱包签名，并永久固定在任何人都能读到的地方。",
+      "button": "签名并发送我的回应",
       "states": {
-        "signing": "Waiting for your wallet to sign",
-        "sending": "Sending your answer",
-        "done": "Your answer is pinned and shown on this passport."
+        "signing": "等待你的钱包签名",
+        "sending": "正在发送你的回应",
+        "done": "你的回应已固定，并显示在这本护照上。"
       },
       "shown": {
-        "label": "The holder's answer",
-        "by": "Signed by {holder}",
-        "none": "The holder has not answered yet. They have until {date}.",
-        "missed": "The holder did not answer within the 14 days.",
-        "unread": "The holder's answer could not be read just now. Try again in a moment."
+        "label": "持有者的回应",
+        "by": "由 {holder} 签名",
+        "none": "持有者还没有回应。回应期限到 {date}。",
+        "missed": "持有者没有在 14 天内回应。",
+        "unread": "此刻读不到持有者的回应。请稍后再试。"
       },
       "refusals": {
-        "noOpenDispute": "There is no open challenge on this passport to answer.",
-        "windowClosed": "The 14 days to answer this challenge have passed.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "noHolder": "Monad shows no holder for this passport, so nobody can answer for it.",
-        "notHolder": "This wallet does not hold this passport, so it cannot answer for it.",
-        "signatureUsed": "That signature was already used. Sign again.",
-        "alreadyAnswered": "This challenge already has its answer. Each challenge takes one.",
-        "answering": "An answer to this challenge is being sent from another window. Look again in a moment.",
-        "unavailable": "Moolam cannot take answers right now. Nothing was sent. Try again later.",
-        "chainUnreachable": "Moolam could not read Monad just now. Nothing was sent. Try again in a moment.",
-        "pinFailed": "Your answer could not be pinned, so nothing was saved. Try again.",
-        "busy": "Too many answers are arriving right now. Wait a minute and try again.",
-        "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
-        "empty": "Write your answer first.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "declined": "You closed the wallet prompt, so nothing was signed.",
-        "unknown": "The answer did not go through."
+        "noOpenDispute": "这本护照上没有需要回应的未决质疑。",
+        "windowClosed": "回应这次质疑的 14 天期限已经过了。",
+        "expired": "你的签名在送达之前就过期了。请重新签名。",
+        "noHolder": "Monad 显示这本护照没有持有者，所以没有人能为它回应。",
+        "notHolder": "这个钱包不持有这本护照，所以不能为它回应。",
+        "signatureUsed": "那个签名已经用过了。请重新签名。",
+        "alreadyAnswered": "这次质疑已经有了回应。每次质疑只接受一份回应。",
+        "answering": "另一个窗口正在发送对这次质疑的回应。过一会儿再看。",
+        "unavailable": "Moolam 现在无法接收回应。什么都没有发送。请稍后再试。",
+        "chainUnreachable": "Moolam 此刻读不到 Monad。什么都没有发送。请稍后再试。",
+        "pinFailed": "你的回应没能固定，所以什么都没有保存。请再试一次。",
+        "busy": "现在收到的回应太多了。等一分钟再试。",
+        "tooLong": "你的回应超过了 4,000 字节。缩短后重新签名。",
+        "empty": "请先写下你的回应。",
+        "notPrintable": "隐藏字符无法发送。删掉它们后重新签名。",
+        "declined": "你关闭了钱包提示，所以什么都没有签名。",
+        "unknown": "回应没有发送成功。"
       }
     },
     "decision": {
-      "heading": "The decision",
-      "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
-      "rejected": "Rejected on {date}. The record stands.",
-      "reasons": "Read the reasons",
-      "noReasons": "No reasons were published with this decision.",
-      "upheldUndated": "Upheld. Moolam agreed with the challenge.",
-      "rejectedUndated": "Rejected. The record stands.",
-      "unread": "The published reasons could not be read just now. Try again in a moment."
+      "heading": "裁决",
+      "upheld": "于 {date} 裁定成立。Moolam 认同这次质疑。",
+      "rejected": "于 {date} 驳回。记录维持原样。",
+      "reasons": "查看理由",
+      "noReasons": "这项裁决没有公布理由。",
+      "upheldUndated": "裁定成立。Moolam 认同这次质疑。",
+      "rejectedUndated": "已驳回。记录维持原样。",
+      "unread": "此刻读不到已公布的理由。请稍后再试。"
     },
     "held": {
-      "heading": "{count, plural, =1 {A picture you hold is challenged} other {# pictures you hold are challenged}}",
-      "opened": "Challenged on {date}"
+      "heading": "{count, plural, =1 {你持有的一张图片受到质疑} other {你持有的 # 张图片受到质疑}}",
+      "opened": "{date} 受到质疑"
     },
     "publish": {
-      "kicker": "Publish the reasons",
-      "label": "The reasons",
-      "placeholder": "What the evidence showed, which rule decided it, and how anyone can check it.",
-      "left": "{left} left",
-      "hint": "Up to 8,000 bytes, line breaks kept. Your wallet signs them, and they are pinned for good where anyone can read them.",
-      "button": "Sign and publish, one more transaction",
-      "why": "Settling wrote the outcome on Monad, not the reasons. Publishing them is one more transaction from this wallet: it writes the pinned reasons' address beside this decision, so anyone who opens the passport can read why.",
+      "kicker": "公布理由",
+      "label": "理由",
+      "placeholder": "证据显示了什么，依据哪条规则裁决，以及任何人可以怎样核实。",
+      "left": "还剩 {left}",
+      "hint": "最多 8,000 字节，保留换行。由你的钱包签名，并永久固定在任何人都能读到的地方。",
+      "button": "签名并公布，需要再发一笔交易",
+      "why": "裁决只把结果写到了 Monad 上，没有写理由。公布理由需要这个钱包再发一笔交易：它把已固定的理由的地址写在这项裁决旁边，任何打开这本护照的人都能读到原因。",
       "states": {
-        "signing": "Waiting for your wallet to sign the reasons",
-        "pinning": "Pinning the reasons",
-        "sending": "Sending the publish transaction",
-        "confirming": "Waiting for Monad's receipt",
-        "pending": "The publish went out and no receipt shows it yet. It may still land, so it must not be sent again."
+        "signing": "等待你的钱包为理由签名",
+        "pinning": "正在固定理由",
+        "sending": "正在发送公布交易",
+        "confirming": "等待 Monad 的回执",
+        "pending": "公布交易已经发出，但还没有回执显示它。它仍可能上链，所以不要再发一次。"
       },
-      "recheck": "Ask Monad again",
-      "done": "Published. Monad's receipt carries this decision's reasons, and the passport page links them.",
-      "openReasons": "Read the reasons",
-      "openTx": "Transaction {hash}",
+      "recheck": "再问一次 Monad",
+      "done": "已公布。Monad 的回执带有这项裁决的理由，护照页也链接到了它们。",
+      "openReasons": "查看理由",
+      "openTx": "交易 {hash}",
       "owed": {
-        "heading": "Decisions waiting for their reasons",
-        "line": "{outcome, select, upheld {Upheld} other {Rejected}} on {date}"
+        "heading": "等待公布理由的裁决",
+        "line": "于 {date} {outcome, select, upheld {裁定成立} other {驳回}}"
       },
       "refusals": {
-        "empty": "Write the reasons first.",
-        "tooLong": "The reasons are over 8,000 bytes. Shorten them and sign again.",
-        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
-        "expired": "Your signature ran out before it arrived. Sign again.",
-        "notResolver": "This wallet is not the resolver the policy names, so nothing was pinned or sent.",
-        "notSettled": "Monad does not show this dispute settled, so it has no decision to explain yet.",
-        "mismatch": "Monad shows this dispute settled another way or opened at another time. Reload the desk and look again.",
-        "alreadyPublished": "The reasons for this decision are already published.",
-        "pinning": "These reasons are being pinned from another window. Look again in a moment.",
-        "busy": "Too many reasons were pinned today, or too many requests came at once. Try again later.",
-        "pinFailed": "The reasons could not be pinned, so nothing was published. Send them again.",
-        "unavailable": "Moolam cannot pin reasons right now. Nothing was published. Try again later.",
-        "chainUnreachable": "Monad could not be read just now. Nothing was sent. Try again in a moment.",
-        "declined": "You closed the wallet prompt, so nothing was signed or sent.",
-        "invalidAddress": "MoolamDecisions would not take this address, so nothing was sent.",
-        "reverted": "Monad mined the publish and its receipt does not carry these reasons. Nothing was published.",
-        "unknown": "The publish did not go through."
+        "empty": "请先写下理由。",
+        "tooLong": "理由超过了 8,000 字节。缩短后重新签名。",
+        "notPrintable": "隐藏字符无法发送。删掉它们后重新签名。",
+        "expired": "你的签名在送达之前就过期了。请重新签名。",
+        "notResolver": "这个钱包不是政策指定的仲裁者，所以什么都没有固定，也没有发送。",
+        "notSettled": "Monad 没有显示这项争议已经了结，所以还没有需要说明的裁决。",
+        "mismatch": "Monad 显示这项争议的裁决结果不同，或者提出的时间不同。刷新控制台后再看一次。",
+        "alreadyPublished": "这项裁决的理由已经公布过了。",
+        "pinning": "另一个窗口正在固定这些理由。过一会儿再看。",
+        "busy": "今天固定的理由太多了，或者同时来的请求太多。请稍后再试。",
+        "pinFailed": "理由没能固定，所以什么都没有公布。请再发送一次。",
+        "unavailable": "Moolam 现在无法固定理由。什么都没有公布。请稍后再试。",
+        "chainUnreachable": "此刻读不到 Monad。什么都没有发送。请稍后再试。",
+        "declined": "你关闭了钱包提示，所以什么都没有签名，也没有发送。",
+        "invalidAddress": "MoolamDecisions 不接受这个地址，所以什么都没有发送。",
+        "reverted": "Monad 打包了这笔公布交易，但回执里没有这些理由。什么都没有公布。",
+        "unknown": "公布没有成功。"
       }
     }
   }
