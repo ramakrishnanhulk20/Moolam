@@ -393,6 +393,7 @@ describe("gating by data", () => {
     expect(beatsOf(html)).toContain("yourself");
     expect(html).toContain(en.story.yourself.title);
     expect(html).toContain("Imagined by 0x85a8");
+    expect(html).toContain("11 pictures drawn on 1 platform. This one: A human standing alone in the moon.");
     expect(html).not.toContain("Newest:");
   });
 

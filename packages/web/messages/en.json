@@ -410,7 +410,7 @@
       "tag": "Imagined by {person}",
       "title": "Made on another AI site? Sign it yourself.",
       "body": "Image sites can join Moolam. Their agent signs for the tool, you sign as the creator with one tap, and the credit is yours from the first block.",
-      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. Newest: {title}."
+      "readout": "{count, plural, =1 {# picture} other {# pictures}} drawn on {platforms, plural, =1 {# platform} other {# platforms}}. This one: {title}."
     },
     "waiting": {
       "kicker": "Waiting for you",

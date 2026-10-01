@@ -251,8 +251,9 @@ export function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView |
           <Eyebrow>{t("yourself.kicker")}</Eyebrow>
           <Title>{t("yourself.title")}</Title>
           <Body>{t("yourself.body")}</Body>
-          {/* No readout here: the approved one names the newest picture, and this
-              print is a chosen one, so that line would not be true of it. */}
+          <Readout>
+            {t("yourself.readout", { count: yourself.count, platforms: yourself.platforms, title: yourself.print.title })}
+          </Readout>
         </>
       ),
     });
