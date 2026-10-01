@@ -175,6 +175,7 @@ const nextConfig: NextConfig = {
     "/[locale]/docs/[[...slug]]": ["../../docs/**/*.md", "../../docs/nav.json"],
     "/docs-files/[...path]": ["../../docs/**/*.txt", "../../proofs/**/*.txt"],
     "/docs-search": ["../../docs/**/*.md", "../../docs/nav.json"],
+    "/[locale]/business": ["../../proofs/attacks/pass-kit.txt"],
   },
 };
 

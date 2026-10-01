@@ -2179,5 +2179,260 @@
       "signIn": "Sign in again",
       "reload": "Read the list again"
     }
+  },
+  "business": {
+    "meta": {
+      "title": "Passports for AI picture platforms",
+      "description": "Every picture made on your AI picture site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey. Free during early access."
+    },
+    "hero": {
+      "kicker": "Moolam for platforms",
+      "headline": "Your users imagined it.",
+      "tail": "Let them sign it.",
+      "promise": "Every picture made on your site can leave with a passport on Monad that names the person who imagined it, signed with their own passkey.",
+      "guide": "Read the integration guide",
+      "live": "See it live on Dreamloom",
+      "meta": {
+        "audience": "For AI picture platforms",
+        "chain": "Monad mainnet",
+        "tap": "One passkey tap"
+      }
+    },
+    "demo": {
+      "illustration": "Illustration",
+      "label": "Illustration: a person makes a picture on Dreamloom, signs it as the creator with one passkey tap in a small Moolam window, and the passport lands naming them, then Chainlink checks it.",
+      "address": "dreamloom",
+      "draw": "Draw",
+      "drawing": "Drawing…",
+      "prompt": "A human standing alone on the moon",
+      "press": "Sign it as the creator",
+      "brand": "Moolam",
+      "window": "Sign as the creator",
+      "windowLine": "Dreamloom's agent drew it. You imagined it.",
+      "passkey": "Sign with passkey",
+      "passkeyWaiting": "Passkey",
+      "passport": "Passport on Monad",
+      "credit": "Imagined by Ram. Drawn on Dreamloom.",
+      "checked": "Checked by Chainlink",
+      "pause": "Pause the illustration",
+      "play": "Play the illustration",
+      "pauseShort": "Pause",
+      "playShort": "Play",
+      "step": "Step {number}: {label}",
+      "stages": {
+        "prompt": {
+          "label": "Prompt",
+          "line": "A person types what they imagine on Dreamloom."
+        },
+        "picture": {
+          "label": "Picture",
+          "line": "Dreamloom's agent draws the picture."
+        },
+        "press": {
+          "label": "Press",
+          "line": "They press Sign it as the creator."
+        },
+        "window": {
+          "label": "Window",
+          "line": "A small Moolam window opens over Dreamloom's page."
+        },
+        "passkey": {
+          "label": "Passkey",
+          "line": "One passkey tap approves this exact picture."
+        },
+        "passport": {
+          "label": "Passport",
+          "line": "The passport lands, naming them."
+        },
+        "chainlink": {
+          "label": "Chainlink",
+          "line": "Chainlink checks the picture on its own."
+        }
+      }
+    },
+    "why": {
+      "kicker": "Why platforms add it",
+      "title": "Three reasons your users will ask for it",
+      "reasons": {
+        "credit": {
+          "title": "Credit your users can prove",
+          "body": "The person's own passkey approves the picture before Monad records it. The credit rests on their key, not on your word, so nobody can argue with it later.",
+          "proof": "How the credit reads"
+        },
+        "name": {
+          "title": "Your name travels with every copy",
+          "body": "Each passport says where the picture was drawn. Strip it, shrink it or screenshot it: the fingerprint still finds the passport, and your name with it.",
+          "proof": "How copies are found"
+        },
+        "terms": {
+          "title": "AI-use terms that answer for themselves",
+          "body": "The person states on Monad whether AI may train on the picture. Any AI agent can read that answer through Moolam's MCP server before it uses the picture.",
+          "proof": "The MCP server"
+        }
+      }
+    },
+    "ways": {
+      "kicker": "Three ways to hand it over",
+      "title": "Pick how the passport reaches your user",
+      "rows": {
+        "person": "What the person does",
+        "credit": "When they are credited",
+        "cost": "What it costs you on Monad",
+        "build": "What you build"
+      },
+      "recommended": "Recommended",
+      "next": "Coming with the next release",
+      "items": {
+        "cosign": {
+          "name": "Sign it yourself",
+          "person": "Presses Sign it as the creator, signs in to Moolam the first time, and taps their passkey. After that, one tap a picture.",
+          "credit": "From the first block. Their own key approved the picture.",
+          "cost": "Nothing. Moolam pays their fee.",
+          "build": "Open one link in a small window."
+        },
+        "email": {
+          "name": "Leave it for their email",
+          "person": "Signs in to Moolam with the email you verified, presses These are mine, picks their AI-use terms, then confirms.",
+          "credit": "When they confirm from their own wallet, after your hand-over.",
+          "cost": "About 0.063 MON a picture: register, terms, hand-over.",
+          "build": "One field on registerAsPlatform, and a delivery worker."
+        },
+        "connect": {
+          "name": "Connect once",
+          "person": "Opens Moolam's connect page once and sends you their Moolam address. Later pictures reach them with no step.",
+          "credit": "When they state their own terms on a passport you handed them.",
+          "cost": "About 0.063 MON a picture, the same three transactions.",
+          "build": "A button that opens the connect page, and a place to keep each address."
+        }
+      },
+      "whyTitle": "Why we recommend sign it yourself",
+      "why": "It is the only way that puts the person's own key on the picture: their passkey approves this exact picture before Monad records it. It costs you nothing on chain, because Moolam pays their fee.",
+      "proof": "Compare the three in the guide"
+    },
+    "person": {
+      "kicker": "What your user does",
+      "title": "Every step, in the recommended way",
+      "steps": {
+        "make": {
+          "title": "Makes a picture on your site",
+          "body": "They type a prompt and your agent draws it, exactly as today."
+        },
+        "press": {
+          "title": "Presses Sign it as the creator",
+          "body": "One button beside the picture. Nothing else on your page changes."
+        },
+        "window": {
+          "title": "Sees a small Moolam window",
+          "body": "It opens over your page like a checkout, and names your platform from Moolam's signed list."
+        },
+        "signIn": {
+          "title": "Signs in, the first time only",
+          "body": "A Moolam account and a passkey, made once on that device."
+        },
+        "passkey": {
+          "title": "Taps their passkey",
+          "body": "Face, fingerprint or screen lock approves this exact picture. Moolam pays the Monad fee."
+        },
+        "passport": {
+          "title": "Has the passport",
+          "body": "The window closes. Monad holds a passport naming them, and the picture waits on their My pictures."
+        }
+      }
+    },
+    "build": {
+      "kicker": "Build it",
+      "title": "Three calls on your server",
+      "before": "Before the first picture: register an ERC-8004 agent on Monad and join Moolam's list. You get a Moolam key that identifies your platform.",
+      "beforeLink": "Joining the list",
+      "package": "The kit is a TypeScript package for your server, @moolam/platform. It is not on npm yet.",
+      "step": "Step {number}",
+      "codeLabel": "Code for step {number}: {title}",
+      "steps": {
+        "start": {
+          "title": "Start the co-sign",
+          "body": "Your server hands Moolam the picture. Moolam signs its Content Credentials, fingerprints it and gives back a link for your user."
+        },
+        "send": {
+          "title": "Send the link, sign as your agent",
+          "body": "Open the link in a small window. Once your user has signed in, your agent signs the same picture."
+        },
+        "wait": {
+          "title": "Wait for the passport",
+          "body": "It returns once Monad holds this passport with your user as its creator and your agent as its maker."
+        }
+      },
+      "mcp": {
+        "title": "For AI agents",
+        "body": "One line connects Claude, or any client that speaks MCP, to Moolam's read-only server: check a picture, read its passport and its AI-use terms.",
+        "codeLabel": "Command that adds Moolam's MCP server to Claude Code"
+      },
+      "guide": "The full integration guide"
+    },
+    "live": {
+      "kicker": "Live today",
+      "title": "Dreamloom runs it on Monad mainnet",
+      "body": "Dreamloom is a demo AI picture site built to show the kit. It is on Moolam's signed list, its agent signs every picture it draws, and its passports are real.",
+      "figures": {
+        "platformPassports": "passports signed by {platform}'s agent",
+        "totalPassports": "passports on Moolam",
+        "stated": "carry their holder's AI-use terms",
+        "platforms": "{count, plural, =1 {platform on Moolam's signed list} other {platforms on Moolam's signed list}}"
+      },
+      "source": "Read from Moolam's index and its signed list, held for a minute.",
+      "unread": "Not read just now",
+      "now": "Live now: the platform routes and the MCP server on Moolam's verify service, and Dreamloom.",
+      "next": "Coming with the next release: leave it for their email, and the co-sign and connect windows on moolam.vercel.app.",
+      "agent": "Agent {id}",
+      "pictureAlt": "{title}, a picture drawn on {platform} with its passport on Monad",
+      "pictureAltUntitled": "A picture drawn on {platform} with its passport on Monad",
+      "open": "Open Dreamloom"
+    },
+    "pricing": {
+      "kicker": "Pricing",
+      "title": "Free while you find out",
+      "banner": "Free during early access. Paid plans start only when Moolam has real demand, with 30 days' notice.",
+      "plans": {
+        "free": {
+          "name": "Free",
+          "price": "$0",
+          "unit": "a month",
+          "body": "The first 1,000 passports every month."
+        },
+        "payg": {
+          "name": "Pay as you go",
+          "price": "$0.005",
+          "unit": "a passport",
+          "body": "Half a cent a passport after the first 1,000."
+        },
+        "monthly": {
+          "name": "Monthly",
+          "price": "$99",
+          "unit": "a month",
+          "body": "Up to 50,000 passports a month."
+        }
+      },
+      "fee": "Moolam pays the Monad fee for every passport a person signs, about 0.07 MON today.",
+      "proof": "Measured costs on mainnet"
+    },
+    "security": {
+      "kicker": "Security and proof",
+      "title": "We tried to break it first",
+      "lead": "Every promise the kit, the MCP server and Dreamloom make was attacked from outside, against the live services.",
+      "attacks": "attacks sent",
+      "refused": "refused",
+      "controls": "controls passed",
+      "findings": "got through",
+      "honest": "Self-audited: Moolam ran this pass itself, and no outside firm has audited the kit yet. The kit checks your key and your agent owner's signature on chain at that moment. It does not check who the company behind an agent is.",
+      "unread": "The attack transcript could not be read just now.",
+      "threat": "Read the threat model",
+      "transcript": "The full attack transcript"
+    },
+    "call": {
+      "kicker": "Join",
+      "title": "Put your platform on the list",
+      "body": "Send Moolam your platform's name, your ERC-8004 agent and your site's address, sign the entry, and your users can sign their first picture.",
+      "primary": "How to join the list",
+      "secondary": "See it live on Dreamloom"
+    }
   }
 }
