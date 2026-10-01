@@ -3,12 +3,15 @@ import type { Hex } from "viem";
 import { heldStory } from "@/components/story/data";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { askIndex, heldArt } from "@/lib/data/passports";
-import { pickSamples, type SampleMark, type TrySample } from "./samples";
+import { pickSamples, type PickedPlate, type SampleMark, type TrySample } from "./samples";
+import { SHOWCASE } from "./showcase";
 
 /**
- * The three registered pictures the verify page offers, read on the server.
+ * The three registered pictures the home page and the verify page offer, read
+ * on the server.
  *
- * The pictures themselves are the home panel's own list, from the same held
+ * The three are the hand-picked showcase set, read by id, and each slot whose
+ * pick cannot be read is filled from the home panel's own list, the same held
  * story read, so the two screens can never offer a judge different pictures.
  * What is added here is what the page needs to put a name and a reason under
  * each one: the title pinned with the picture, whether its holder has said
@@ -57,9 +60,10 @@ export interface OfferedSamples {
  *
  * Every read in here is held, and the page above it is rebuilt a minute at a
  * time, so offering samples costs one index query and a handful of gateway
- * reads a minute however many people open the page. An index that will not
- * answer costs the ordering and the titles, never the row: the plates are still
- * the newest real pictures and still verify for real.
+ * reads a minute however many people open the page. The picks ride in that one
+ * query beside the candidates, never a query each. An index that will not
+ * answer costs the picks, the ordering and the titles, never the row: the
+ * plates are still the newest real pictures and still verify for real.
  */
 export async function offeredSamples(limit = 3): Promise<OfferedSamples> {
   const story = await heldStory();
@@ -68,13 +72,15 @@ export async function offeredSamples(limit = 3): Promise<OfferedSamples> {
     return { samples: [], error: story.error };
   }
 
-  const rows = await heldRows(plates.map((plate) => plate.id.toLowerCase()));
-  const picked = pickSamples(plates, marksFor(plates.map((plate) => plate.id), rows), limit);
+  const ids = [...new Set([...plates, ...SHOWCASE].map((entry) => entry.id.toLowerCase()))];
+  const rows = await heldRows(ids);
+  const picks = await Promise.all(SHOWCASE.map((pick) => pickRead(pick.id, rows)));
+  const chosen = pickSamples(plates, marksFor(plates.map((plate) => plate.id), rows), limit, picks);
 
   const samples = await Promise.all(
-    picked.map(async (sample) => {
+    chosen.map(async (sample) => {
       const uri = rows[sample.id.toLowerCase()]?.metadataURI;
-      if (uri === undefined) {
+      if (sample.title !== undefined || uri === undefined) {
         return sample;
       }
       const art = await heldArt(uri).catch(() => ({ title: undefined }));
@@ -86,11 +92,26 @@ export async function offeredSamples(limit = 3): Promise<OfferedSamples> {
 }
 
 /**
+ * The picture and the title one pick's document carries, or nulls where it
+ * could not be read. The picture is the small copy, the same one the story's
+ * plates are drawn from, so a pick that is also among the newest is the same
+ * address and can never be offered twice.
+ */
+async function pickRead(id: Hex, rows: Record<string, SampleRow>): Promise<PickedPlate> {
+  const uri = rows[id.toLowerCase()]?.metadataURI;
+  if (uri === undefined) {
+    return { id, picture: null, title: null };
+  }
+  const art = await heldArt(uri).catch(() => ({ title: undefined, thumbnailUrl: undefined }));
+  return { id, picture: art.thumbnailUrl ?? null, title: art.title ?? null };
+}
+
+/**
  * What the index says about the candidates, filed by id, held for a minute.
  *
- * An index that answers nothing is an empty map rather than a failure: the
- * samples are picked from the story's own plates, and this read only decides
- * which three of them go first.
+ * The candidates and the showcase picks are asked for in the one query. An
+ * index that answers nothing is an empty map rather than a failure: every pick
+ * then reads as unread and gives up its slot to the story's own plates.
  */
 async function heldRows(ids: string[]): Promise<Record<string, SampleRow>> {
   const held = unstable_cache(async () => await sampleRows(ids), ["moolam-sample-rows", ids.join(",")], {

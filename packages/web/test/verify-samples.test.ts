@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
 import { pickSamples, type TrySample } from "@/lib/data/samples";
+import { SHOWCASE } from "@/lib/data/showcase";
 import { fileFromSample } from "@/components/verify/sample";
 import { VerifyScreen } from "@/components/verify/VerifyScreen";
 
@@ -100,6 +101,40 @@ describe("the one rule both panels pick their samples by", () => {
 
   it("falls back to the newest three when the index said nothing at all", () => {
     expect(pickSamples(plates, {}).map((sample) => sample.id)).toEqual(pickSamples(plates).map((sample) => sample.id));
+  });
+
+  it("puts the showcase picks first, in order, when each was read as picked", () => {
+    const picked = SHOWCASE.map((pick, at) => ({ id: pick.id, picture: `https://gateway/ipfs/pick-${at}`, title: pick.title }));
+
+    expect(pickSamples(plates, {}, 3, picked)).toEqual(
+      SHOWCASE.map((pick, at) => ({ id: pick.id, url: `https://gateway/ipfs/pick-${at}`, title: pick.title })),
+    );
+  });
+
+  it("gives a test card's slot to the newest real picture, whatever title it was picked under", () => {
+    // The first id is one of the maintainer's own tries, named in components/explore/sort.ts.
+    const showcase = [
+      { id: "0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09" as Hex, title: "Old lighthouse" },
+      { id: ID("a1"), title: "Moolam seed 4" },
+      { id: ID("a2"), title: "Harbour at dawn" },
+    ];
+    const picked = showcase.map((pick, at) => ({ id: pick.id, picture: `https://gateway/ipfs/pick-${at}`, title: pick.title }));
+
+    expect(pickSamples(plates, {}, 3, picked, showcase).map((sample) => sample.id)).toEqual([ID("11"), ID("22"), ID("a2")]);
+  });
+
+  it("lets the newest fill only the slots whose picks fail, never repeating a picture", () => {
+    const picked = [
+      { id: SHOWCASE[0].id, picture: "https://gateway/ipfs/two", title: SHOWCASE[0].title },
+      { id: SHOWCASE[1].id, picture: null, title: SHOWCASE[1].title },
+      { id: SHOWCASE[2].id, picture: "https://gateway/ipfs/kites", title: "Not the kites" },
+    ];
+
+    const offered = pickSamples(plates, {}, 3, picked);
+
+    expect(offered.map((sample) => sample.id)).toEqual([SHOWCASE[0].id, ID("11"), ID("44")]);
+    const urls = offered.map((sample) => sample.url);
+    expect(new Set(urls).size).toBe(urls.length);
   });
 });
 
