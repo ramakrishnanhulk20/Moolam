@@ -14,6 +14,7 @@ import {
 	type NodeRuntime,
 	type Runtime,
 } from "@chainlink/cre-sdk";
+import { EVM_PB } from "@chainlink/cre-sdk/pb";
 import {
 	decodeEventLog,
 	decodeFunctionResult,
@@ -253,6 +254,30 @@ const readPassport = (
 	});
 };
 
+const statusName = (names: Record<number, string>, status: number | undefined): string =>
+	status === undefined ? "missing" : (names[status] ?? `unknown (${status})`);
+
+/**
+ * Why a report write did not land, or null when it did.
+ *
+ * The transaction and the receiver are judged apart because the forwarder's transaction succeeds
+ * even when the receiver refuses the report inside it, so a successful transaction alone can still
+ * mean no attestation. Only a receiver status that says success counts: reverted, an unknown value
+ * and a missing one all fail the run.
+ */
+export const writeRefusal = (
+	write: Pick<EVM_PB.WriteReportReply, "txStatus" | "receiverContractExecutionStatus" | "errorMessage">,
+): string | null => {
+	if (write.txStatus !== TxStatus.SUCCESS) {
+		const detail = write.errorMessage ? `: ${write.errorMessage}` : "";
+		return `the report transaction did not succeed (status ${statusName(TxStatus, write.txStatus)})${detail}`;
+	}
+	if (write.receiverContractExecutionStatus !== EVM_PB.ReceiverContractExecutionStatus.SUCCESS) {
+		return `the receiver refused the report, so no attestation was written (receiver status ${statusName(EVM_PB.ReceiverContractExecutionStatus, write.receiverContractExecutionStatus)})`;
+	}
+	return null;
+};
+
 export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): string => {
 	const config = runtime.config;
 
@@ -352,11 +377,16 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
 		})
 		.result();
 
-	if (write.txStatus !== TxStatus.SUCCESS) {
-		throw new Error(`report write failed: ${write.errorMessage || write.txStatus}`);
-	}
-
 	const txHash = bytesToHex(write.txHash || new Uint8Array(32));
+	runtime.log(
+		`write to ${config.receiver}: transaction ${statusName(TxStatus, write.txStatus)}, receiver ${statusName(EVM_PB.ReceiverContractExecutionStatus, write.receiverContractExecutionStatus)}`,
+	);
+	const refused = writeRefusal(write);
+	if (refused !== null) {
+		// The recheck runner reads a `report tx` line as a verdict that landed, so a refusal never
+		// prints one.
+		throw new Error(`${refused} (transaction ${txHash})`);
+	}
 	runtime.log(`report tx ${txHash}`);
 
 	return `${passportId} distance ${verification.distance} matched ${verification.matched} tx ${txHash}`;

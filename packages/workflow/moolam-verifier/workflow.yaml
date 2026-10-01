@@ -6,3 +6,14 @@ monad-mainnet:
     workflow-path: "./main.ts"
     config-path: "./config.json"
     secrets-path: ""
+
+# The deployed workflow. deployment-registry must stay "private": a target without it makes the CLI
+# fall back to the onchain Ethereum registry and try to bond a wallet key to the organisation.
+monad-network:
+  user-workflow:
+    workflow-name: "moolam-verifier"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.network.json"
+    secrets-path: ""

@@ -52,13 +52,25 @@ themselves, and they have to agree with each other before anything is signed.
    re-encode to one node is fine as long as every node lands on the same answer.
 6. **Write.** The verdict is ABI encoded as
    `(uint256 chainId, uint64 executedAt, bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed)`,
-   signed into a report, and delivered to a receiver that calls `attest` on the registry. Today every
-   run is a simulator run, so Chainlink's mock forwarder delivers it to the public
-   `SimulationReceiver` `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` (see "Where a broadcast lands"
-   below). A deployed workflow would go through the production KeystoneForwarder instead, to a
-   receiver pointed at it. `chainId` and `executedAt` are inside the signed payload because
-   Chainlink's own guidance says a report can be replayed later or on another chain; the receiver
-   rejects a wrong chain id and any timestamp that is not newer than the last one for that passport.
+   signed into a report, and delivered to a receiver that calls `attest` on the registry. A
+   simulator run goes through Chainlink's mock forwarder to the public `SimulationReceiver`
+   `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` (see "Where a broadcast lands" below). The workflow
+   deployed to Chainlink's network goes through the production KeystoneForwarder to
+   `MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` (see "Two targets"). `chainId` and
+   `executedAt` are inside the signed payload because Chainlink's own guidance says a report can be
+   replayed later or on another chain; the receiver rejects a wrong chain id and any timestamp that
+   is not newer than the last one for that passport.
+
+   The write answers with two statuses, and the run only succeeds when both say success. The
+   forwarder's transaction can succeed while the receiver inside it refuses the report, and then no
+   attestation exists, so a receiver status of reverted, unknown or missing fails the run with
+   `the receiver refused the report, so no attestation was written (receiver status ...)`, and a
+   failed transaction fails it with `the report transaction did not succeed (status ...)`. Both
+   statuses are logged with the receiver, as `write to 0x..: transaction X, receiver Y`, before the
+   check. A failed run never prints `report tx`, which is the line the recheck runner reads as a
+   verdict that landed.
+   Chainlink's docs say the receiver status is always success in a simulation, which matches the
+   mock forwarder swallowing a refusal (below), so only a deployed run can show one here.
 
 ## Private re-checks: `moolam-sealed-verifier`
 
@@ -141,7 +153,9 @@ What it does not prove:
 | `moolam-verifier/phash.ts` | The pure TypeScript fingerprint, matched to sharp-phash |
 | `moolam-verifier/decode.ts` | JPEG decoding inside the sandbox |
 | `moolam-verifier/picture.ts` | Which picture a run fingerprints, including an unsealed passport's, with no network so it is tested from `packages/recheck-runner/test/workflow-picture.test.ts` |
-| `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, verify service, match threshold |
+| `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, verify service, match threshold, for the simulator (`monad-mainnet`) |
+| `moolam-verifier/config.network.json` | The same, with the network receiver `0x0d69...Eff04`, for the deployed workflow (`monad-network`) |
+| `moolam-verifier/workflow.test.ts` | One whole run through the CRE SDK's test runtime, proving a write only counts when the transaction and the receiver both say success |
 | `spike/decode-spike.ts` | The throwaway run that proved a JPEG can be decoded in the sandbox at all |
 | `../verifier/test/workflow-phash.test.ts` | Holds this fingerprint against the verifier's sharp based one |
 
@@ -160,6 +174,85 @@ cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive \
 
 Add `--broadcast` to send the attestation for real. The transaction is paid for by the CRE wallet
 `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`.
+
+The workflow's own tests run under Bun, through the CRE SDK's test runtime, with no network:
+
+```bash
+cd moolam-verifier && bun test
+```
+
+### Two targets
+
+| | `monad-mainnet` | `monad-network` |
+| --- | --- | --- |
+| what runs it | the CRE simulator, on the droplet's recheck runner and on this machine | Chainlink's network, once deployed to the private registry |
+| config | `moolam-verifier/config.json` | `moolam-verifier/config.network.json` |
+| forwarder | the mock, `0x9eF6468C5f37b976E57d52054c693269479A784d` | the KeystoneForwarder, `0x76c9cf548b4179F8901cda1f8623568b58215E62` |
+| receiver | `SimulationReceiver` `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` | `MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` |
+| author the receiver expects | `0xaAaA...aAaA`, what the simulator stamps | `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, the organisation's derived owner |
+| who pays the write | the CRE wallet, on `--broadcast` | a Chainlink node; CRE credits per run |
+
+The droplet's recheck runner always uses `monad-mainnet` (`CRE_WORKFLOW_TARGET` is unset there and
+defaults to it), so nothing about the deployed workflow can change what the runner simulates. Both
+targets carry `deployment-registry: "private"`: without it the CLI falls back to the onchain
+Ethereum registry and tries to bond a wallet key to the organisation forever.
+
+`MoolamReceiver` `0x0d69...Eff04` was re-pinned on 2026-10-01 to the author `0xf072...` and the name
+`moolam-verifier`. Its return to the VerifierPolicy's list is queued (change id
+`0x1f6c7d19619a5be01e970dc82888fddfa5381339ac6739c3ee51d58b468694ce`) and can be executed after
+2026-10-02 05:35 UTC. Until that executes, the registry refuses every report the receiver passes on.
+
+Dry run of the network target, no transaction sent. It compiles the same code with the network
+config and shows the write it would make to `0x0d69`:
+
+```bash
+cre workflow simulate moolam-verifier --target monad-network --non-interactive \
+  --trigger-index 0 --evm-tx-hash <tx that emitted PassportRegistered> --evm-event-index <n> \
+  -e ../../.env
+```
+
+The workflow id the network will know it by (it changes with any change to the code or the
+config): `cre workflow hash moolam-verifier --target monad-network -e ../../.env`.
+
+**Deploying is Ram's yes, every time.** Do it only after the receiver's listing has executed and
+`isReceiver(0x0d69...Eff04)` reads true, or every new registration triggers a run whose report the
+registry refuses. From this folder:
+
+```bash
+cre whoami                                   # Deploy Access: Enabled
+cre workflow deploy moolam-verifier --target monad-network -e ../../.env
+```
+
+It sends no transaction and costs no gas: the private registry is off chain. Check that the output
+says `Owner Address: 0xf072a8c620bfc818875736e3f2d3a2a339c06584 (derived)` and `Status: Active`.
+From then on every new `PassportRegistered` runs on the network and spends CRE credits. A
+passport registered before activation is never run by the network.
+
+Reading what it did:
+
+```bash
+cre workflow get moolam-verifier --target monad-network -e ../../.env   # health and last run
+cre execution list moolam-verifier                                      # recent runs, newest first
+cre execution list moolam-verifier --status FAILURE
+cre execution status <execution-uuid>                                   # the error of a failed run
+cre execution events <execution-uuid>                                   # each capability call
+cre execution logs <execution-uuid>                                     # the workflow's own log lines
+```
+
+A run that landed logs `write to 0x0d69...: transaction SUCCESS, receiver SUCCESS` then `report tx 0x..`,
+and on Monad that transaction to the forwarder carries a `VerificationAttested` log from `0x0d69`.
+
+Stopping it, free and immediate for new triggers (a trigger that fires while paused is never run
+later):
+
+```bash
+cre workflow pause moolam-verifier --target monad-network -e ../../.env
+cre workflow activate moolam-verifier --target monad-network -e ../../.env   # resume
+```
+
+The second stop is on chain and is the deployer's: `VerifierPolicy.removeReceiver(0x0d69...Eff04)`
+takes effect at once. Never run `cre workflow delete` without Ram: it removes every version for
+good.
 
 ### Where a broadcast lands
 
@@ -189,7 +282,8 @@ accepts `attest` from receivers on its list.
 Before 2026-09-27 both workflows wrote to `MoolamReceiver` contracts, and the deployer wallet
 pointed the public one, `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`, at the mock forwarder before
 each broadcast and back at the production one after. Both came off the policy's list on 2026-09-26,
-and every verdict they wrote stays on chain under their addresses.
+and every verdict they wrote stays on chain under their addresses. The public one is now the
+deployed workflow's receiver (see "Two targets").
 
 ## What this does not prove
 
