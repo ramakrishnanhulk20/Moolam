@@ -14,6 +14,7 @@ import { InlineLedger, type LedgerView } from "@/components/story/StatedLedger";
 import { progress } from "@/components/story/signals";
 import { USE_FIELDS } from "@/lib/chain/consent";
 import { shortHex } from "@/lib/chain/client";
+import { withoutDoubleStop } from "@/lib/i18n/sentence";
 
 export interface StoryBeat {
   /** The beat in the table these words belong to. The table owns the timing and the side. */
@@ -100,9 +101,13 @@ export function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView |
       key: "stated",
       body: (
         // The rule lies across the lower quarter of the frame, so the words
-        // stand above it rather than through it. The still page has no rule on
-        // the ground and no shot to clear, so nothing is pulled up there.
-        <div className={still ? "" : "sm:-translate-y-[9vh]"}>
+        // stand above it rather than through it, and the column is held to
+        // the right 38 percent of the frame, which is what the shot leaves
+        // beside the tilted print: a long summary (the German one) wraps there
+        // rather than running its first letter under the picture. The still
+        // page has no rule on the ground and no shot to clear, so nothing is
+        // pulled up or held in there.
+        <div className={still ? "" : "sm:-translate-y-[9vh] sm:ms-auto sm:max-w-[38vw]"}>
           <Eyebrow className="sm:justify-end">{t("stated.kicker")}</Eyebrow>
           {/* Balanced because this line is one short sentence the chain wrote,
               and in Japanese or Tamil the browser's own break left a single
@@ -251,8 +256,12 @@ export function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView |
           <Eyebrow>{t("yourself.kicker")}</Eyebrow>
           <Title>{t("yourself.title")}</Title>
           <Body>{t("yourself.body")}</Body>
+          {/* The title carries its own full stop ("...alone in the moon."), so the template's is dropped after it. */}
           <Readout>
-            {t("yourself.readout", { count: yourself.count, platforms: yourself.platforms, title: yourself.print.title })}
+            {withoutDoubleStop(
+              t("yourself.readout", { count: yourself.count, platforms: yourself.platforms, title: yourself.print.title }),
+              yourself.print.title,
+            )}
           </Readout>
         </>
       ),

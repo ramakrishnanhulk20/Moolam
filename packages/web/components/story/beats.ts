@@ -342,6 +342,34 @@ export function captionCue(t: number, beat: Beat, fade: number): { shown: number
   return { shown: entered * (1 - left), y: (1 - entered) * CAPTION_RISE - left * CAPTION_RISE };
 }
 
+/** The beats whose words the field steps out from behind: those with body copy beside the scene. Not the opening's wall, not the offer's panel, not the close. */
+const CLEARED: BeatName[] = ["imagined", "sealed", "stated", "asked", "shared", "verified", "checked", "lookalike", "yourself", "waiting"];
+
+/**
+ * Which side of the frame the words are on at this moment and how far up they
+ * are, 0 to 1, so the field can clear the copy column (scene/field.tsx). A
+ * phone stacks the words under the shot, so nothing is cleared there.
+ */
+export function wordsCover(table: BeatTable, t: number, phone: boolean): { side: "start" | "end" | null; cover: number } {
+  if (phone) {
+    return { side: null, cover: 0 };
+  }
+  let side: "start" | "end" | null = null;
+  let cover = 0;
+  for (const name of CLEARED) {
+    const beat = table.beat[name];
+    if (beat === undefined) {
+      continue;
+    }
+    const shown = captionCue(t, beat, table.fade).shown;
+    if (shown > cover) {
+      side = beat.align;
+      cover = shown;
+    }
+  }
+  return { side, cover };
+}
+
 export const easeOut = (x: number, power = 3) => 1 - Math.pow(1 - clamp01(x), power);
 
 export const smooth = (x: number) => {

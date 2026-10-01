@@ -115,8 +115,8 @@ try {
 
   console.log(`url        ${url}`);
   console.log(`window     ${width}x${height}${args.reduced === undefined ? "" : ", reduced motion"}`);
-  console.log(`story      ${await evaluate("document.querySelector('[data-story]')?.getAttribute('data-story') ?? 'none'")}`);
-  console.log(`pages      ${await evaluate("(() => { const el = document.querySelector('[data-story-scroller]'); return el === null ? 'no scroller' : Math.round(el.scrollHeight / el.clientHeight); })()")}`);
+  console.log(`story      ${await evaluate("document.querySelector('[data-film]')?.getAttribute('data-film') ?? 'none'")}`);
+  console.log(`pages      ${await evaluate("(() => { const el = document.querySelector('[data-story-scroller]'); if (el !== null) return Math.round(el.scrollHeight / el.clientHeight); const film = document.querySelector('[data-film-scroll=\"page\"]'); return film === null ? 'no scroller' : 'the page, ' + (film.offsetHeight / window.innerHeight).toFixed(2) + ' screens of film'; })()")}`);
 
   for (const at of stops) {
     await park(at);
@@ -155,15 +155,43 @@ try {
 }
 
 /**
- * Winds the film's own scroller and waits for its damping to arrive. The still
- * page has no scroller of its own, so there the same fraction moves the window,
- * which is the only scroll that page has.
+ * Where the film stands, 0 to 1, read inside the page: its own scroller's
+ * place, or how far the window has scrolled through the film's section when
+ * the film rides the page (components/story/scroll.ts).
+ */
+const PLACE = `(() => {
+  const el = document.querySelector('[data-story-scroller]');
+  if (el !== null) {
+    const max = el.scrollHeight - el.clientHeight;
+    return max === 0 ? 0 : el.scrollTop / max;
+  }
+  const film = document.querySelector('[data-film-scroll="page"]');
+  if (film === null) {
+    return 0;
+  }
+  const stage = film.querySelector('[data-film-stage]');
+  const travel = film.offsetHeight - (stage === null ? window.innerHeight : stage.offsetHeight);
+  return travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
+})()`;
+
+/**
+ * Winds the film to a fraction and waits for its damping to arrive: its own
+ * scroller, or the window through the film's section. The still page has
+ * neither, so there the same fraction moves the window, which is the only
+ * scroll that page has.
  */
 async function park(at) {
   await evaluate(`(() => {
     const el = document.querySelector('[data-story-scroller]');
     if (el !== null) {
       el.scrollTop = ${at} * (el.scrollHeight - el.clientHeight);
+      return;
+    }
+    const film = document.querySelector('[data-film-scroll="page"]');
+    if (film !== null) {
+      const stage = film.querySelector('[data-film-stage]');
+      const top = film.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: top + ${at} * (film.offsetHeight - stage.offsetHeight), behavior: 'auto' });
       return;
     }
     window.scrollTo({ top: ${at} * (document.documentElement.scrollHeight - window.innerHeight), behavior: 'auto' });
@@ -174,8 +202,7 @@ async function park(at) {
 /** What is on screen right now, read inside the page in one go. */
 function report() {
   return `JSON.stringify((() => {
-    const el = document.querySelector('[data-story-scroller]');
-    const offset = el === null ? 0 : el.scrollTop / (el.scrollHeight - el.clientHeight);
+    const offset = ${PLACE};
     const pinned = document.querySelector('[data-stated-ledger="pinned"]');
     const inline = document.querySelector('[data-stated-ledger="inline"]');
     const ledger = pinned !== null && getComputedStyle(pinned).display !== 'none' ? pinned : inline;
@@ -249,7 +276,7 @@ function report() {
       ink: {
         rule: drawn === null ? "none" : getComputedStyle(drawn).backgroundColor,
         mark: marks.length === 0 ? "none" : getComputedStyle(ledger.querySelector('[data-stated-mark] span')).color,
-        ground: getComputedStyle(document.querySelector('[data-story]') ?? document.body).backgroundColor,
+        ground: getComputedStyle(document.querySelector('[data-film-stage]') ?? document.querySelector('[data-film]') ?? document.body).backgroundColor,
       },
       boxes: { words: wordsBox, rule: ruleBox, picture },
       // On a phone nothing may sit on the picture at all. On a desktop the shot
@@ -302,7 +329,7 @@ async function sampleFrames(from, to, forSeconds) {
       deltaY: forward ? 80 : -80,
       pointerType: "mouse",
     });
-    const at = Number(await evaluate("(() => { const el = document.querySelector('[data-story-scroller]'); return el.scrollTop / (el.scrollHeight - el.clientHeight); })()"));
+    const at = Number(await evaluate(PLACE));
     if (at >= to) {
       forward = false;
     }

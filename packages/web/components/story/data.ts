@@ -14,8 +14,10 @@ import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
 import { heldReportDelivery } from "@/lib/chain/reports";
-import { markSchema } from "@/lib/data/marks";
+import { heldNetworkCheckCount, markSchema } from "@/lib/data/marks";
 import { generatorRecord, latestPassports } from "@/lib/data/passports";
+import type { PickedPlate } from "@/lib/data/samples";
+import { SHOWCASE } from "@/lib/data/showcase";
 import { UNKNOWN_HANDOVER, creditFrom, heldPlatformList, listedAgentOwner } from "@/lib/data/platform-label";
 import { activeSource, envioUrl } from "@/lib/data/source";
 import type { PlatformList } from "@/lib/platforms/platforms";
@@ -178,6 +180,11 @@ export interface StoryData {
   /** The register's own words when it could not be read at all, which is not the same as silence. */
   statementError: string | null;
   passportCount: number | null;
+  /**
+   * Chainlink's network checks on Monad, the one count every surface quotes
+   * (lib/data/marks). Null when the index does not serve it, and the close
+   * then draws no number rather than a wrong one.
+   */
   attestationCount: number | null;
   /** The provider's own words when nothing could be read, shown rather than swallowed. */
   error: string | null;
@@ -187,6 +194,12 @@ export interface StoryData {
   lookalike?: StoryLookalike | null;
   /** Null until a listed platform has a co-signed picture in the field's read. */
   yourself?: StoryYourself | null;
+  /**
+   * The showcase picks as this read found them, the picture and the title each
+   * document carries, null where unread, so the film's own panel offers the
+   * same three the first screen does, by the one rule (lib/data/samples).
+   */
+  picked?: PickedPlate[];
 }
 
 /** One picture the film may be told on, by its passport and the title its document carries. */
@@ -294,7 +307,6 @@ export async function storyData(): Promise<StoryData> {
   let picked: IndexRow[] = [];
   let attestation: StoryAttestation | null = null;
   let passportCount: number | null = null;
-  let attestationCount: number | null = null;
   let generators: Record<string, IndexGenerator> = {};
   let error: string | null = null;
 
@@ -304,7 +316,6 @@ export async function storyData(): Promise<StoryData> {
       rows = answer.rows;
       picked = answer.picked ?? [];
       passportCount = answer.passports;
-      attestationCount = answer.attestations;
       generators = answer.generators;
     } else {
       rows = await heldChain();
@@ -337,6 +348,14 @@ export async function storyData(): Promise<StoryData> {
       agentId: row.generatorId,
       registeredAt: Number(row.registeredAt),
     }));
+
+  // The showcase picks are among the rows this read already fetched by id, so
+  // the film's panel can offer them by title without a read of its own.
+  const showcase: PickedPlate[] = SHOWCASE.map((pick) => {
+    const at = candidates.findIndex((row) => row.id.toLowerCase() === pick.id.toLowerCase());
+    const picture = at === -1 ? null : pictures[at];
+    return { id: pick.id, picture: picture?.thumbnail ?? null, title: picture?.title ?? null };
+  });
 
   const hasPicture = pictures.map((picture) => picture !== null);
   const titles = pictures.map((picture) => picture?.title ?? null);
@@ -378,12 +397,15 @@ export async function storyData(): Promise<StoryData> {
   // generator the index has no row for shows as no score rather than borrowing
   // another agent's standing.
   const agentId = focal === null ? DEMO_AGENT_ID : focal.agentId === null ? null : BigInt(focal.agentId);
-  const [agent, statementRead, check, lookalike, yourself] = await Promise.all([
+  const [agent, statementRead, check, lookalike, yourself, attestationCount] = await Promise.all([
     agentId === null ? null : agentStanding(agentId, generators[agentId.toString()]),
     focal === null ? NO_STATEMENT : focalStatement(focal.id),
     attestation === null ? null : focalCheck(attestation),
     newestLookalike(),
     yourselfFrom(candidates, pictures, list, generators),
+    // The close quotes Chainlink's network checks, not every attestation ever
+    // written: the shared count, so it says what the mark on every passport says.
+    source === "envio" ? heldNetworkCheckCount() : null,
   ]);
 
   return {
@@ -400,6 +422,7 @@ export async function storyData(): Promise<StoryData> {
     check,
     lookalike,
     yourself,
+    picked: showcase,
   };
 }
 

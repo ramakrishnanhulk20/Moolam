@@ -174,11 +174,65 @@ html.dark body[data-story-here]:has([data-film="film"]) .app-header {
   }
 }
 
-/* The card the film ends on stands on the page's own ground in light, so the
-   film ends on the Linen it started on and no print sits behind the counts.
-   In dark it floats on the settling field, as it always did. */
-html:not(.dark) .film-close {
+/* Tamil runs long: its sign-it-yourself heading was five lines at 375 px with
+   the last word wider than the column, cut at the edge, and the block climbed
+   up over the moon print. On a phone a Tamil heading takes the whole column
+   rather than the 17ch the Latin headings are held to (a ch is the Latin
+   face's zero, and seventeen of them are a third of a Tamil word short), at a
+   smaller display and body size, so every word stays whole and the block
+   stays under the shot. A word still wider than the column breaks rather
+   than leaves it. */
+@media (max-width: 639px) {
+  html:lang(ta) .film-lower [data-story-line="title"] {
+    max-width: none;
+    font-size: 1.3rem;
+    line-height: 1.22;
+    overflow-wrap: anywhere;
+  }
+
+  html:lang(ta) .film-lower [data-story-line="body"] {
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 639px) and (max-height: 699px) {
+  html:lang(ta) .film-lower [data-story-line="title"] {
+    font-size: 1.15rem;
+  }
+
+  html:lang(ta) .film-lower [data-story-line="body"] {
+    font-size: 0.78rem;
+  }
+}
+
+/* The card the film ends on stands on the page's own ground in a light room
+   that keeps the scene to itself, so the film ends on the Linen it started on
+   and no print sits behind the counts. In dark it floats on the settling
+   field, as it always did. The card says which with data-close-ground, read
+   off the room (palette.closeShowsScene). */
+html:not(.dark) .film-close[data-close-ground="paper"] {
   background: var(--bg);
+}
+
+/* A light room that lets the scene through the close, composed as the dark
+   close is: the focal print whole with its frame and its stamp, the counts and
+   the title in ink straight on the paper, the wall of prints round the words,
+   and no panel anywhere. The small lines carry a halo of the room's paper
+   round each glyph instead, edgeless and invisible over plain paper, so a
+   label that crosses a print still reads. A phone keeps the ground every
+   caption rises from (.film-lower above). */
+@media (min-width: 640px) {
+  html:not(.dark)
+    .film-close[data-close-ground="scene"]
+    :is([data-close-half="text"] > p, [data-close-half="figures"] > p, [data-close-error] p, dt) {
+    text-shadow:
+      0 0 1px var(--bg),
+      0 0 2px var(--bg),
+      0 0 4px var(--bg),
+      0 0 8px var(--bg),
+      0 0 14px var(--bg);
+  }
 }
 
 /* The top of the shot on a phone, faded to the room's ground so the header reads over it. */
@@ -211,11 +265,35 @@ body[data-story-past] [data-story-scroller] {
   outline-offset: -3px;
 }
 
-/* While the film is pinned the document ends at the film's foot, so the first
-   wheel turn moves the story and not the page under it. The footer comes back
-   the moment the last beat has been read. */
-body:has([data-film="film"]):not([data-story-end]) footer {
+/* While the film is pinned on its own scroller the document ends at the
+   film's foot, so the first wheel turn moves the story and not the page under
+   it. The footer comes back the moment the last beat has been read. A film on
+   the page's own scroll never hides it: the page simply goes on after the film. */
+body:has([data-film="film"]:not([data-film-scroll="page"])):not([data-story-end]) footer {
   display: none;
+}
+
+/* The film on the page's own scroll: a section as many screens tall as the cut
+   is long (--film-screens, written by the film: its pages times a screen of
+   travel), with the stage pinned inside it one screen high. A phone's screen
+   is the dynamic one, so the stage follows the address bar folding away
+   rather than leaving a strip of page under it. */
+[data-film-scroll="page"] {
+  height: calc(var(--film-screens, 1) * 100svh);
+}
+
+[data-film-scroll="page"] [data-film-stage] {
+  height: 100svh;
+}
+
+@media (max-width: 767px) {
+  [data-film-scroll="page"] {
+    height: calc(var(--film-screens, 1) * 100dvh);
+  }
+
+  [data-film-scroll="page"] [data-film-stage] {
+    height: 100dvh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

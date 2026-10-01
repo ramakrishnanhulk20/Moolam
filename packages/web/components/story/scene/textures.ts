@@ -53,6 +53,50 @@ export function noiseTexture(size = 128): THREE.DataTexture {
   return texture;
 }
 
+/**
+ * The same static as ink on paper.
+ *
+ * Every texel of the grey static becomes a speck of ink whose weight is the
+ * texel's darkness, so what was a dark grain as light is a heavy grain as ink
+ * and the picture forms out of the same pattern in both rooms. The ink's
+ * colour is the material's. It is built from the static rather than drawn
+ * again, so no random number is spent on it and the dark room's static is the
+ * static it always was.
+ */
+export function inkTexture(noise: THREE.DataTexture): THREE.DataTexture {
+  const { data: source, width, height } = noise.image;
+  const data = new Uint8Array(width * height * 4);
+  for (let index = 0; index < data.length; index += 4) {
+    data[index] = 255;
+    data[index + 1] = 255;
+    data[index + 2] = 255;
+    data[index + 3] = source === null ? 0 : 255 - Number(source[index]);
+  }
+  const texture = new THREE.DataTexture(data, width, height);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** A soft round dot, for a mote that is ink on paper rather than a square spark of light. The colour is the material's. */
+export function moteTexture(): THREE.CanvasTexture {
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+
+  if (context !== null) {
+    const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+    gradient.addColorStop(0.62, "rgba(255, 255, 255, 1)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
+
 /** A soft round glow, for the bloom under the seal without a post pass. */
 export function glowTexture(): THREE.CanvasTexture {
   const size = 256;

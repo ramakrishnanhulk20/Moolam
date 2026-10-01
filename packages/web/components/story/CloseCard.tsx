@@ -23,14 +23,25 @@ export const UNREAD_FIGURE = "-";
  * The two figures are the registry's own totals through the live index, so the
  * page never claims a number nobody wrote on chain. It fades in over the
  * settling field and takes itself out of the tab order until it is there. Under
- * the light theme the .film-close rule in room.ts stands this card on the page's
- * own ground, so the film ends by handing the page back.
+ * the light theme the .film-close rules in room.ts read data-close-ground: a
+ * room that keeps the scene to itself stands this card on the page's own
+ * ground, so the film ends by handing the page back; a room that lets the
+ * scene through gives only its words a soft wash of paper.
  *
  * This is the page's one final call, so its first button is named exactly as
  * the first screen's, and on a laptop the two counts leave the foot of the text
  * for the card's empty right half, at display size.
  */
-export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: boolean }) {
+export function CloseCard({
+  data,
+  pinned = true,
+  scene = false,
+}: {
+  data: StoryData;
+  pinned?: boolean;
+  /** True when the room lets the scene show through the card (palette.closeShowsScene). */
+  scene?: boolean;
+}) {
   const t = useTranslations("story.close");
   const first = useTranslations("home.first");
   const shell = useRef<HTMLDivElement>(null);
@@ -90,6 +101,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
       ref={shell}
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
+      data-close-ground={pinned ? (scene ? "scene" : "paper") : undefined}
       style={
         pinned
           ? {

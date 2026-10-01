@@ -210,9 +210,10 @@ describe("the film's two attributes and the rules they switch", () => {
   const css = read("components/story/room.ts");
   const story = read("components/story/LandingStory.tsx");
 
-  it("holds the scroll inside the story until the last beat has been read", () => {
+  it("holds the scroll inside the story until the last beat has been read, on the film's own scroller only", () => {
     expect(css).toMatch(/\[data-story-scroller\] \{\s*overscroll-behavior-y: contain;/);
-    expect(css).toContain("body:has([data-film=\"film\"]):not([data-story-end]) footer");
+    // A film on the page's own scroll (scroll.ts) never hides the footer.
+    expect(css).toContain('body:has([data-film="film"]:not([data-film-scroll="page"])):not([data-story-end]) footer');
   });
 
   it("hands the scroll chain back at the moment the footer appears", () => {

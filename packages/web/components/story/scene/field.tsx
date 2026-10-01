@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { expectPlates, plateDrawn } from "./drawn";
 import { fieldPlates, sequence, type FieldPlate } from "./order";
-import { degradedTexture, glowTexture, loadTexture, noiseTexture, type Degrade } from "./textures";
+import { degradedTexture, glowTexture, inkTexture, loadTexture, moteTexture, noiseTexture, type Degrade } from "./textures";
 import { LABEL_ASPECT, TAG_ASPECT, inkSpread, kolamStamp, labelStrip, printShadow, stampedTag } from "./marks";
 import {
   CHECKED_STEPS,
@@ -38,6 +38,42 @@ export interface SceneSignal {
   probing: number;
 }
 
+/**
+ * Which side of the frame the words are on and how far up they are, written
+ * by the World's frame (beats.ts wordsCover), so the field can step out from
+ * behind them.
+ */
+export interface WordsClearing {
+  side: "start" | "end" | null;
+  cover: number;
+}
+
+/**
+ * Where the copy column begins, as the renderer's own -1 to 1 across the
+ * frame: a plate past CLEAR_TO on the words' side fades out with the caption,
+ * one before CLEAR_FROM stays, and the edge between is soft so a print never
+ * blinks as it drifts across it. The words start about 0.39 in on a laptop.
+ */
+const CLEAR_FROM = 0.1;
+const CLEAR_TO = 0.4;
+
+/** One scratch vector for every print's projection: the frames run one print at a time. */
+const projected = new THREE.Vector3();
+
+/**
+ * How much of a print stays while the words are up: all of it off the words'
+ * side, none of it past the column's edge, and a soft step between, so no
+ * print drifts over the body copy and none blinks as it crosses the edge.
+ */
+function clearing(words: WordsClearing, node: THREE.Object3D, camera: THREE.Camera): number {
+  if (words.side === null || words.cover <= 0) {
+    return 1;
+  }
+  projected.copy(node.position).project(camera);
+  const toward = words.side === "end" ? projected.x : -projected.x;
+  return 1 - words.cover * smooth(span(toward, CLEAR_FROM, CLEAR_TO));
+}
+
 /** What every part of the scene is handed: the cut, the room, and the signal. */
 export interface SceneParts {
   table: BeatTable;
@@ -46,6 +82,8 @@ export interface SceneParts {
   /** The same room as a value, for the textures drawn once per colour. */
   palette: RoomPalette;
   signalRef: RefObject<SceneSignal>;
+  /** Where the words are this frame, so the prints that live on the wall can step out from behind them. */
+  clearRef: RefObject<WordsClearing>;
 }
 
 /**
@@ -271,11 +309,13 @@ function Plate({
   plate,
   fadeRef,
   roomRef,
+  clearRef,
   at,
 }: {
   plate: FieldPlate;
   fadeRef: RefObject<number>;
   roomRef: RefObject<RoomPalette>;
+  clearRef: RefObject<WordsClearing>;
   at: number;
 }) {
   const texture = useAsyncTexture(plate.url);
@@ -306,7 +346,7 @@ function Plate({
     };
   }, [at, layersRef, texture]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const node = group.current;
     if (node === null) {
       return;
@@ -315,7 +355,10 @@ function Plate({
     node.position.y = plate.position[1] + Math.sin(time * 0.3 + plate.phase) * 0.1;
     node.rotation.y = Math.sin(time * 0.21 + plate.phase) * 0.07;
     node.rotation.z = Math.sin(time * 0.16 + plate.phase) * 0.02;
-    paintPrint(layersRef.current, roomRef.current, texture === null ? 0 : fadeRef.current);
+
+    // The field steps out from behind the words while a caption is up.
+    const clear = clearing(clearRef.current, node, camera);
+    paintPrint(layersRef.current, roomRef.current, texture === null ? 0 : fadeRef.current * clear);
   });
 
   return (
@@ -329,25 +372,29 @@ export function PlateField({
   field,
   fadeRef,
   roomRef,
+  clearRef,
 }: {
   field: FieldPlate[];
   fadeRef: RefObject<number>;
   roomRef: RefObject<RoomPalette>;
+  clearRef: RefObject<WordsClearing>;
 }) {
   expectPlates(field.length);
 
   return (
     <group>
       {field.map((plate, index) => (
-        <Plate key={`${plate.url}-${index}`} plate={plate} fadeRef={fadeRef} roomRef={roomRef} at={index} />
+        <Plate key={`${plate.url}-${index}`} plate={plate} fadeRef={fadeRef} roomRef={roomRef} clearRef={clearRef} at={index} />
       ))}
     </group>
   );
 }
 
 /**
- * The specks that gather into the picture in the imagined beat: ink in the
- * light room, the film's pink light in dark.
+ * The specks that gather into the picture in the imagined beat: whatever the
+ * room's motes say they are, the film's pink sparks of light in dark and ink
+ * on paper in light. Their count, their paths and their timing are the same in
+ * every room.
  */
 function Gather({
   table,
@@ -367,6 +414,7 @@ function Gather({
   const mesh = useRef<THREE.InstancedMesh>(null);
   const material = useRef<THREE.MeshBasicMaterial>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const dot = useMemo(() => moteTexture(), []);
 
   const seeds = useMemo(() => {
     const noise = sequence(7, count * 5);
@@ -395,10 +443,18 @@ function Gather({
     const imagined = table.beat.imagined;
     const progress = imagined === undefined ? 0 : played(signalRef.current.t, imagined);
     const room = roomRef.current;
+    const motes = room.motes;
     if (material.current !== null) {
-      material.current.color.set(room.glows ? room.accent : room.ink);
-      material.current.blending = room.glows ? THREE.AdditiveBlending : THREE.NormalBlending;
-      material.current.opacity = room.glows ? 0.9 : 0.75;
+      const paint = material.current;
+      paint.color.set(motes.color);
+      paint.blending = room.glows ? THREE.AdditiveBlending : THREE.NormalBlending;
+      paint.opacity = motes.opacity;
+      // A map is compiled into the material, so it only changes hands with the room.
+      const map = motes.soft ? dot : null;
+      if (paint.map !== map) {
+        paint.map = map;
+        paint.needsUpdate = true;
+      }
     }
 
     for (let index = 0; index < count; index += 1) {
@@ -409,7 +465,7 @@ function Gather({
       if (progress <= 0.001 || local >= 1) {
         dummy.scale.setScalar(0);
       } else {
-        dummy.scale.setScalar((room.glows ? 0.022 : 0.016) * (1 - eased * 0.55));
+        dummy.scale.setScalar(motes.size * (1 - eased * 0.55));
       }
 
       dummy.position.set(
@@ -454,8 +510,9 @@ function usePhoneFilm(): boolean {
  * How strongly the focal print draws its static and its picture on one frame.
  *
  * On a laptop in the dark room the print comes in as grey static beside the
- * words and the picture forms inside it as the imagined beat plays; in the
- * light room it is blank paper the picture inks into. On a phone the static
+ * words and the picture forms inside it as the imagined beat plays; a light
+ * room draws the same static as ink pressed into the paper, or none and blank
+ * paper the picture inks into, as its grain says (palette.ts). On a phone the static
  * was the only large thing in the frame for three stops, a grey square that
  * read as a picture that failed to load, so a phone never draws it: the
  * picture fades up with the print, held dim like a print in the developer, and
@@ -485,6 +542,11 @@ export function focalInks({
   }
   const strength = phone ? PHONE_FLOOR + (1 - PHONE_FLOOR) * develop : develop;
   return { grain, picture: entry * strength * (1 - swapped) };
+}
+
+/** How strongly the static over the focal print is drawn this frame: the room's own strength over the beat's. */
+export function staticOpacity(room: Pick<RoomPalette, "grain">, grain: number): number {
+  return room.grain.strength * grain;
 }
 
 /** The beats the main print steps away for, in playing order. */
@@ -572,6 +634,7 @@ export function FocalPlate({
   const droppedTexture = useAsyncTexture(dropped);
   const phone = usePhoneFilm();
   const noise = useMemo(() => noiseTexture(72), []);
+  const ink = useMemo(() => inkTexture(noise), [noise]);
   const glow = useMemo(() => glowTexture(), []);
   const ring = useMemo(() => circleLine(1), []);
   const ringRef = useRef<THREE.Line>(null);
@@ -644,16 +707,27 @@ export function FocalPlate({
     const sealed = within(t, table.beat.sealed);
     const pulse = 0.2 + Math.sin(time * 1.6) * 0.04;
     const glowShare = Math.max(made * 0.22, Math.min(1, sealed) * pulse + (answer >= 1 ? 0.22 : 0) + flash * 0.5);
-    // In light the print hangs on the wall as blank paper from the first frame,
-    // small and far off, and the picture inks into it as the camera comes in.
-    const paper = room.glows ? shown : (texture === null ? 0 : 1) * Math.max(shown, 0.4 * (1 - away));
+    // In light the print can hang on the wall as paper from the first frame,
+    // small and far off, as much of it as the room's floor says, and the
+    // picture inks into it as the camera comes in.
+    const paper = room.glows ? shown : (texture === null ? 0 : 1) * Math.max(shown, room.paperFloor * (1 - away));
     paintPrint(layersRef.current, room, paper, {
       picture: inks.picture * (1 - away),
       glowShare,
       edge: edgeColor,
     });
+    // The static: the grey noise itself as light, the same noise as ink on
+    // paper. The map is compiled into the material, so it only changes hands
+    // with the room.
     if (grain.current !== null) {
-      grain.current.opacity = room.glows ? inks.grain * (1 - away) : 0;
+      const paint = grain.current;
+      const map = room.glows ? noise : ink;
+      if (paint.map !== map) {
+        paint.map = map;
+        paint.needsUpdate = true;
+      }
+      paint.color.set(room.grain.ink);
+      paint.opacity = staticOpacity(room, inks.grain * (1 - away));
     }
     if (visitor.current !== null) {
       visitor.current.opacity = droppedTexture === null ? 0 : signal.probing;
@@ -862,7 +936,7 @@ function Copy({
   snappedRef: RefObject<number>;
   height: number;
 }) {
-  const { table, roomRef, palette, signalRef } = parts;
+  const { table, roomRef, palette, signalRef, clearRef } = parts;
   const degraded = useDegradedTexture(source, spec.degrade);
   const texture = degraded ?? fallback;
   const aspect = aspectOf(fallback);
@@ -875,7 +949,7 @@ function Copy({
   const width = height * spec.size * aspect;
   const tall = height * spec.size;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const node = group.current;
     if (node === null) {
       return;
@@ -887,13 +961,17 @@ function Copy({
     const away = awayOf(table, t);
     const time = clock.elapsedTime;
     const drift = Math.sin(time * 0.5 + index) * 0.06;
+    // The copies that stay out on the wall step out from behind the words like
+    // the field does. The traveller never does: its flight home is the shot.
+    let clear = 1;
 
     if (!spec.returns) {
       node.position.set(spec.to[0] * eased, spec.to[1] * eased + drift * eased, spec.to[2] * eased - away * 6);
       node.rotation.z = spec.spin * eased;
       node.scale.setScalar(0.35 + eased * 0.65);
       node.visible = out > 0.002;
-      paintPrint(layersRef.current, room, Math.min(1, eased * 1.4) * 0.85 * (1 - away));
+      clear = clearing(clearRef.current, node, camera);
+      paintPrint(layersRef.current, room, Math.min(1, eased * 1.4) * 0.85 * (1 - away) * clear);
     } else {
       // Out to the far side of the wall as the copies leave, home along a curve
       // that crosses the whole field during the found beat, landing square on
@@ -934,7 +1012,7 @@ function Copy({
       const fall = THREE.MathUtils.clamp((out - 0.35) / 0.5, 0, 1);
       strip.current.position.y = -tall * 0.5 - (room.glows ? 0.02 : 0.05) - fall * 1.5;
       strip.current.rotation.z = fall * 0.5;
-      material.opacity = (1 - fall) * Math.min(1, out * 3) * (1 - away);
+      material.opacity = (1 - fall) * Math.min(1, out * 3) * (1 - away) * clear;
       strip.current.visible = material.opacity > 0.002;
     }
   });

@@ -12,6 +12,12 @@
  * window.scrollY, the scroller's own scrollTop, and the footer's bottom edge
  * against the window height.
  *
+ * The film comes in two structures (components/story/scroll.ts): its own
+ * scroller over the canvas, or the page's scroll through a section the stage
+ * is pinned in. The story's place is read off whichever is on the page, and
+ * the keyboard run only applies to the scroller, since on the page's scroll
+ * the keys are the page's own.
+ *
  *   node packages/web/scripts/perf/story-reach.mjs --url http://localhost:3210/en
  *   node packages/web/scripts/perf/story-reach.mjs --width 375 --height 812 --touch
  *
@@ -110,8 +116,11 @@ try {
   await settled();
 
   const mode = await evaluate(`(() => {
-    const node = document.querySelector("[data-story]");
-    return node === null ? "no story" : node.getAttribute("data-story");
+    const film = document.querySelector('[data-film="film"]');
+    if (film !== null) {
+      return film.getAttribute("data-film-scroll") === "page" ? "page" : "film";
+    }
+    return document.querySelector('[data-film="still"]') === null ? "no story" : "still";
   })()`);
   console.log(`url        ${url}`);
   console.log(
@@ -119,8 +128,8 @@ try {
   );
   console.log(`mode       ${mode}`);
 
-  if (mode === "film") {
-    await filmChecks();
+  if (mode === "film" || mode === "page") {
+    await filmChecks(mode === "page");
   } else {
     await stillChecks();
   }
@@ -131,22 +140,22 @@ try {
 }
 
 /** The pinned film: the wheel or the thumb, then the keyboard. */
-async function filmChecks() {
+async function filmChecks(paged) {
   const before = await view();
   await push(120);
   const first = await view();
   console.log(
-    `first      one ${touch ? "drag" : "tick"} down: window.scrollY ${before.pageTop} -> ${first.pageTop}, story scrollTop ${before.top} -> ${first.top}`,
+    `first      one ${touch ? "drag" : "tick"} down: window.scrollY ${before.pageTop} -> ${first.pageTop}, story ${paged ? "offset" : "scrollTop"} ${paged ? before.offset.toFixed(3) : before.top} -> ${paged ? first.offset.toFixed(3) : first.top}`,
   );
 
   let ticks = 1;
-  while (ticks < 60 && (await evaluate("document.body.hasAttribute('data-story-end')")) !== true) {
+  while (ticks < 60 && !(await view()).ended) {
     await push(600);
     ticks += 1;
   }
   const atEnd = await view();
   console.log(
-    `end        data-story-end ${atEnd.ended ? "set" : "never set"} after ${ticks} ${touch ? "drags" : "ticks"}, story offset ${atEnd.offset.toFixed(3)}, tier ${await evaluate("document.querySelector('[data-story-tier]')?.getAttribute('data-story-tier') ?? 'no film'")}`,
+    `end        ${paged ? "last beat" : "data-story-end"} ${atEnd.ended ? "reached" : "never reached"} after ${ticks} ${touch ? "drags" : "ticks"}, story offset ${atEnd.offset.toFixed(3)}, tier ${await evaluate("document.querySelector('[data-story-tier]')?.getAttribute('data-story-tier') ?? 'no film'")}`,
   );
 
   for (let more = 0; more < 2; more += 1) {
@@ -175,6 +184,11 @@ async function filmChecks() {
 
   await reset();
   console.log(`skip       ${await pressSkip()}`);
+
+  if (paged) {
+    console.log("keys       the page's own on this structure: there is no scroller to drive");
+    return;
+  }
 
   await reset();
   const onStory = await evaluate(`(() => {
@@ -222,17 +236,23 @@ async function stillChecks() {
 function view() {
   return evaluate(`(() => {
     const el = document.querySelector("[data-story-scroller]");
+    const film = document.querySelector('[data-film-scroll="page"]');
     const footer = document.querySelector("footer");
     const shown = footer !== null && getComputedStyle(footer).display !== "none";
     const max = el === null ? 0 : el.scrollHeight - el.clientHeight;
+    // On the page's scroll the story's place is how far the window has gone through the film's section.
+    const stage = film === null ? null : film.querySelector("[data-film-stage]");
+    const travel = film === null ? 0 : film.offsetHeight - (stage === null ? window.innerHeight : stage.offsetHeight);
+    const paged = film === null || travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
+    const offset = el === null || max === 0 ? paged : el.scrollTop / max;
     return {
       top: el === null ? 0 : Math.round(el.scrollTop),
       max: Math.round(max),
-      offset: el === null || max === 0 ? 0 : el.scrollTop / max,
+      offset,
       pageTop: Math.round(window.scrollY),
       pageMax: Math.round(document.documentElement.scrollHeight - window.innerHeight),
       footer: shown ? footer.getBoundingClientRect().bottom : null,
-      ended: document.body.hasAttribute("data-story-end"),
+      ended: document.body.hasAttribute("data-story-end") || (film !== null && offset >= 0.995),
     };
   })()`);
 }
@@ -467,12 +487,13 @@ async function evaluate(expression) {
   return answer.result.value;
 }
 
-/** Waits for the story to exist and for its first pictures to be in. */
+/** Waits for the story to exist and for its first pictures to be in. The film mounts on the first move toward it. */
 async function settled() {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    if ((await evaluate("document.querySelector('[data-story]') !== null")) === true) {
+    if ((await evaluate("document.querySelector('[data-film=\"film\"] canvas, [data-film=\"still\"]') !== null")) === true) {
       break;
     }
+    await evaluate("window.dispatchEvent(new Event('scroll'))");
     await wait(200);
   }
   await wait(3000);

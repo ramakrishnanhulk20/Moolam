@@ -222,7 +222,8 @@ describe("04A: the tab bar through the film on a phone", () => {
     const film = readFileSync("components/story/LandingStory.tsx", "utf8");
     expect(film).toContain("const PHONE_TRAVEL = 0.45;");
     expect(film).toContain("const SHORT_PHONE_TRAVEL = 0.36;");
-    expect(film).toContain("<ScrollControls pages={table.pages} distance={travel} damping={0.22}>");
+    expect(film).toContain("<ScrollControls pages={table.pages} distance={travel} damping={DAMPING}>");
+    expect(readFileSync("components/story/scroll.ts", "utf8")).toContain("export const DAMPING = 0.22;");
   });
 });
 
@@ -264,7 +265,7 @@ describe("F2: the film's box while its code is on its way", () => {
 
   it("leaves the footer in place while it waits", () => {
     expect(css).not.toContain('body:has([data-film="loading"]) footer');
-    expect(css).toContain('body:has([data-film="film"]):not([data-story-end]) footer');
+    expect(css).toContain('body:has([data-film="film"]:not([data-film-scroll="page"])):not([data-story-end]) footer');
   });
 });
 

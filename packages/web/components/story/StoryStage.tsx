@@ -5,6 +5,8 @@ import { FilmLoading } from "@/components/story/FilmLoading";
 import { OPENING_PICTURES, PLATE_WIDTH, fieldPictures } from "@/components/story/scene/order";
 import type { StoryData } from "@/components/story/data";
 import type { StoryVariant } from "@/components/story/beats";
+import type { RoomPalette } from "@/components/story/palette";
+import type { FilmScroll } from "@/components/story/scroll";
 import { isOptimizable, optimizedUrl } from "@/lib/images";
 
 /**
@@ -46,7 +48,19 @@ function freshStory() {
   );
 }
 
-export function StoryStage({ data, variant }: { data: StoryData; variant: StoryVariant }) {
+export function StoryStage({
+  data,
+  variant,
+  light,
+  scroll,
+}: {
+  data: StoryData;
+  variant: StoryVariant;
+  /** The light room to play instead of the home page's, for a lab route trying the next one. */
+  light?: RoomPalette;
+  /** What drives the film, for a lab route trying the page's own scroll; the home page passes nothing (scroll.ts). */
+  scroll?: FilmScroll;
+}) {
   // The first pictures of the field, asked for by the document rather than by
   // the scene. The film's code is two thirds of a megabyte of React, three.js
   // and the scene itself; on a phone the plates used to wait for all of it and
@@ -77,7 +91,7 @@ export function StoryStage({ data, variant }: { data: StoryData; variant: StoryV
           crossOrigin="anonymous"
         />
       ))}
-      <LandingStory data={data} variant={variant} />
+      <LandingStory data={data} variant={variant} light={light} scroll={scroll} />
     </div>
   );
 }
