@@ -146,9 +146,10 @@ body {
    34 px on the tall iPhones and nothing on a laptop. Only the pages read it;
    the bar draws its own strip from the same env(). */
 :root {
-  /* 84, not 56: the raised Make stands 28 px above the bar, and the footer's
-     last row crossed its circle by 3 px at 375 with the bar's height alone. */
-  --bar-room: calc(84px + env(safe-area-inset-bottom));
+  /* 92, not 56: the raised Make stands 28 px above the bar, plus 8 px of air.
+     PHONE_ROOM in components/shell/tabs.ts is the same sum and wins inside the
+     layout; this is the fallback for anything drawn outside it. */
+  --bar-room: calc(92px + env(safe-area-inset-bottom));
 }
 
 /* Chinese, Japanese, Korean and Devanagari letters fill the whole em box, so the

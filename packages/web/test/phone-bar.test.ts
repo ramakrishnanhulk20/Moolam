@@ -24,7 +24,9 @@ describe("the layout on a phone", () => {
   it("draws the raised bar below md, and nothing above it", () => {
     const at = layout.indexOf("<BottomBar");
     expect(at).toBeGreaterThan(-1);
-    expect(layout.slice(at - 60, at)).toContain('className="md:hidden"');
+    const box = layout.lastIndexOf('<div className="md:hidden">', at);
+    expect(box).toBeGreaterThan(-1);
+    expect(layout.slice(box, at).replace(/\s+/g, "")).toBe('<divclassName="md:hidden"><PhoneMenu>');
     expect(layout.slice(at, at + 160)).toContain('shape="raised"');
     expect(layout.slice(at, at + 160)).toContain('label={bar("label")}');
   });
@@ -40,7 +42,7 @@ describe("the layout on a phone", () => {
     // 375 before the move: the lowest element ended 57 px past the bar's top.
     expect(layout).toContain('<footer className="border-t border-line pb-[var(--bar-room)] md:pb-0">');
     const css = readFileSync("styles/globals.css", "utf8");
-    expect(css).toContain("--bar-room: calc(84px + env(safe-area-inset-bottom));");
+    expect(css).toContain("--bar-room: calc(92px + env(safe-area-inset-bottom));");
   });
 
   it("keeps the docs reachable from the foot of every page", () => {
@@ -56,12 +58,15 @@ describe("the layout on a phone", () => {
 });
 
 describe("the five tabs the layout hands the bar", () => {
-  const table = layout.slice(layout.indexOf("const tabs: Tab[] = ["), layout.indexOf("];", layout.indexOf("const tabs: Tab[] = [")));
+  const table = layout.slice(
+    layout.indexOf("const tabs: BarItem[] = ["),
+    layout.indexOf("];", layout.indexOf("const tabs: BarItem[] = [")),
+  );
 
-  it("reads home, explore, make, verify, mine, in that order", () => {
+  it("reads home, menu, make, verify, mine, in that order, with Explore moved into the sheet", () => {
     expect([...table.matchAll(/key: "([a-z]+)"/g)].map((found) => found[1])).toEqual([
       "home",
-      "explore",
+      "menu",
       "make",
       "verify",
       "mine",
@@ -82,9 +87,11 @@ describe("the five tabs the layout hands the bar", () => {
   });
 
   it("takes every word from the message files and writes none of its own", () => {
-    for (const key of ["home", "explore", "make", "verify", "mine"]) {
+    for (const key of ["home", "make", "verify", "mine"]) {
       expect(table).toContain(`label: bar("tabs.${key}")`);
     }
+    expect(table).toContain('{ key: "menu", label: menu("label") }');
+    expect(table).not.toContain('href: "/explore"');
   });
 });
 

@@ -1,12 +1,19 @@
 /**
- * The five places the phone bar can send someone, and which one it lights.
+ * The places the phone bar can send someone, and which one it lights.
  *
  * The routes are the app's own, locale stripped, which is what next-intl's
  * usePathname hands back: "/", "/explore", "/passport/0x...". A page that is
  * not any tab's own, the docs above all, still gets the bar and lights nothing.
+ *
+ * Explore keeps its key and its routes after leaving the bar for the Menu
+ * sheet: the menu files its pages by this same rule, so a passport still
+ * belongs to Explore wherever Explore is drawn.
  */
 
 export type TabKey = "home" | "explore" | "verify" | "make" | "mine";
+
+/** Every cell the bar can draw: the places above, and the Menu tab that opens the two sides. */
+export type BarKey = TabKey | "menu";
 
 export interface Tab {
   key: TabKey;
@@ -22,6 +29,18 @@ export interface Tab {
    */
   anchor?: string;
 }
+
+/**
+ * The Menu tab. It goes nowhere of its own: it opens the sheet with For
+ * personal and For business as its tabs, so it carries a word and no address.
+ */
+export interface MenuTab {
+  key: "menu";
+  label: string;
+}
+
+/** One cell of the bar, in the order the layout hands them over. */
+export type BarItem = Tab | MenuTab;
 
 /**
  * What each tab counts as its own.
@@ -74,26 +93,20 @@ export const BAR_HEIGHT = 56;
  */
 export const BAR_ROOM = `calc(${BAR_HEIGHT}px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)))`;
 
-/**
- * How far above the tab bar the menu's two sides sit: clear of the raised
- * Make disc, which stands 28 px above the bar, with 8 px of air.
- */
-export const DOCK_GAP = 36;
+/** How far the raised Make disc stands above the bar's top edge. */
+export const MAKE_RISE = 28;
 
-/** The two sides' own bar: a 48 px button, 4 px of padding round it and a 1 px rule. */
-export const DOCK_HEIGHT = 58;
-
-/** The least a line of the page may sit above the two sides' bar. */
-export const DOCK_AIR = 8;
+/** The least a line of the page, or the sheet's own tabs, may sit above the Make disc. */
+export const BAR_AIR = 8;
 
 /**
- * The phone's whole bottom room: the tab bar, the gap over the Make disc, the
- * two sides' bar, the air above it and the phone's home indicator strip. 158
- * px on a phone without one.
+ * The phone's whole bottom room: the tab bar, the Make disc standing above
+ * it, 8 px of air and the phone's home indicator strip. 92 px on a phone
+ * without one.
  *
  * This is the one measure for keeping clear of the bottom. The layout hands
  * it to every page as --bar-room, which the footer, the film's captions, the
  * framed film and the full-screen pages already read, so nothing sits under
- * either bar wherever it can come to rest.
+ * the bar or the disc wherever it can come to rest.
  */
-export const PHONE_ROOM = `calc(${BAR_HEIGHT + DOCK_GAP + DOCK_HEIGHT + DOCK_AIR}px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)))`;
+export const PHONE_ROOM = `calc(${BAR_HEIGHT + MAKE_RISE + BAR_AIR}px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)))`;

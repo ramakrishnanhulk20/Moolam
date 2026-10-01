@@ -237,7 +237,7 @@ describe("the header's way home", () => {
   });
 
   it("keeps the Home tab in the phone's bar", () => {
-    const tabs = layout.slice(layout.indexOf("const tabs: Tab[] = ["), layout.indexOf("];", layout.indexOf("const tabs")));
+    const tabs = layout.slice(layout.indexOf("const tabs: BarItem[] = ["), layout.indexOf("];", layout.indexOf("const tabs")));
     expect(tabs).toContain('{ key: "home", href: "/", label: bar("tabs.home") }');
   });
 });

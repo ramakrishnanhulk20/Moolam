@@ -39,7 +39,8 @@ const { MENU, SIDES, CLOSED, DREAMLOOM_URL, HASHES, currentItem, menuReducer, is
 const { stepLink } = await import("@/components/menu/useMenu");
 const { MenuBar } = await import("@/components/menu/MenuBar");
 const { PhoneMenu } = await import("@/components/menu/PhoneMenu");
-const { BAR_ROOM, DOCK_GAP, PHONE_ROOM } = await import("@/components/shell/tabs");
+const { BottomBar } = await import("@/components/shell/BottomBar");
+const { BAR_AIR, BAR_ROOM, MAKE_RISE, PHONE_ROOM } = await import("@/components/shell/tabs");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -272,6 +273,14 @@ describe("the page being read is marked", () => {
     const html = renderToStaticMarkup(withWords(createElement(PhoneMenu, {})));
     expect(html).not.toMatch(/style="height:\d+px"/);
   });
+
+  it("floats nothing over the page while it is shut: the two sides live only in the sheet", () => {
+    here.path = "/business";
+    const html = renderToStaticMarkup(withWords(phoneNav()));
+    expect(html).not.toContain("data-sheet-side");
+    expect(html).not.toContain('role="dialog"');
+    expect(html).toMatch(/aria-expanded="false" data-tab="menu"/);
+  });
 });
 
 const roots: Root[] = [];
@@ -372,49 +381,105 @@ describe("the laptop bar in a browser", () => {
   });
 });
 
+/** The phone's bottom navigation as the layout draws it: the bar inside the sheet that its Menu tab opens. */
+function phoneNav(): ReactElement {
+  const tabs = [
+    { key: "home" as const, href: "/", label: "Home" },
+    { key: "menu" as const, label: en.menu.label },
+    { key: "make" as const, href: "/studio", label: "Make", prefetch: false },
+    { key: "verify" as const, href: "/verify", label: "Verify" },
+    { key: "mine" as const, href: "/mine", label: "Mine", prefetch: false },
+  ];
+  return createElement(PhoneMenu, null, createElement(BottomBar, { tabs, label: "Places", shape: "raised" }));
+}
+
 describe("the phone menu in a browser", () => {
-  const dock = (host: HTMLElement, side: string) =>
-    host.querySelector<HTMLButtonElement>(`button[data-sheet-side="${side}"]:not([role="tab"])`) as HTMLButtonElement;
+  const menuTab = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('[data-tab="menu"]') as HTMLButtonElement;
   const tab = (host: HTMLElement, side: string) =>
     host.querySelector<HTMLButtonElement>(`[role="tab"][data-sheet-side="${side}"]`);
+  const litTab = (host: HTMLElement) => host.querySelector("[data-lit]")?.closest("[data-tab]")?.getAttribute("data-tab");
 
-  it("rises from the pressed side, swaps by its tabs and closes on Escape", async () => {
-    const host = await mount(createElement(PhoneMenu, {}));
-    expect(tab(host, "personal")).toBeNull();
-    await press(dock(host, "business"));
-    expect(dock(host, "business").getAttribute("aria-expanded")).toBe("true");
-    expect(tab(host, "business")?.getAttribute("aria-selected")).toBe("true");
-    expect(document.activeElement).toBe(tab(host, "business"));
-
-    await press(tab(host, "personal") as HTMLButtonElement);
-    expect(tab(host, "personal")?.getAttribute("aria-selected")).toBe("true");
-    expect(host.querySelector('[data-menu-side="personal"] [data-menu-link="verify"]')).not.toBeNull();
-
-    await key("Escape");
-    expect(dock(host, "personal").getAttribute("aria-expanded")).toBe("false");
-    expect(document.activeElement).toBe(dock(host, "personal"));
+  it("is the bar's second tab, with the raised Make still in the middle", async () => {
+    const host = await mount(phoneNav());
+    const keys = [...host.querySelectorAll("[data-tab]")].map((node) => node.getAttribute("data-tab"));
+    expect(keys).toEqual(["home", "menu", "make", "verify", "mine"]);
+    expect(menuTab(host).tagName).toBe("BUTTON");
+    expect(menuTab(host).textContent).toBe("Menu");
   });
 
-  it("closes from its own close button and from a press on a tile", async () => {
-    const host = await mount(createElement(PhoneMenu, {}));
-    await press(dock(host, "personal"));
-    await press(host.querySelector('button[aria-label="Close the menu"]') as HTMLButtonElement);
-    expect(dock(host, "personal").getAttribute("aria-expanded")).toBe("false");
+  it("rises from the Menu tab, swaps by its tabs and closes on Escape with the focus back on Menu", async () => {
+    const host = await mount(phoneNav());
+    expect(tab(host, "personal")).toBeNull();
+    await press(menuTab(host));
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("true");
+    expect(tab(host, "personal")?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tab(host, "personal"));
 
-    await press(dock(host, "personal"));
+    await press(tab(host, "business") as HTMLButtonElement);
+    expect(tab(host, "business")?.getAttribute("aria-selected")).toBe("true");
+    expect(host.querySelector('[data-menu-side="business"] [data-menu-link="business"]')).not.toBeNull();
+
+    await key("Escape");
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(menuTab(host));
+  });
+
+  it("puts the rule over Menu while the sheet is up, and hands it back when it shuts", async () => {
+    here.path = "/verify";
+    const host = await mount(phoneNav());
+    expect(litTab(host)).toBe("verify");
+    await press(menuTab(host));
+    expect(litTab(host)).toBe("menu");
+    expect(host.querySelectorAll("[data-lit]")).toHaveLength(1);
+    await press(menuTab(host));
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("false");
+    expect(litTab(host)).toBe("verify");
+  });
+
+  it("closes from its own close button, a second press on Menu, and a press on a tile", async () => {
+    const host = await mount(phoneNav());
+    await press(menuTab(host));
+    await press(host.querySelector('button[aria-label="Close the menu"]') as HTMLButtonElement);
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("false");
+
+    await press(menuTab(host));
+    await press(menuTab(host));
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("false");
+
+    await press(menuTab(host));
     const verify = host.querySelector('[data-menu-side="personal"] [data-menu-link="verify"]') as HTMLAnchorElement;
     await act(async () => {
       verify.addEventListener("click", (event) => event.preventDefault(), { once: true });
       verify.click();
     });
-    expect(dock(host, "personal").getAttribute("aria-expanded")).toBe("false");
+    expect(menuTab(host).getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("marks the side holding the page being read on the two sides' bar", async () => {
-    here.path = "/docs/developers/mcp";
-    const host = await mount(createElement(PhoneMenu, {}));
-    expect(dock(host, "business").getAttribute("data-holds-current")).toBe("true");
-    expect(dock(host, "personal").hasAttribute("data-holds-current")).toBe(false);
+  it.each([
+    ["/explore", "personal"],
+    ["/passport/0xabc", "personal"],
+    ["/docs/developers/mcp", "business"],
+    ["/business", "business"],
+  ])("marks %s on the Menu tab and opens on its side, %s", async (route, side) => {
+    here.path = route;
+    const host = await mount(phoneNav());
+    expect(menuTab(host).getAttribute("data-active")).toBe("true");
+    expect(litTab(host)).toBe("menu");
+    expect(host.querySelectorAll("[data-lit]")).toHaveLength(1);
+    await press(menuTab(host));
+    expect(tab(host, side)?.getAttribute("aria-selected")).toBe("true");
+    expect(tab(host, side)?.getAttribute("data-holds-current")).toBe("true");
+  });
+
+  it.each([
+    ["/", "home"],
+    ["/verify", "verify"],
+    ["/mine", "mine"],
+  ])("leaves Menu unmarked on %s, which its own tab holds", async (route, owner) => {
+    here.path = route;
+    const host = await mount(phoneNav());
+    expect(menuTab(host).hasAttribute("data-active")).toBe(false);
+    expect(litTab(host)).toBe(owner);
   });
 });
 
@@ -429,25 +494,31 @@ describe("the layout", () => {
     expect(existsSync(path.join(WEB, "components", "shell", "HeaderNav.tsx"))).toBe(false);
   });
 
-  it("draws the phone menu beside the tab bar, below md only", () => {
-    const at = layout.indexOf("<PhoneMenu />");
-    expect(at).toBeGreaterThan(layout.indexOf("<BottomBar"));
+  it("draws the phone menu around the tab bar, below md only", () => {
+    const at = layout.indexOf("<PhoneMenu>");
+    expect(at).toBeGreaterThan(-1);
     const box = layout.lastIndexOf('<div className="md:hidden">', at);
     expect(box).toBeGreaterThan(-1);
-    expect(layout.slice(box, at)).toContain("<BottomBar");
+    const inside = layout.slice(at, layout.indexOf("</PhoneMenu>", at));
+    expect(inside).toContain('<BottomBar tabs={tabs} label={bar("label")} shape="raised" />');
     expect(layout.slice(box, at)).not.toContain("</div>");
+    expect(layout).not.toContain("<PhoneMenu />");
   });
 });
 
 describe("the phone's one bottom room", () => {
   const safe = "max(env(safe-area-inset-bottom), var(--bar-safe, 0px))";
 
-  it("is the tab bar, the gap over the Make disc, the two sides' bar and 8 px of air, plus the home strip", () => {
-    expect(PHONE_ROOM).toBe(`calc(158px + ${safe})`);
+  it("is the tab bar, the Make disc above it and 8 px of air, plus the home strip", () => {
+    expect(PHONE_ROOM).toBe(`calc(92px + ${safe})`);
     expect(BAR_ROOM).toBe(`calc(56px + ${safe})`);
+    expect(MAKE_RISE).toBe(28);
+    expect(BAR_AIR).toBe(8);
     const menu = readFileSync(path.join(WEB, "components", "menu", "PhoneMenu.tsx"), "utf8");
-    expect(menu).toContain("const DOCK_BOTTOM = `calc(${BAR_ROOM} + ${DOCK_GAP}px)`;");
-    expect(DOCK_GAP).toBe(36);
+    expect(menu).toContain("const SIDES_FOOT = MAKE_RISE + BAR_AIR;");
+    expect(menu).not.toMatch(/DOCK_/);
+    const css = readFileSync(path.join(WEB, "styles", "globals.css"), "utf8");
+    expect(css).toContain("--bar-room: calc(92px + env(safe-area-inset-bottom));");
   });
 
   it("reaches every page as --bar-room, from the column that holds the header, main, footer and bars", () => {

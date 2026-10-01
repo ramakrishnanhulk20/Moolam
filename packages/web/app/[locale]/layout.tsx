@@ -15,7 +15,7 @@ import { PhoneMenu } from "@/components/menu/PhoneMenu";
 import { LateInsights } from "@/components/shell/LateInsights";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { ThemeColor } from "@/components/shell/ThemeColor";
-import { PHONE_ROOM, type Tab } from "@/components/shell/tabs";
+import { PHONE_ROOM, type BarItem } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -130,12 +130,13 @@ export default async function LocaleLayout({
   const counted = process.env.VERCEL === "1" && !labPagesOn();
 
   // The phone's whole navigation, in the order a thumb reads it: the raised
-  // Make sits in the middle.
+  // Make sits in the middle. Menu opens the sheet with the two sides, and
+  // Explore lives in it under For personal.
   // Two of the five are never prefetched because both pages carry the wallet.
   // The last three carry the name the first-visit guide points at.
-  const tabs: Tab[] = [
+  const tabs: BarItem[] = [
     { key: "home", href: "/", label: bar("tabs.home") },
-    { key: "explore", href: "/explore", label: bar("tabs.explore") },
+    { key: "menu", label: menu("label") },
     { key: "make", href: "/studio", label: bar("tabs.make"), prefetch: false, anchor: "studio" },
     { key: "verify", href: "/verify", label: bar("tabs.verify"), anchor: "verify" },
     { key: "mine", href: "/mine", label: bar("tabs.mine"), prefetch: false, anchor: "mine" },
@@ -161,7 +162,7 @@ export default async function LocaleLayout({
             <ThemeColor />
             <LenisProvider>
               {/* --bar-room is the phone's whole bottom room, the tab bar and
-                  the menu's two sides above it (PHONE_ROOM in tabs.ts). Set
+                  the Make disc above it (PHONE_ROOM in tabs.ts). Set
                   here, it reaches everything that keeps clear of the bottom:
                   the footer, the film's captions, the framed film and the
                   full-screen pages. Every reader of it is a phone-only rule,
@@ -248,7 +249,7 @@ export default async function LocaleLayout({
 
                 <main className="flex-1">{children}</main>
 
-                {/* The room the two bars ask for, on the last thing in the
+                {/* The room the bar asks for, on the last thing in the
                     column rather than on main: the footer comes after main, so
                     main's own padding left the registry line and the three
                     service lights 57 px behind the bar, measured at 375. The
@@ -344,10 +345,12 @@ export default async function LocaleLayout({
                 {/* The phone's navigation, under the thumb, on every page and
                     through the whole film on the home page, which leaves the
                     bar its room rather than hiding it, so Mine and the rest
-                    are one tap away at every scroll position. */}
+                    are one tap away at every scroll position. The menu's
+                    sheet holds the bar so its Menu tab can open it. */}
                 <div className="md:hidden">
-                  <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
-                  <PhoneMenu />
+                  <PhoneMenu>
+                    <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
+                  </PhoneMenu>
                 </div>
               </div>
             </LenisProvider>

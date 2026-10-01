@@ -2,8 +2,9 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useEffect, useReducer, useRef, useState } from "react";
-import { BAR_ROOM, DOCK_GAP } from "@/components/shell/tabs";
+import { useCallback, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
+import { MenuTabContext, type MenuTabControl } from "@/components/shell/BottomBar";
+import { BAR_AIR, BAR_ROOM, MAKE_RISE } from "@/components/shell/tabs";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { usePathname } from "@/lib/i18n/routing";
 import { LeadTile, Tile } from "./Tiles";
@@ -11,36 +12,47 @@ import { CLOSED, MENU, SIDES, currentItem, menuReducer, type ItemKey, type MenuS
 import { EASE } from "./MenuPanel";
 import { stepLink } from "./useMenu";
 
-const DOCK_BOTTOM = `calc(${BAR_ROOM} + ${DOCK_GAP}px)`;
-
-/** Whether the two sides have already risen in this tab, so a language switch does not play the entrance again. */
-let dockHasEntered = false;
+/** The sheet's two side tabs stand clear of the raised Make disc, which overlaps the sheet's foot. */
+const SIDES_FOOT = MAKE_RISE + BAR_AIR;
 
 /**
- * The phone's menu: the two sides as one bar just above the tab bar, under the
- * thumb, and a sheet that rises out of that bar when one is pressed.
+ * The phone's menu: the Menu tab on the bottom bar, and the sheet that rises
+ * out of the bar when it is pressed, For personal and For business as its tabs.
  *
- * The press rule decides the shape. The sheet grows upward from the bar that
- * was pressed and the two sides stay exactly where they were, now as the
- * sheet's tabs, so the answer starts at the thumb and the other side is the
- * same reach away. The tab bar stays live under it: pressing a tab goes there
- * and the new route closes the sheet.
+ * The press rule decides the shape. The sheet grows upward from the bar, right
+ * over the tab that was pressed, and opens on the side that holds the page
+ * being read, so the answer starts at the thumb and the other side is one
+ * reach away. Nothing floats over the page while it is shut. The tab bar
+ * stays live under it: pressing a tab goes there and the new route closes the
+ * sheet; pressing Menu again puts it away.
+ *
+ * The bar is handed in as children so the layout still draws it, and the
+ * Menu tab inside it reads this sheet's state from MenuTabContext.
  */
-export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: MenuState }) {
+export function PhoneMenu({ at, initial = CLOSED, children }: { at?: string; initial?: MenuState; children?: ReactNode }) {
   const t = useTranslations("menu");
   const [state, dispatch] = useReducer(menuReducer, initial);
   const here = usePathname();
   const reduced = useIsReducedMotion();
   const current = currentItem(at ?? here);
-  const dock = useRef<Partial<Record<Side, HTMLButtonElement | null>>>({});
+  const menuTab = useRef<HTMLButtonElement | null>(null);
   const tabs = useRef<Partial<Record<Side, HTMLButtonElement | null>>>({});
   const lastRoute = useRef(here);
   const open = state.open;
-  const [entered] = useState(() => dockHasEntered);
-
-  useEffect(() => {
-    dockHasEntered = true;
+  const holdsSide = current?.side ?? null;
+  const holdButton = useCallback((node: HTMLButtonElement | null) => {
+    menuTab.current = node;
   }, []);
+
+  const control = useMemo<MenuTabControl>(
+    () => ({
+      open: open !== null,
+      holds: holdsSide !== null,
+      onPress: () => dispatch(open !== null ? { type: "outside" } : { type: "press", side: holdsSide ?? SIDES[0] }),
+      holdButton,
+    }),
+    [open, holdsSide, holdButton],
+  );
 
   useEffect(() => {
     if (lastRoute.current !== here) {
@@ -55,7 +67,7 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
       tabs.current[open]?.focus();
     }
     if (open === null && wasOpen.current !== null && document.activeElement === document.body) {
-      dock.current[wasOpen.current]?.focus();
+      menuTab.current?.focus();
     }
     wasOpen.current = open;
   }, [open]);
@@ -66,37 +78,35 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        const side = open;
         dispatch({ type: "key", key: "Escape" });
-        dock.current[side]?.focus();
+        menuTab.current?.focus();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const sideButton = (side: Side, where: "dock" | "sheet") => {
+  const sideTab = (side: Side) => {
     const chosen = open === side;
     const holdsCurrent = current?.side === side;
     return (
       <button
         key={side}
         ref={(node) => {
-          (where === "dock" ? dock : tabs).current[side] = node;
+          tabs.current[side] = node;
         }}
         type="button"
-        role={where === "sheet" ? "tab" : undefined}
-        aria-selected={where === "sheet" ? chosen : undefined}
-        aria-expanded={where === "dock" ? chosen : undefined}
+        role="tab"
+        aria-selected={chosen}
         aria-controls="menu-sheet-panel"
         data-sheet-side={side}
         data-holds-current={holdsCurrent ? "true" : undefined}
-        onClick={() => (where === "sheet" && chosen ? undefined : dispatch({ type: "press", side }))}
+        onClick={() => (chosen ? undefined : dispatch({ type: "press", side }))}
         className={`relative flex min-h-12 flex-1 items-center justify-center gap-2 rounded-[8px] px-3 text-[15px] font-medium outline-none transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-          where === "sheet" && chosen ? "text-accent-ink" : holdsCurrent ? "text-accent" : "text-text hover:text-accent"
+          chosen ? "text-accent-ink" : holdsCurrent ? "text-accent" : "text-text hover:text-accent"
         }`}
       >
-        {where === "sheet" && chosen ? (
+        {chosen ? (
           <motion.span
             layoutId="menu-sheet-tab"
             aria-hidden
@@ -104,7 +114,7 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
             className="absolute inset-0 rounded-[8px] bg-accent"
           />
         ) : null}
-        {holdsCurrent && !(where === "sheet" && chosen) ? (
+        {holdsCurrent && !chosen ? (
           <span aria-hidden className="relative h-[6px] w-[6px] bg-accent" />
         ) : null}
         <span className="relative">{t(`sides.${side}`)}</span>
@@ -114,15 +124,7 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
 
   return (
     <div data-menu-sheet>
-      <motion.div
-        initial={entered ? false : reduced ? { opacity: 0 } : { opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: reduced ? 0.2 : 0.5, delay: reduced ? 0 : 0.12, ease: EASE }}
-        className="fixed inset-x-4 z-30 flex gap-1 rounded-[10px] border border-line-strong bg-bg/95 p-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-md"
-        style={{ bottom: DOCK_BOTTOM }}
-      >
-        {SIDES.map((side) => sideButton(side, "dock"))}
-      </motion.div>
+      <MenuTabContext.Provider value={control}>{children}</MenuTabContext.Provider>
 
       <AnimatePresence initial={false}>
         {open !== null ? (
@@ -195,9 +197,9 @@ export function PhoneMenu({ at, initial = CLOSED }: { at?: string; initial?: Men
               role="tablist"
               aria-label={t("label")}
               className="mx-4 flex gap-1 rounded-[10px] border border-line-strong bg-bg p-1"
-              style={{ marginBottom: DOCK_GAP }}
+              style={{ marginBottom: SIDES_FOOT }}
             >
-              {SIDES.map((side) => sideButton(side, "sheet"))}
+              {SIDES.map((side) => sideTab(side))}
             </div>
           </motion.div>
         ) : null}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { TabKey } from "./tabs";
 
 /**
- * The five marks, drawn here rather than pulled from an icon pack.
+ * The bar's marks, drawn here rather than pulled from an icon pack.
  *
  * Four of them are drawn with the plates' pen: square corners, one weight of
  * line, a filled square where something is the subject. Home is the site's own
@@ -77,3 +77,52 @@ const MARKS: Record<Exclude<TabKey, "home">, ReactNode> = {
     </>
   ),
 };
+
+/**
+ * The Menu tab's mark: three rules, the middle one short, that fold into a
+ * cross while the sheet is up, so the tab that opened it is plainly the one
+ * that shuts it. Square ends, one weight, the same pen as the other four.
+ */
+export function MenuMark({ open, still, size = 22 }: { open: boolean; still: boolean; size?: number }) {
+  const ease = still ? "" : "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]";
+  const pivot = { transformBox: "view-box", transformOrigin: "12px 12px" } as const;
+  return (
+    <svg
+      aria-hidden
+      data-tab-mark="menu"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="square"
+      shapeRendering="geometricPrecision"
+    >
+      <line
+        x1="4"
+        y1="6.5"
+        x2="20"
+        y2="6.5"
+        className={ease}
+        style={{ ...pivot, transform: open ? "rotate(45deg) translateY(5.5px)" : "none" }}
+      />
+      <line
+        x1="4"
+        y1="12"
+        x2="13"
+        y2="12"
+        className={ease}
+        style={{ ...pivot, opacity: open ? 0 : 1, transform: open ? "scaleX(0)" : "none" }}
+      />
+      <line
+        x1="4"
+        y1="17.5"
+        x2="20"
+        y2="17.5"
+        className={ease}
+        style={{ ...pivot, transform: open ? "rotate(-45deg) translateY(-5.5px)" : "none" }}
+      />
+    </svg>
+  );
+}
