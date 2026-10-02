@@ -259,18 +259,19 @@ describe("the favicon, the manifest and the phone bar", () => {
     expect(made.icons?.map((icon) => icon.src)).toEqual(["/icon.svg", "/apple-icon.png", "/favicon.ico"]);
   });
 
-  it("paints the phone bar in the light palette every first visit gets", () => {
+  it("paints the phone bar for each device setting in that theme's own palette", () => {
     const layout = source("app/[locale]/layout.tsx");
-    expect(layout).toContain('themeColor: "#e4ddd0"');
-    expect(layout).not.toContain("prefers-color-scheme");
-    // Both values are the palette's own --bg, so the bar and the page agree:
-    // the head carries the light one, and ThemeColor swaps in the dark one.
+    expect(layout).toContain('{ media: "(prefers-color-scheme: light)", color: "#e4ddd0" }');
+    expect(layout).toContain('{ media: "(prefers-color-scheme: dark)", color: "#08080a" }');
+    // Both values are the palettes' own --bg, so the bar and the page agree:
+    // the head carries one for each device setting, and ThemeColor sets both to
+    // the theme the page shows when the reader's switch disagrees with it.
     const css = source("styles/globals.css");
     expect(css).toContain("--bg: #08080a");
     expect(css).toContain("--bg: #e4ddd0");
   });
 
-  it("paints a page with no theme class, a browser running no script, in the light palette", () => {
+  it("paints a page with no theme class, a browser running no script, in the device's palette", () => {
     const css = source("styles/globals.css").replace(/\r\n/g, "\n");
     const light = css.indexOf(":root,\n.light {\n");
     const dark = css.indexOf("\n.dark {\n  --bg: #08080a;");
@@ -280,8 +281,8 @@ describe("the favicon, the manifest and the phone bar", () => {
     // later to win when its class is there.
     expect(dark).toBeGreaterThan(light);
     expect(css).not.toMatch(/:root,\s*\.dark/);
-    expect(/\nhtml \{[^}]*color-scheme: light;/.exec(css)).not.toBeNull();
-    expect(css).not.toContain("color-scheme: light dark");
+    expect(css).toContain("@media (prefers-color-scheme: dark) {\n  :root:not(.light) {\n    --bg: #08080a;");
+    expect(/\nhtml \{[^}]*color-scheme: light dark;/.exec(css)).not.toBeNull();
   });
 
   it("fetches the phone header's light lockup first, since every first visit paints it", () => {

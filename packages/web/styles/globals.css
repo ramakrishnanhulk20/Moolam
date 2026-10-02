@@ -1,14 +1,30 @@
 @import "tailwindcss";
 
-/* next-themes writes the theme onto <html> as a class, so the dark variant has to
-   follow that class rather than the operating system setting. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* next-themes writes the resolved theme onto <html> as a class, "light" or
+   "dark", from the device setting or the reader's own choice, so the dark
+   variant follows that class first. The second rule is for a page whose script
+   never ran: with no class at all it follows the device. A "light" class,
+   anywhere above the element, keeps the device out of it, so a reader who chose
+   light on a dark device stays light. */
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
 
-/* The light palette, which is the default: the tokens with no theme class are
-   these, so a visitor whose browser runs no script still gets Linen, and the
-   dark block after this one wins once its class is on <html> because it comes
-   later at the same weight. The home film takes these tokens too: its own
-   rules live in components/story/room.ts and add tokens only under dark.
+  @media (prefers-color-scheme: dark) {
+    &:where(:not(.light, .light *)) {
+      @slot;
+    }
+  }
+}
+
+/* The light palette, the one the tokens with no theme class are: a page with no
+   class at all and a light device, or a browser running no script, gets
+   Linen. The dark block after this one wins once its class is on <html>
+   because it comes later at the same weight, and the device block after that
+   gives a classless page the dark palette on a dark device. The home film takes
+   these tokens too: its own rules live in components/story/room.ts and add
+   tokens only under dark.
    The ground is Linen, the unbleached page Ram picked on the brand lab on 30
    September 2026. Every ink clears 4.5:1 on all three of its grounds, the
    sunken one included, because the code blocks and wells are text too. The
@@ -43,10 +59,11 @@
   --grain-blend: multiply;
 }
 
-/* The dark palette, for a visitor who chose it: next-themes puts the class on
-   <html> before the first paint. One accent does all the decorative work; the
-   status colours are a separate, colder family so a warning never reads as
-   brand. */
+/* The dark palette, for a visitor whose device or switch says dark: next-themes
+   puts the class on <html> before the first paint. One accent does all the
+   decorative work; the status colours are a separate, colder family so a
+   warning never reads as brand. The same values are written once more under
+   the device query below, and a test holds the two lists identical. */
 .dark {
   --bg: #08080a;
   --bg-raised: #101014;
@@ -71,6 +88,38 @@
   --scrim-to: rgb(8 8 10 / 0);
   --grain-opacity: 0.05;
   --grain-blend: overlay;
+}
+
+/* The page with no theme class, which is what a browser running no script
+   gets, on a device set to dark. A class of either kind wins over the device:
+   .light is left out here so a reader who chose light stays light, and .dark
+   needs no help from this rule. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #08080a;
+    --bg-raised: #101014;
+    --bg-sunken: #050506;
+    --line: #23232b;
+    --line-strong: #34343f;
+    --text: #f4f2ee;
+    --text-muted: #9a99a4;
+    --text-faint: #7e7d89;
+
+    --accent: #ffb7c5;
+    --accent-ink: #0b0b0c;
+    --accent-soft: rgb(255 183 197 / 0.14);
+
+    --status-verified: #3fbfa8;
+    --status-pending: #5b8def;
+    --status-disputed: #b06fd8;
+    --status-failed: #ff5f4d;
+    --status-lookalike: #f2a93b;
+
+    --scrim-from: rgb(8 8 10 / 0.92);
+    --scrim-to: rgb(8 8 10 / 0);
+    --grain-opacity: 0.05;
+    --grain-blend: overlay;
+  }
 }
 
 @theme inline {
@@ -100,10 +149,11 @@
 
 html {
   background: var(--bg);
-  /* The browser's own furniture, its scrollbars and form controls, is light like
-     the default tokens, and turns dark with the dark class. The phone's own
-     setting never decides, so a page without its script matches its palette. */
-  color-scheme: light;
+  /* The browser's own furniture, its scrollbars and form controls, follows the
+     device here, which is what a page with no theme class is painted with: the
+     tokens above follow the device the same way. A theme class overrides it
+     below, so the furniture always matches the palette the page shows. */
+  color-scheme: light dark;
 }
 
 .dark {
@@ -811,6 +861,20 @@ footer a::after {
 .dark .docs-code pre.shiki,
 .dark .docs-code pre.shiki span {
   color: var(--shiki-dark);
+}
+
+/* A page with no theme class on a dark device paints dark, so its code blocks
+   take the dark colours too. Without this the light colours, drawn for a pale
+   ground, would sit on the near-black one. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .docs-code pre.shiki,
+  :root:not(.light) .docs-code pre.shiki span {
+    color: var(--shiki-dark);
+  }
+
+  :root:not(.light) .docs-code pre.shiki span[style*="--shiki-dark:#6A737D" i] {
+    color: #7d8590;
+  }
 }
 
 /* github-light was drawn for a white code block. Ours is the page's sunken

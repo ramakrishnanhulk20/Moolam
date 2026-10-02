@@ -14,6 +14,10 @@ import "@/styles/globals.css";
  * never reaches it, so this page carries its own shell, its own fonts and the
  * English words, and every link goes to the default language. A reader with
  * scripts on never sees it: the line at the top of the body sends them on.
+ *
+ * No theme script runs here, and the html tag carries no theme class. The
+ * stylesheet reads that as a page to paint in the device's own setting, so the
+ * page is dark on a dark device and Linen on a light one.
  */
 export default function RootNotFound() {
   const t = messages.notFound;

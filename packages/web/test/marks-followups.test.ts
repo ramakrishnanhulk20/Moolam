@@ -152,10 +152,13 @@ describe("the edit form", () => {
 });
 
 describe("the look-alike amber is one token", () => {
-  it("is defined once per theme, at the measured shades, and no screen spells the hex out", () => {
+  it("is defined at the measured shades, light once and dark in its two selectors, and no screen spells the hex out", () => {
     const css = readFileSync(fileURLToPath(new URL("../styles/globals.css", import.meta.url)), "utf8");
     expect(css.match(/--status-lookalike: #875400;/g)).toHaveLength(1);
-    expect(css.match(/--status-lookalike: #f2a93b;/g)).toHaveLength(1);
+    // The dark shade is written twice: in the dark class, and again in the block
+    // a page with no theme class gets on a dark device. A test in light-default
+    // holds those two lists identical.
+    expect(css.match(/--status-lookalike: #f2a93b;/g)).toHaveLength(2);
     expect(css).toContain("--color-lookalike: var(--status-lookalike);");
     for (const file of ["../components/mark/tones.ts", "../components/mark/MarkBand.tsx", "../components/studio/BeforeSigning.tsx"]) {
       const source = readFileSync(fileURLToPath(new URL(file, import.meta.url)), "utf8");

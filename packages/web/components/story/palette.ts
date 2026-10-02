@@ -131,8 +131,10 @@ export function roomPalette(room: Room): RoomPalette {
 }
 
 /**
- * The room for the theme the page shows. Light is the default for everyone and
- * the theme with no class at all, so only a plain "dark" is the dark room.
+ * The room for the theme the page shows, which is the resolved theme from
+ * next-themes: "light" or "dark", never "system". Only a plain "dark" is the
+ * dark room. A theme the browser does not know yet gets the light room, the
+ * stylesheet's own default.
  */
 export function roomOf(theme: string | null | undefined): Room {
   return theme === "dark" ? "dark" : "light";

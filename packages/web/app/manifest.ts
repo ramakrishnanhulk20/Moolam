@@ -21,8 +21,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    // Every first visit opens on the light palette, so the splash and the
-    // phone's own chrome start on its Linen ground rather than flashing black.
+    // A manifest holds one colour and has no form for a second scheme, so the
+    // splash keeps the Linen ground. The page's own theme-color tags, one per
+    // device setting, take over the phone's chrome as soon as it paints.
     background_color: "#e4ddd0",
     theme_color: "#e4ddd0",
     icons: [

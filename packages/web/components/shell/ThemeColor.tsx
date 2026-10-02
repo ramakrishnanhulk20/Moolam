@@ -17,11 +17,13 @@ export function themeBarColour(resolved: string | undefined): string | null {
 }
 
 /**
- * The few lines that set the bar before the first paint. The head carries the
- * light colour, which is right for every first visit; a reader who chose dark
- * would otherwise see a cream bar over a black page until React woke up. It
- * runs after the theme script, so the class on the html tag is already the
- * one the page will paint with.
+ * The few lines that set the bar before the first paint. The head carries one
+ * tag for each device setting, which is right for a first visit; a reader whose
+ * switch disagrees with their device would otherwise see a cream bar over a
+ * black page, or the other way round, until React woke up. Every tag is set to
+ * the same colour, so whichever one the device matches says what the page
+ * shows. It runs after the theme script, so the class on the html tag is
+ * already the one the page will paint with.
  */
 export function themeBarScript(): string {
   return `(function(d,l){var c=document.documentElement.classList.contains("dark")?d:l;var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++){m[i].content=c}})(${JSON.stringify(THEME_BAR.dark)},${JSON.stringify(THEME_BAR.light)})`;
@@ -32,8 +34,11 @@ export function themeBarScript(): string {
  * use.
  *
  * The script covers the first paint and this effect covers every press of the
- * switch after it. The route is watched as well, in case a navigation hands
- * the head back its server copy.
+ * switch after it. The head is watched as well: when the page changes, Next
+ * puts its own copy of the tags back after this effect has run, with the server's
+ * colours, and a phone set to light but shown dark would be handed the cream
+ * tag again. Setting a tag to the colour it already has changes nothing, so
+ * the watch cannot feed itself.
  */
 export function ThemeColor() {
   const { resolvedTheme } = useTheme();
@@ -44,9 +49,17 @@ export function ThemeColor() {
     if (colour === null) {
       return;
     }
-    for (const tag of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-      tag.content = colour;
-    }
+    const paint = () => {
+      for (const tag of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+        if (tag.content !== colour) {
+          tag.content = colour;
+        }
+      }
+    };
+    paint();
+    const watch = new MutationObserver(paint);
+    watch.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ["content"] });
+    return () => watch.disconnect();
   }, [resolvedTheme, here]);
 
   // Marked as plain text when React draws it in the browser, for the reason

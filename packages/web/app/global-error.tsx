@@ -1,5 +1,13 @@
 "use client";
 
+/** Light, with the dark values swapped in by the device's own setting. No class and no script is involved. */
+const PALETTES = `
+:root { color-scheme: light dark; --ground: #e4ddd0; --ink: #14130f; --accent: #a52946; --accent-ink: #fff5f7; --edge: #aba08b; }
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #08080a; --ink: #f4f2ee; --accent: #ffb7c5; --accent-ink: #0b0b0c; --edge: #34343f; }
+}
+`;
+
 /**
  * The last page there is: the one Next shows when the layout above every other
  * page is the thing that broke.
@@ -13,8 +21,13 @@
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
-      {/* Light, the theme every visitor starts in. The theme's own hex values
-          are written out, because no stylesheet variable can be trusted here. */}
+      {/* No script of ours runs on this page, so the device decides: Linen
+          unless it is set to dark. The values are the two themes' own hex
+          colours, written out, because no stylesheet variable can be trusted
+          here. A reader's switch is not read for the same reason. */}
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: PALETTES }} />
+      </head>
       <body
         style={{
           margin: 0,
@@ -24,8 +37,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
           justifyContent: "center",
           gap: "1.5rem",
           padding: "6rem 1.25rem",
-          background: "#e4ddd0",
-          color: "#14130f",
+          background: "var(--ground)",
+          color: "var(--ink)",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
@@ -47,8 +60,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
               cursor: "pointer",
               borderRadius: 8,
               border: "none",
-              background: "#a52946",
-              color: "#fff5f7",
+              background: "var(--accent)",
+              color: "var(--accent-ink)",
               padding: "0.85rem 1.4rem",
               fontSize: "0.7rem",
               fontWeight: 600,
@@ -66,8 +79,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
             href="/en"
             style={{
               borderRadius: 8,
-              border: "1px solid #aba08b",
-              color: "#14130f",
+              border: "1px solid var(--edge)",
+              color: "var(--ink)",
               padding: "0.85rem 1.4rem",
               fontSize: "0.7rem",
               fontWeight: 600,

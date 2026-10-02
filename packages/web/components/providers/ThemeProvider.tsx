@@ -19,24 +19,28 @@ export function themeScriptType(): string {
   return typeof window === "undefined" ? "text/javascript" : "text/plain";
 }
 
-/** The theme a visitor who has never pressed the switch is shown. */
-export const DEFAULT_THEME = "light";
+/** What a visitor who has never pressed the switch is shown: whatever their device is set to. */
+export const DEFAULT_THEME = "system";
 
 /** Where next-themes keeps a visitor's own choice. */
 export const THEME_STORAGE_KEY = "theme";
 
 /**
- * Light for everyone on a first visit, whatever the device asks for. The
- * switch offers light and dark and nothing else,
- * so the device setting is never read, and a choice made with the switch is
- * kept in this browser and wins on every visit after.
+ * The device's own setting on a first visit, light or dark, and the same page
+ * follows it live if the device flips at sundown. The switch still offers light
+ * and dark and nothing else: pressing it stores a plain "light" or "dark" in
+ * this browser, which wins over the device on every visit after.
+ *
+ * Whatever is stored, the class on the html tag is always the resolved theme,
+ * "light" or "dark", never "system". Every reader of the theme takes
+ * resolvedTheme for that reason, and the stylesheet only has those two to know.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <NextThemes
       attribute="class"
       defaultTheme={DEFAULT_THEME}
-      enableSystem={false}
+      enableSystem
       storageKey={THEME_STORAGE_KEY}
       disableTransitionOnChange
       scriptProps={{ type: themeScriptType() }}

@@ -39,16 +39,19 @@ export function generateStaticParams() {
 }
 
 /**
- * The colour a phone paints its own bar with: the light theme's --bg from
- * globals.css, because light is what every first visit gets whatever the
- * phone is set to. One tag and no media query, so a phone set to dark is not
- * handed a black bar over a cream page. ThemeColor rewrites it before the
- * first paint for a reader who chose dark, and again whenever the switch is
- * pressed. Written out rather than imported: a value exported from a client
- * module arrives here as a reference, not as the string.
+ * The colour a phone paints its own bar with: each theme's --bg from
+ * globals.css, one tag per device setting, because a first visit is shown the
+ * theme the device is set to and a page with no script follows it too.
+ * ThemeColor rewrites both tags before the first paint for a reader whose
+ * switch disagrees with the device, and again whenever the switch is pressed.
+ * Written out rather than imported: a value exported from a client module
+ * arrives here as a reference, not as the string.
  */
 export const viewport: Viewport = {
-  themeColor: "#e4ddd0",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e4ddd0" },
+    { media: "(prefers-color-scheme: dark)", color: "#08080a" },
+  ],
 };
 
 /**
@@ -202,11 +205,12 @@ export default async function LocaleLayout({
                           />
                           {/* Only one of the two lockups is ever painted, and the
                               server cannot know which: the theme is a class the
-                              browser puts on. So the high priority goes to the
-                              light one, which every first visit is shown, story
-                              pages included. The dark one still loads with the
-                              document, it just does not compete with the
-                              picture the first screen is actually waiting on. */}
+                              browser puts on, from the device setting or the
+                              reader's own choice. So the high priority is a
+                              guess and goes to the light one. The dark one
+                              still loads with the document, it just does not
+                              compete with the picture the first screen is
+                              actually waiting on. */}
                           <Image
                             src="/brand/kolam/lockup-horizontal-light.svg"
                             alt={t("brand")}
