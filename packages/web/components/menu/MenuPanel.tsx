@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import { LeadTile, Tile } from "./Tiles";
 import { MENU, SIDES, type ItemKey, type Side } from "./menu";
 
@@ -58,7 +58,7 @@ export function MenuPanel({
           transition={{ duration: reduced ? 0.15 : 0.42, ease: EASE }}
           className="grain absolute inset-x-0 top-[calc(100%+1px)] z-30 max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain border-b border-line-strong bg-bg text-text shadow-[0_40px_80px_-40px_rgba(0,0,0,0.55)]"
         >
-          <div className="mx-auto w-full max-w-[1400px] overflow-hidden px-8 py-9">
+          <div className="relative mx-auto w-full max-w-[1400px] overflow-hidden px-8 py-9">
             <AnimatePresence mode="popLayout" initial={false}>
               <SideTiles key={open} side={open} currentKey={currentKey} reduced={reduced} onChoose={onChoose} />
             </AnimatePresence>
@@ -69,16 +69,21 @@ export function MenuPanel({
   );
 }
 
+// popLayout lifts the leaving side out of the flow through this ref. Without it
+// both sides stayed in the flow while they crossed, the new one stacked under
+// the old, so the panel seemed to rise from below.
 function SideTiles({
   side,
   currentKey,
   reduced,
   onChoose,
+  ref,
 }: {
   side: Side;
   currentKey: ItemKey | null;
   reduced: boolean;
   onChoose: () => void;
+  ref?: Ref<HTMLDivElement>;
 }) {
   const t = useTranslations("menu");
   const items = MENU[side];
@@ -93,6 +98,7 @@ function SideTiles({
 
   return (
     <motion.div
+      ref={ref}
       data-menu-side={side}
       initial={reduced ? { opacity: 0 } : { opacity: 0, x: from }}
       animate={{ opacity: 1, x: 0 }}
