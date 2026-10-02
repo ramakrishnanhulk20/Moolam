@@ -645,9 +645,9 @@ const passport = await client.readContract({
 console.log(passport.creator, passport.generatorAgentId, passport.registeredAt);
 ```
 
-The indexer serves the same data over GraphQL at
-`https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql`. Addresses are stored lowercase there,
-including entity ids, so query with lowercase addresses.
+The indexer serves the same data over GraphQL, at the endpoint shown on
+[the GraphQL page](https://moolam.vercel.app/en/docs/api/graphql). Addresses are stored lowercase
+there, including entity ids, so query with lowercase addresses.
 
 ---
 

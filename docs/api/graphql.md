@@ -7,8 +7,11 @@ title: GraphQL
 The Envio indexer serves every passport, edit tree, attestation, dispute and counter over GraphQL.
 
 ```
-https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql
+{{INDEX_URL}}
 ```
+
+The address is set by the deployment, so it always names the index the site itself reads. On GitHub
+it shows as a placeholder: the endpoint is the one on moolam.vercel.app/en/docs/api/graphql.
 
 Each entity is a query field named exactly as it is in `schema.graphql`, taking `where`,
 `order_by`, `limit` and `offset`. Addresses are stored lowercase, including entity ids, so query
@@ -382,7 +385,7 @@ through the ERC-4337 EntryPoint, and the transaction's sender there is a bundler
 ## Curl
 
 ```bash
-curl -s -X POST https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql \
+curl -s -X POST {{INDEX_URL}} \
   -H 'content-type: application/json' \
-  -d '{"query":"{ GlobalStats { id passports creators generators attestations disputes consentStatements passportsWithConsent } }"}'
+  -d '{"query":"{ GlobalStats { id passports creators generators attestations networkAttestations disputes consentStatements passportsWithConsent } }"}'
 ```

@@ -377,10 +377,55 @@ const processor = unified()
     fallbackLanguage: "text",
   });
 
+/**
+ * The token a page writes where the hosted index address belongs. The address
+ * changes whenever the index is rebuilt, so it lives in one Vercel setting and
+ * is filled in when the page is built, never copied into the markdown.
+ */
+export const INDEX_URL_TOKEN = "{{INDEX_URL}}";
+
+/** What a reader sees in the token's place when the deployment has no address set. */
+export const INDEX_URL_UNSET = "<the address is set by the deployment>";
+
+/**
+ * The address this build was given, or null. A value that does not parse as a
+ * web address counts as missing, so a typo in the setting shows the plain
+ * sentence instead of a link that goes nowhere. The variable is named in full so
+ * the bundler can fill it in at build time.
+ */
+function indexAddress(): string | null {
+  const raw = process.env.NEXT_PUBLIC_ENVIO_GRAPHQL_URL?.trim();
+  if (raw === undefined || raw === "") {
+    return null;
+  }
+  try {
+    const { protocol } = new URL(raw);
+    return protocol === "https:" || protocol === "http:" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fills the token into the text of the page. It works on the parsed page, not
+ * the raw markdown, so an address is never read as markdown itself, and it
+ * touches code and text only: a token in a link or a heading id is left alone.
+ */
+function fillIndexAddress(tree: MarkdownRoot, address: string | null): void {
+  const shown = address ?? INDEX_URL_UNSET;
+  visit(tree, (node) => {
+    if ((node.type === "code" || node.type === "inlineCode" || node.type === "text") && node.value.includes(INDEX_URL_TOKEN)) {
+      node.value = node.value.replaceAll(INDEX_URL_TOKEN, shown);
+    }
+  });
+}
+
 const rendered = new Map<string, Promise<RenderedPage>>();
 
-async function render(slug: string, body: string): Promise<RenderedPage> {
-  const tree = (await processor.run(processor.parse(body))) as Root;
+async function render(slug: string, body: string, address: string | null): Promise<RenderedPage> {
+  const parsed = processor.parse(body);
+  fillIndexAddress(parsed, address);
+  const tree = (await processor.run(parsed)) as Root;
   const heading = takeHeadline(tree);
   const headings = collectHeadings(tree);
   const text = collectText(tree);
@@ -393,14 +438,17 @@ async function render(slug: string, body: string): Promise<RenderedPage> {
 /**
  * The same page is rendered once and read in ten languages: the words are
  * English in every one of them, and the links carry no language, so the result
- * is worth keeping for the length of the build.
+ * is worth keeping for the length of the build. The index address is part of
+ * the key, so a page is never served with an address the setting no longer holds.
  */
 export function renderPage(slug: string, body: string): Promise<RenderedPage> {
-  const already = rendered.get(slug);
+  const address = indexAddress();
+  const key = `${slug}\n${address ?? ""}`;
+  const already = rendered.get(key);
   if (already !== undefined) {
     return already;
   }
-  const work = render(slug, body);
-  rendered.set(slug, work);
+  const work = render(slug, body, address);
+  rendered.set(key, work);
   return work;
 }

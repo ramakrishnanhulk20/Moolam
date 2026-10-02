@@ -12,8 +12,11 @@ from HyperSync rather than an RPC node.
 ## The live endpoint
 
 ```
-https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql
+{{INDEX_URL}}
 ```
+
+The address is set by the deployment, so it always names the index the site itself reads. On GitHub
+it shows as a placeholder: the endpoint is the one on moolam.vercel.app/en/docs/developers/envio-indexer.
 
 The verify service reads its passport index from there when `PASSPORT_SOURCE=envio` and
 `ENVIO_GRAPHQL_URL` names that URL. Runnable example queries are on the
