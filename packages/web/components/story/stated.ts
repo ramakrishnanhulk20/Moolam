@@ -1,5 +1,5 @@
 import type { StoryData } from "@/components/story/data";
-import type { BeatName } from "@/components/story/beats";
+import { beatTable, type BeatName } from "@/components/story/beats";
 
 /**
  * Whether the film may tell the beat about the holder's terms for AI.
@@ -63,4 +63,14 @@ export function filmCut(data: StoryData): BeatName[] {
     "close",
   ];
   return beats.filter((beat): beat is BeatName => beat !== false);
+}
+
+/**
+ * How many screens of page the film's section takes on the day's data: the
+ * cut's pages, as the film writes them onto its section. The box that holds
+ * the film's place asks for the same number, so the page below it has already
+ * made room by the time the film arrives.
+ */
+export function filmPages(data: StoryData): number {
+  return beatTable(filmCut(data)).pages;
 }

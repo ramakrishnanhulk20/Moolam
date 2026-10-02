@@ -439,9 +439,13 @@ describe("light by default", () => {
     expect(palette.roomPalette("dark").lookalike).toBe("#f2a93b");
   });
 
-  it("keeps the shipped dark film under the dark class only, so no class at all is Linen", () => {
+  it("keeps the shipped dark film under the dark class, and on a dark device with no class at all, which a light class keeps out", () => {
     expect(room.FILM_STYLE).toMatch(/html\.dark \[data-film-room\] \{\s*--bg: #0b0b0c;/);
-    expect(room.FILM_STYLE).not.toContain(":not(.light)");
+    expect(room.FILM_STYLE).toMatch(
+      /@media \(prefers-color-scheme: dark\) \{\s*html:not\(\.light\) \[data-film-room\] \{\s*--bg: #0b0b0c;/,
+    );
+    // Outside the dark device's own query, no class is Linen.
+    expect(room.FILM_STYLE.replace(/@media \(prefers-color-scheme: dark\) \{[\s\S]*?\n\}\n/g, "")).not.toContain(":not(.light)");
     const html = render(createElement(LandingStory, { data: day(), variant: "chapter" as const }));
     expect(html).toContain('data-film="still"');
     expect(html).not.toContain('class="story"');

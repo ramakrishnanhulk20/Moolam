@@ -2,28 +2,27 @@
  * Can a judge reach the end of the home page, and can they do it with a keyboard?
  *
  * Starts a headless Chrome on the home page and asks the two questions the film
- * makes hard. First: from the top, one wheel tick must move the story and not
- * the page under it; at the last beat, more ticks must bring the footer into
- * view and scrolling back up must land on the last beat again. Second: Tab must
- * reach the story's scroller, and Page, Space, the arrows, Home and End must
- * move it the way they move a document.
+ * makes hard. First: from the top, one wheel tick must move the film along, and
+ * at the last beat more ticks must bring the footer into view and scrolling back
+ * up must land on the last beat again. Second: Tab must reach the way past the
+ * film, and pressing it must leave the reader in the footer.
  *
  * Every line it prints is a measurement, not a claim: wheel ticks counted,
- * window.scrollY, the scroller's own scrollTop, and the footer's bottom edge
- * against the window height.
+ * window.scrollY, how far through the film's section the window has gone, and
+ * the footer's bottom edge against the window height.
  *
- * The film comes in two structures (components/story/scroll.ts): its own
- * scroller over the canvas, or the page's scroll through a section the stage
- * is pinned in. The story's place is read off whichever is on the page, and
- * the keyboard run only applies to the scroller, since on the page's scroll
- * the keys are the page's own.
+ * The film rides the page's own scroll (components/story/scroll.ts): a section
+ * as tall as the cut with the stage pinned inside it, and nothing takes the
+ * wheel. Its place is how far the window has scrolled through that section. The
+ * keys are the page's own, so there is no keyboard run on the film itself.
  *
  *   node packages/web/scripts/perf/story-reach.mjs --url http://localhost:3210/en
  *   node packages/web/scripts/perf/story-reach.mjs --width 375 --height 812 --touch
  *
  * Options: --url, --width, --height, --port, --browser, --touch (drag with a
- * finger instead of a wheel), --light (the light theme), --reduced (ask for
- * less motion), --nowebgl (take WebGL away, which is the still page), --gpu.
+ * finger instead of a wheel), --light or --dark (the reader's own choice; with
+ * neither the page follows the browser's system theme), --reduced (ask for less
+ * motion), --nowebgl (take WebGL away, which is the still page), --gpu.
  */
 
 import { spawn, spawnSync } from "node:child_process";
@@ -89,14 +88,18 @@ try {
   if (touch) {
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
   }
+  // A returning reader. A fresh profile is shown the first-visit guide, which
+  // stands over the page and takes Tab, and it is not what is being measured.
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("moolam:guide:seen", "1");` });
   if (args.reduced !== undefined) {
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   }
-  if (args.light !== undefined) {
+  const chosen = args.light !== undefined ? "light" : args.dark !== undefined ? "dark" : null;
+  if (chosen !== null) {
     // next-themes reads the theme off localStorage and puts the class on the
-    // html tag before the first paint, so this is the same light page a reader
-    // who has chosen it gets.
-    await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("theme", "light");` });
+    // html tag before the first paint, so this is the same page a reader who
+    // has pressed the switch gets.
+    await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("theme", "${chosen}");` });
   }
   if (args.nowebgl !== undefined) {
     // The still page is what a browser with no 3D context gets, and it has to
@@ -116,20 +119,19 @@ try {
   await settled();
 
   const mode = await evaluate(`(() => {
-    const film = document.querySelector('[data-film="film"]');
-    if (film !== null) {
-      return film.getAttribute("data-film-scroll") === "page" ? "page" : "film";
+    if (document.querySelector('[data-film="film"]') !== null) {
+      return "film";
     }
     return document.querySelector('[data-film="still"]') === null ? "no story" : "still";
   })()`);
   console.log(`url        ${url}`);
   console.log(
-    `window     ${width}x${height}${touch ? ", touch" : ", wheel"}${args.light === undefined ? ", dark" : ", light"}${args.reduced === undefined ? "" : ", reduced motion"}${args.nowebgl === undefined ? "" : ", no webgl"}`,
+    `window     ${width}x${height}${touch ? ", touch" : ", wheel"}${chosen === null ? ", system theme" : `, ${chosen}`}${args.reduced === undefined ? "" : ", reduced motion"}${args.nowebgl === undefined ? "" : ", no webgl"}`,
   );
   console.log(`mode       ${mode}`);
 
-  if (mode === "film" || mode === "page") {
-    await filmChecks(mode === "page");
+  if (mode === "film") {
+    await filmChecks();
   } else {
     await stillChecks();
   }
@@ -139,13 +141,13 @@ try {
   await rm(profile, { recursive: true, force: true }).catch(() => undefined);
 }
 
-/** The pinned film: the wheel or the thumb, then the keyboard. */
-async function filmChecks(paged) {
+/** The pinned film: the wheel or the thumb, then the way past it with the keyboard. */
+async function filmChecks() {
   const before = await view();
   await push(120);
   const first = await view();
   console.log(
-    `first      one ${touch ? "drag" : "tick"} down: window.scrollY ${before.pageTop} -> ${first.pageTop}, story ${paged ? "offset" : "scrollTop"} ${paged ? before.offset.toFixed(3) : before.top} -> ${paged ? first.offset.toFixed(3) : first.top}`,
+    `first      one ${touch ? "drag" : "tick"} down: window.scrollY ${before.pageTop} -> ${first.pageTop}, film offset ${before.offset.toFixed(3)} -> ${first.offset.toFixed(3)}`,
   );
 
   let ticks = 1;
@@ -155,7 +157,7 @@ async function filmChecks(paged) {
   }
   const atEnd = await view();
   console.log(
-    `end        ${paged ? "last beat" : "data-story-end"} ${atEnd.ended ? "reached" : "never reached"} after ${ticks} ${touch ? "drags" : "ticks"}, story offset ${atEnd.offset.toFixed(3)}, tier ${await evaluate("document.querySelector('[data-story-tier]')?.getAttribute('data-story-tier') ?? 'no film'")}`,
+    `end        last beat ${atEnd.ended ? "reached" : "never reached"} after ${ticks} ${touch ? "drags" : "ticks"}, film offset ${atEnd.offset.toFixed(3)}, tier ${await evaluate("document.querySelector('[data-story-tier]')?.getAttribute('data-story-tier') ?? 'no film'")}`,
   );
 
   for (let more = 0; more < 2; more += 1) {
@@ -169,57 +171,20 @@ async function filmChecks(paged) {
   await push(-600);
   const one = await view();
   console.log(
-    `back       1 up: window.scrollY ${one.pageTop}, story offset ${one.offset.toFixed(3)}, last beat ${one.ended ? "still shown" : "left"}`,
+    `back       1 up: window.scrollY ${one.pageTop}, film offset ${one.offset.toFixed(3)}, last beat ${one.ended ? "still shown" : "left"}`,
   );
   await push(-600);
   await push(-600);
   const more = await view();
   console.log(
-    `rewind     2 more up: window.scrollY ${more.pageTop}, story offset ${more.offset.toFixed(3)}, last beat ${more.ended ? "still shown" : "left"}`,
+    `rewind     2 more up: window.scrollY ${more.pageTop}, film offset ${more.offset.toFixed(3)}, last beat ${more.ended ? "still shown" : "left"}`,
   );
 
   await reset();
   console.log(`tab        ${await tabWalk()}`);
-  console.log(`ring       ${await focusRing()}`);
 
   await reset();
   console.log(`skip       ${await pressSkip()}`);
-
-  if (paged) {
-    console.log("keys       the page's own on this structure: there is no scroller to drive");
-    return;
-  }
-
-  await reset();
-  const onStory = await evaluate(`(() => {
-    const el = document.querySelector("[data-story-scroller]");
-    if (el === null) {
-      return false;
-    }
-    el.focus();
-    return document.activeElement === el;
-  })()`);
-  if (onStory === true) {
-    for (const key of ["PageDown", "Space", "ArrowDown", "ArrowUp", "End", "Home"]) {
-      const was = await view();
-      await press(key);
-      await wait(120);
-      const now = await view();
-      console.log(
-        `key ${key.padEnd(10)} story scrollTop ${was.top} -> ${now.top} (${now.top - was.top >= 0 ? "+" : ""}${now.top - was.top}), window.scrollY ${was.pageTop} -> ${now.pageTop}`,
-      );
-      if (key === "End") {
-        // The footer only arrives once the damped story has read its last beat,
-        // which is about a second after the scroller reaches its end, and the
-        // page then scrolls to it smoothly. This waits for both.
-        await wait(3000);
-        const after = await view();
-        console.log(
-          `end key    footer bottom ${after.footer === null ? "hidden" : after.footer.toFixed(0)}, innerHeight ${height}, window.scrollY ${after.pageTop} of ${after.pageMax}`,
-        );
-      }
-    }
-  }
 }
 
 /** The still page, which is an ordinary document and must still reach its footer. */
@@ -232,27 +197,22 @@ async function stillChecks() {
   );
 }
 
-/** Everything worth knowing about where the page and the story stand, read in one go. */
+/** Everything worth knowing about where the page and the film stand, read in one go. */
 function view() {
   return evaluate(`(() => {
-    const el = document.querySelector("[data-story-scroller]");
-    const film = document.querySelector('[data-film-scroll="page"]');
+    const film = document.querySelector('[data-film="film"]');
     const footer = document.querySelector("footer");
     const shown = footer !== null && getComputedStyle(footer).display !== "none";
-    const max = el === null ? 0 : el.scrollHeight - el.clientHeight;
-    // On the page's scroll the story's place is how far the window has gone through the film's section.
+    // The film's place is how far the window has gone through its section, from the frame the stage pins to the frame it lets go.
     const stage = film === null ? null : film.querySelector("[data-film-stage]");
     const travel = film === null ? 0 : film.offsetHeight - (stage === null ? window.innerHeight : stage.offsetHeight);
-    const paged = film === null || travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
-    const offset = el === null || max === 0 ? paged : el.scrollTop / max;
+    const offset = film === null || travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
     return {
-      top: el === null ? 0 : Math.round(el.scrollTop),
-      max: Math.round(max),
       offset,
       pageTop: Math.round(window.scrollY),
       pageMax: Math.round(document.documentElement.scrollHeight - window.innerHeight),
       footer: shown ? footer.getBoundingClientRect().bottom : null,
-      ended: document.body.hasAttribute("data-story-end") || (film !== null && offset >= 0.995),
+      ended: film !== null && offset >= 0.995,
     };
   })()`);
 }
@@ -326,16 +286,16 @@ async function press(name) {
 }
 
 /**
- * Where Tab lands, from the top of the document, and whether the film is one of
- * the places it lands. The list is the answer to "in a sensible place in the
- * order": the header's controls, then the way past the film, then the film.
+ * Where Tab lands, from the top of the document, until it reaches the way past
+ * the film. The list is the answer to "in a sensible place in the order": the
+ * header's controls, then the way past the film. The film has nothing of its
+ * own to focus, since the page is what scrolls.
  */
 async function tabWalk() {
   await evaluate("document.activeElement?.blur()");
   const seen = [];
   let skip = 0;
-  let story = 0;
-  for (let count = 1; count <= 24; count += 1) {
+  for (let count = 1; count <= 90; count += 1) {
     await press("Tab");
     await wait(70);
     const at = await evaluate(`(() => {
@@ -343,21 +303,17 @@ async function tabWalk() {
       if (el === null) {
         return "nothing";
       }
-      const kind = el.hasAttribute("data-story-skip") ? "skip" : el.hasAttribute("data-story-scroller") ? "film" : el.tagName.toLowerCase();
-      return kind;
+      return el.hasAttribute("data-story-skip") ? "skip" : el.tagName.toLowerCase();
     })()`);
     seen.push(at);
-    if (at === "skip" && skip === 0) {
+    if (at === "skip") {
       skip = count;
-    }
-    if (at === "film") {
-      story = count;
       break;
     }
   }
-  return story === 0
-    ? `the film never took focus in ${seen.length} tabs: ${seen.join(" ")}`
-    : `skip control at tab ${skip}, film at tab ${story}: ${seen.join(" ")}`;
+  return skip === 0
+    ? `the way past the film never took focus in ${seen.length} tabs: ${seen.join(" ")}`
+    : `skip control at tab ${skip}: ${seen.join(" ")}`;
 }
 
 /**
@@ -388,27 +344,9 @@ async function pressSkip() {
   return `"${seen.text}" shows at ${seen.w}x${seen.h} when focused; pressed: footer bottom ${after.footer === null ? "hidden" : after.footer.toFixed(0)} of ${height}, window.scrollY ${after.pageTop} of ${after.pageMax}, focus on ${focus}`;
 }
 
-/** What the browser would paint around the focused scroller, in this theme. */
-function focusRing() {
-  return evaluate(`(() => {
-    const el = document.querySelector("[data-story-scroller]");
-    if (el === null || document.activeElement !== el) {
-      return "the scroller does not have focus";
-    }
-    const style = getComputedStyle(el);
-    return style.outlineStyle + " " + style.outlineWidth + " " + style.outlineColor + ", offset " + style.outlineOffset;
-  })()`);
-}
-
-/** Back to the opening frame, page and story both, before the keyboard run. */
+/** Back to the opening frame before the keyboard run. */
 async function reset() {
-  await evaluate(`(() => {
-    const el = document.querySelector("[data-story-scroller]");
-    if (el !== null) {
-      el.scrollTop = 0;
-    }
-    window.scrollTo(0, 0);
-  })()`);
+  await evaluate("window.scrollTo(0, 0)");
   await wait(1200);
 }
 

@@ -58,7 +58,7 @@ import {
 import { PlateLedger } from "@/components/story/StatedLedger";
 import { filmCut } from "@/components/story/stated";
 import { roomOf, roomPalette, type RoomPalette } from "@/components/story/palette";
-import { FILM_STYLE, FILM_STYLE_HREF } from "@/components/story/room";
+import { FILM_STYLE, FILM_STYLE_HREF, PHONE_TRAVEL, SHORT_PHONE_TRAVEL, SHORT_SCREEN } from "@/components/story/room";
 import { DAMPING, damp, pageProgress, type Damped } from "@/components/story/scroll";
 import { PairRail, useBeats, useLedgerView, type StoryBeat } from "@/components/story/words";
 import { shortHex } from "@/lib/chain/client";
@@ -337,19 +337,6 @@ function PageFilm({
 
   return <World {...world} source={source} />;
 }
-
-/**
- * How far a thumb travels per screen of story on a phone, as a share of the
- * window. The shot used to be drawn into the top 45 percent of the window and
- * the scroll was matched to it, so a beat is still exactly the drag it was.
- */
-const PHONE_TRAVEL = 0.45;
-
-/** The same, on a phone under SHORT_SCREEN tall, where the shot used to take 36 percent. */
-const SHORT_PHONE_TRAVEL = 0.36;
-
-/** Under this many pixels of window height, a phone is a short one. */
-const SHORT_SCREEN = 700;
 
 /** The phone's lens when the shot was the top 45 percent of the window. */
 const PHONE_FOV = 54;
@@ -743,13 +730,15 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
       {/* The film's section is as many screens tall as the cut is long and the
           stage is pinned inside it, so the page's own scroll plays the film and
           nothing takes the wheel from it. The section's height is the film's
-          rule in room.ts, from the screens written here. */}
+          rule in room.ts, from the pages written here and the travel that rule
+          reads off the window, so it is right on the first frame and the box
+          that held its place (FilmLoading.tsx) was the same height. */}
       <section
         ref={section}
         className="relative w-full"
         data-film="film"
         {...named}
-        style={{ "--film-screens": String(table.pages * travel) } as CSSProperties}
+        style={{ "--film-pages": String(table.pages) } as CSSProperties}
       >
         <div ref={stage} data-film-stage className="grain sticky top-0 h-[100svh] w-full overflow-hidden bg-bg">
           {pinned}

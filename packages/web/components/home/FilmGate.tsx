@@ -1,98 +1,29 @@
-"use client";
-
-import { Component, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { FilmFailed } from "@/components/home/FilmFailed";
-import { FilmLoading } from "@/components/story/FilmLoading";
-
-/** The moves that say a reader is on their way down the page. */
-const MOVES = ["wheel", "touchmove", "scroll", "keydown"] as const;
+import { isValidElement, type ReactNode } from "react";
+import { FilmBox } from "@/components/home/FilmBox";
+import type { StoryData } from "@/components/story/data";
+import { filmPages } from "@/components/story/stated";
 
 /**
- * Holds the film back until the reader moves toward it.
+ * The screens of page the film will take, read off the data the story stage
+ * inside it was handed.
  *
- * The film is two thirds of a megabyte of React, three.js and the scene, and
- * its first pictures are asked for as soon as it is on the page. With the first
- * screen above it, none of that is anything a reader can see yet, and on a slow
- * phone it would share the line with the pictures they can. So the film's box
- * is held open at its full height, drawn by the same component as the film's
- * own loading box so the page's rules treat it the same way, and the film
- * itself is only mounted on the first wheel turn, drag, scroll or key, or the
- * moment any of the box is on screen in a window tall enough to show it.
+ * This runs on the server, where the stage is still a plain element carrying
+ * the day's data. In the browser the same child arrives as a lazy reference
+ * whose props cannot be read until it has loaded, which is why the box that
+ * needs the number is handed it from here and does not look for it itself. A
+ * child that carries no data is held at one screen.
  */
-export function FilmGate({ children }: { children: ReactNode }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      return;
-    }
-    const go = () => setOpen(true);
-    for (const move of MOVES) {
-      window.addEventListener(move, go, { passive: true, once: true });
-    }
-
-    // A box that only touches the foot of the window reports itself as
-    // intersecting with nothing of it showing, so only a real share counts.
-    const watch = new IntersectionObserver(
-      ([entry]) => {
-        if (entry !== undefined && entry.intersectionRatio > 0) {
-          go();
-        }
-      },
-      { threshold: [0, 0.01] },
-    );
-    if (box.current !== null) {
-      watch.observe(box.current);
-    }
-
-    return () => {
-      for (const move of MOVES) {
-        window.removeEventListener(move, go);
-      }
-      watch.disconnect();
-    };
-  }, [open]);
-
-  // The film runs edge to edge on the page's own ground in both themes, with
-  // its chapter title inside the shot, so nothing frames it.
-  return open ? (
-    <FilmCatch>{children}</FilmCatch>
-  ) : (
-    <div ref={box} data-film-gate>
-      <FilmLoading />
-    </div>
-  );
+function reservedPages(children: ReactNode): number {
+  if (isValidElement<{ data?: StoryData }>(children) && children.props.data !== undefined) {
+    return filmPages(children.props.data);
+  }
+  return 1;
 }
 
 /**
- * Keeps a film that would not load, or broke on its first frame, inside its
- * own box.
- *
- * In this version of Next a dynamic import that fails never reaches the
- * import's loading box: that box is only ever handed a null error. The failure
- * is thrown where the film would render, and without a catch here it climbs to
- * the page's error screen and takes the first screen and the footer with it.
- *
- * Try again mounts the film under a new key, and the story's own import hands
- * out a fresh attempt after a failure, so the press really asks for the code
- * again. Nothing retries by itself: a second failure lands on the same box.
+ * The film's place on the home page, held open at the cut's own height and
+ * filled with the film once the reader moves toward it (FilmBox.tsx).
  */
-class FilmCatch extends Component<{ children: ReactNode }, { failed: boolean; attempt: number }> {
-  state = { failed: false, attempt: 0 };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  retry = () => {
-    this.setState(({ attempt }) => ({ failed: false, attempt: attempt + 1 }));
-  };
-
-  render() {
-    if (this.state.failed) {
-      return <FilmFailed onRetry={this.retry} />;
-    }
-    return <Fragment key={this.state.attempt}>{this.props.children}</Fragment>;
-  }
+export function FilmGate({ children }: { children: ReactNode }) {
+  return <FilmBox pages={reservedPages(children)}>{children}</FilmBox>;
 }

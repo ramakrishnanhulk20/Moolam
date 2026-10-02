@@ -42,7 +42,9 @@ describe("the dark bar's flag", () => {
     expect(css).toMatch(
       /html\.dark body\[data-story-here\]:has\(\[data-film="film"\]\) \.app-header \{\s*background: transparent;/,
     );
-    // Light, and a page with no theme class at all, keep the bar's own ground.
-    expect(css).not.toContain("html:not(.light)");
+    // Light keeps the bar's own ground. A page with no theme class follows the device, as the page's own tokens do.
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\) \{\s*html:not\(\.light\) body\[data-story-here\]:has\(\[data-film="film"\]\) \.app-header \{\s*background: transparent;/,
+    );
   });
 });

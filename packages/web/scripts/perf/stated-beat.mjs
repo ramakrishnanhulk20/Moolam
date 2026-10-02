@@ -1,9 +1,9 @@
 /**
  * The stated beat in the home page's film, measured from outside the page.
  *
- * It opens the film in a headless Chrome with a GPU, winds the story's own
- * scroller to the offsets you ask about, and prints what is really on screen at
- * each one: how much of the rule is drawn, where the words, the rule and the
+ * It opens the film in a headless Chrome with a GPU, scrolls the page to the
+ * offsets you ask about, an offset being how far the window has gone through the
+ * film's section, and prints what is really on screen at each one: how much of the rule is drawn, where the words, the rule and the
  * shot are, which of the four marks have stamped and what each one says. With
  * --frames it stays inside one beat and samples every frame, which is how two
  * beats of the same film are compared on one machine.
@@ -52,6 +52,21 @@ if (browser === undefined) {
   throw new Error("no browser found: pass --browser with the path to Chrome");
 }
 
+/**
+ * Where the film stands, 0 to 1, read inside the page: how far the window has
+ * scrolled through the film's section, which is how the film rides the page
+ * (components/story/scroll.ts).
+ */
+const PLACE = `(() => {
+  const film = document.querySelector('[data-film="film"]');
+  if (film === null) {
+    return 0;
+  }
+  const stage = film.querySelector('[data-film-stage]');
+  const travel = film.offsetHeight - (stage === null ? window.innerHeight : stage.offsetHeight);
+  return travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
+})()`;
+
 const profile = await mkdtemp(join(tmpdir(), "moolam-stated-"));
 const flags = [
   "--headless=new",
@@ -83,6 +98,8 @@ try {
     deviceScaleFactor: 1,
     mobile: width < 600,
   });
+  // A returning reader, so the first-visit guide is not standing over the film.
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("moolam:guide:seen", "1");` });
   if (args.reduced !== undefined) {
     await send("Emulation.setEmulatedMedia", {
       features: [{ name: "prefers-reduced-motion", value: "reduce" }],
@@ -90,8 +107,8 @@ try {
   }
   if (args.theme !== undefined && args.theme !== "") {
     // The site's own toggle, set before the page runs, the way a returning
-    // reader would arrive with it. The film is dark either way and this is how
-    // that claim is checked rather than assumed.
+    // reader would arrive with it. Without it the page follows the browser's
+    // system theme, which is light in a headless Chrome.
     await send("Page.addScriptToEvaluateOnNewDocument", {
       source: `localStorage.setItem("theme", ${JSON.stringify(args.theme)});`,
     });
@@ -116,12 +133,12 @@ try {
   console.log(`url        ${url}`);
   console.log(`window     ${width}x${height}${args.reduced === undefined ? "" : ", reduced motion"}`);
   console.log(`story      ${await evaluate("document.querySelector('[data-film]')?.getAttribute('data-film') ?? 'none'")}`);
-  console.log(`pages      ${await evaluate("(() => { const el = document.querySelector('[data-story-scroller]'); if (el !== null) return Math.round(el.scrollHeight / el.clientHeight); const film = document.querySelector('[data-film-scroll=\"page\"]'); return film === null ? 'no scroller' : 'the page, ' + (film.offsetHeight / window.innerHeight).toFixed(2) + ' screens of film'; })()")}`);
+  console.log(`pages      ${await evaluate("(() => { const film = document.querySelector('[data-film=\"film\"]'); return film === null ? 'no film section' : (film.offsetHeight / window.innerHeight).toFixed(2) + ' screens of film'; })()")}`);
 
   for (const at of stops) {
     await park(at);
     const seen = JSON.parse(await evaluate(report()));
-    console.log(`\nat ${at.toFixed(3)}  the scroller sits at ${seen.offset.toFixed(4)}`);
+    console.log(`\nat ${at.toFixed(3)}  the film sits at ${seen.offset.toFixed(4)}`);
     console.log(`  rule     ${seen.rule === null ? "not drawn" : `${seen.rule.drawn.toFixed(1)} px of ${seen.rule.guide.toFixed(1)} px, opacity ${seen.rule.opacity}`}`);
     console.log(`  beat     ${seen.beats.length === 0 ? "no caption on screen" : seen.beats.join(" ")}`);
     console.log(`  marks    ${seen.marks.map((mark) => `${mark.field}=${mark.use}@${mark.opacity}`).join(" ")}`);
@@ -155,39 +172,13 @@ try {
 }
 
 /**
- * Where the film stands, 0 to 1, read inside the page: its own scroller's
- * place, or how far the window has scrolled through the film's section when
- * the film rides the page (components/story/scroll.ts).
- */
-const PLACE = `(() => {
-  const el = document.querySelector('[data-story-scroller]');
-  if (el !== null) {
-    const max = el.scrollHeight - el.clientHeight;
-    return max === 0 ? 0 : el.scrollTop / max;
-  }
-  const film = document.querySelector('[data-film-scroll="page"]');
-  if (film === null) {
-    return 0;
-  }
-  const stage = film.querySelector('[data-film-stage]');
-  const travel = film.offsetHeight - (stage === null ? window.innerHeight : stage.offsetHeight);
-  return travel <= 0 ? 0 : Math.min(1, Math.max(0, -film.getBoundingClientRect().top / travel));
-})()`;
-
-/**
- * Winds the film to a fraction and waits for its damping to arrive: its own
- * scroller, or the window through the film's section. The still page has
- * neither, so there the same fraction moves the window, which is the only
- * scroll that page has.
+ * Winds the film to a fraction and waits for its damping to arrive: the window
+ * through the film's section. The still page has no section, so there the same
+ * fraction moves the window through the whole document.
  */
 async function park(at) {
   await evaluate(`(() => {
-    const el = document.querySelector('[data-story-scroller]');
-    if (el !== null) {
-      el.scrollTop = ${at} * (el.scrollHeight - el.clientHeight);
-      return;
-    }
-    const film = document.querySelector('[data-film-scroll="page"]');
+    const film = document.querySelector('[data-film="film"]');
     if (film !== null) {
       const stage = film.querySelector('[data-film-stage]');
       const top = film.getBoundingClientRect().top + window.scrollY;
@@ -378,11 +369,13 @@ function wait(ms) {
 async function ready() {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     const there = await evaluate(
-      "document.querySelector('canvas') !== null || document.querySelector('[data-story=\"still\"]') !== null",
+      "document.querySelector('[data-film=\"film\"] canvas') !== null || document.querySelector('[data-film=\"still\"]') !== null",
     );
     if (there === true) {
       break;
     }
+    // The film mounts on the first move toward it, and nobody is scrolling here.
+    await evaluate("window.dispatchEvent(new Event('scroll'))");
     await wait(250);
   }
   // The pictures have to be on the plates before anything is drawn along one.

@@ -205,9 +205,9 @@ function Print({
       data-still-print={matched ? "matched" : "plain"}
       className={`relative ${bare ? "" : "mt-8 w-full max-w-[34rem] [.text-end_&]:ms-auto"} ${
         matched
-          ? "outline outline-[3px] outline-verified [html.dark_&]:outline-[1.5px]"
+          ? "outline outline-[3px] outline-verified dark:outline-[1.5px]"
           : ""
-      } bg-[#f1ece3] p-[3.5%] shadow-[0_22px_44px_-20px_rgb(58_51_38/0.55),0_2px_6px_rgb(58_51_38/0.16)] [html.dark_&]:bg-transparent [html.dark_&]:p-0 [html.dark_&]:shadow-[0_0_0_1px_rgb(255_183_197/0.34),0_0_38px_-8px_rgb(255_183_197/0.3)]`}
+      } bg-[#f1ece3] p-[3.5%] shadow-[0_22px_44px_-20px_rgb(58_51_38/0.55),0_2px_6px_rgb(58_51_38/0.16)] dark:bg-transparent dark:p-0 dark:shadow-[0_0_0_1px_rgb(255_183_197/0.34),0_0_38px_-8px_rgb(255_183_197/0.3)]`}
     >
       <div className="grain relative aspect-[4/3] w-full overflow-hidden bg-bg-sunken">
         {/* The registered image, read through the optimizer: the gateway serves

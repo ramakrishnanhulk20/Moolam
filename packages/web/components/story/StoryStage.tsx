@@ -1,10 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { CSSProperties } from "react";
 import { FilmLoading } from "@/components/story/FilmLoading";
 import { OPENING_PICTURES, PLATE_WIDTH, fieldPictures } from "@/components/story/scene/order";
 import type { StoryData } from "@/components/story/data";
 import type { StoryVariant } from "@/components/story/beats";
+import { filmPages } from "@/components/story/stated";
 import { isOptimizable, optimizedUrl } from "@/lib/images";
 
 /**
@@ -39,7 +41,8 @@ function freshStory() {
       /**
        * The film's own box, held open before the film arrives: the film's
        * height and ground with the chapter title on it (FilmLoading.tsx), so
-       * the film replaces a box of exactly its own size.
+       * the film replaces a box of exactly its own size. It takes the cut's
+       * pages from the wrapper below, which writes them for everything inside.
        */
       loading: () => <FilmLoading />,
     },
@@ -63,7 +66,7 @@ export function StoryStage({ data, variant }: { data: StoryData; variant: StoryV
     .slice(0, OPENING_PICTURES);
 
   return (
-    <div data-film-room className="relative">
+    <div data-film-room className="relative" style={{ "--film-pages": String(filmPages(data)) } as CSSProperties}>
       {opening.map((picture) => (
         // crossOrigin has to be here: the texture loader asks for the picture
         // with it, and a preload that does not match it is downloaded a second

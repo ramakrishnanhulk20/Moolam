@@ -123,9 +123,12 @@ before a page renders rather than inside a fetch later.
 
 ## How it is put together
 
-- **Themes.** Two palettes of CSS variables in `styles/globals.css`, dark by
-  default, switched by the class `next-themes` writes on `<html>`. One accent
-  does all the decorative work; the status colours are a separate, colder family.
+- **Themes.** Two palettes of CSS variables in `styles/globals.css`. The site
+  follows the visitor's system theme, light or dark, and the switch stores their
+  own choice, which wins on every visit after. `next-themes` writes the resolved
+  class on `<html>`; a page whose script never ran follows the device through a
+  `prefers-color-scheme` rule. One accent does all the decorative work; the
+  status colours are a separate, colder family.
 - **Motion.** Lenis smooth scroll and GSAP's ScrollTrigger share one animation
   frame loop in `components/providers/LenisProvider.tsx`. Framer Motion handles
   entrances in client components, and a plain CSS `rise` class does the same for

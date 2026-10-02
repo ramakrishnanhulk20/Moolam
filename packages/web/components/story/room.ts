@@ -2,52 +2,41 @@
  * Every rule the film hangs on, in the film's own files.
  *
  * The film used to be dark whatever the theme said, and the rules for it in
- * globals.css were written that way: `.story` forced the dark tokens, and the
- * header rules over it applied to any page that was not light, which also
- * means a page with no theme class at all, the page a visitor without
- * JavaScript gets. Light
- * is the default now and the film is light with it, so the film carries its own
- * rules under its own names ([data-film], .film-lower) and none of the old ones
- * match it any more.
+ * globals.css were written that way: `.story` forced the dark tokens. The site
+ * follows the visitor's system theme now and the film follows it with the
+ * page, so the film carries its own rules under its own names ([data-film],
+ * .film-lower) and none of the old ones match it any more.
  *
- * Light is the page's own Linen: the film adds no tokens for it, so with no
- * script and no theme class the film's box is Linen like the page round it.
- * Dark is the film as it shipped: the tokens below are .story's, under the dark
- * class only.
+ * Light is the page's own Linen: the film adds no tokens for it. Dark is the
+ * film as it shipped: the tokens below are .story's, set under the dark class
+ * and, as globals.css does for the page, on a dark device when the page has no
+ * theme class at all, which is the page a visitor without JavaScript gets. A
+ * light class keeps the device out of it.
  */
 
 /** The one name the style is hoisted under, so every part of the film can carry it and it is written once. */
 export const FILM_STYLE_HREF = "moolam-film-room";
 
-export const FILM_STYLE = `
-@property --film-top {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
+/**
+ * How far a thumb travels per screen of story on a phone, as a share of the
+ * window. The shot used to be drawn into the top 45 percent of the window and
+ * the scroll was matched to it, so a beat is still exactly the drag it was.
+ */
+export const PHONE_TRAVEL = 0.45;
 
-@property --film-foot {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
-}
+/** The same, on a phone under SHORT_SCREEN tall, where the shot used to take 36 percent. */
+export const SHORT_PHONE_TRAVEL = 0.36;
 
-[data-film-room] {
-  --film-top: var(--header-h);
-  --film-foot: 0px;
-  --film-words-foot: 0px;
-  background: var(--bg);
-  color: var(--text);
-}
+/** Under this many pixels of window height, a phone is a short one. */
+export const SHORT_SCREEN = 700;
 
-@media (max-width: 767px) {
-  [data-film-room] {
-    --film-foot: calc(56px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)));
-    --film-words-foot: var(--bar-room);
-  }
-}
-
-html.dark [data-film-room] {
+/**
+ * The film's own tokens in the dark room, written once and set under two
+ * selectors below: the dark class, and a page with no theme class on a dark
+ * device, which is what a browser running no script gets. A light class keeps
+ * the device out of it, as it does for the page's own tokens in globals.css.
+ */
+const DARK_ROOM = `
   --bg: #0b0b0c;
   --bg-raised: #121214;
   --bg-sunken: #08080a;
@@ -67,15 +56,66 @@ html.dark [data-film-room] {
   --scrim-to: rgb(11 11 12 / 0);
   --grain-opacity: 0.055;
   --grain-blend: overlay;
-  color-scheme: dark;
+  color-scheme: dark;`;
+
+export const FILM_STYLE = `
+@property --film-top {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --film-foot {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+[data-film-room] {
+  --film-top: var(--header-h);
+  --film-foot: 0px;
+  --film-words-foot: 0px;
+  --film-travel: 1;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media (max-width: 767px) {
+  [data-film-room] {
+    --film-foot: calc(56px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)));
+    --film-words-foot: var(--bar-room);
+    --film-travel: ${PHONE_TRAVEL};
+  }
+}
+
+@media (max-width: 639px) and (max-height: ${SHORT_SCREEN - 1}px) {
+  [data-film-room] {
+    --film-travel: ${SHORT_PHONE_TRAVEL};
+  }
+}
+
+html.dark [data-film-room] {${DARK_ROOM}
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) [data-film-room] {${DARK_ROOM}
+  }
 }
 
 /* In dark the bar floats bare on the shot while the shot is behind it, as it
-   always did. In light, and with no theme class, it keeps its own ground. */
+   always did. In light it keeps its own ground. */
 html.dark body[data-story-here]:has([data-film="film"]) .app-header {
   background: transparent;
   border-color: transparent;
   backdrop-filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) body[data-story-here]:has([data-film="film"]) .app-header {
+    background: transparent;
+    border-color: transparent;
+    backdrop-filter: none;
+  }
 }
 
 .film-lower {
@@ -235,27 +275,44 @@ html.dark body[data-story-here]:has([data-film="film"]) .app-header {
   );
 }
 
-/* The film is a section as many screens tall as the cut is long
-   (--film-screens, written by the film: its pages times a screen of travel),
-   with the stage pinned inside it one screen high. The page scrolls through it
-   and nothing else takes the wheel, so the footer is simply what follows. A
-   phone's screen is the dynamic one, so the stage follows the address bar
-   folding away rather than leaving a strip of page under it. */
-[data-film="film"] {
-  height: calc(var(--film-screens, 1) * 100svh);
+/* The film is a section as many screens tall as the cut is long: its pages
+   (--film-pages, the travel plus the one screen the stage stays pinned on,
+   written by whoever draws the section) times a screen of travel
+   (--film-travel, above), with the stage pinned inside it one screen high. The
+   page scrolls through it and nothing else takes the wheel, so the footer is
+   simply what follows. A phone's screen is the dynamic one, so the stage
+   follows the address bar folding away rather than leaving a strip of page
+   under it.
+
+   The box that stands in while the film's code is on its way takes the very
+   same rule and the very same stage, so the page below it does not move when
+   the film arrives. */
+[data-film="film"],
+[data-film="loading"] {
+  height: calc(var(--film-pages, 1) * var(--film-travel, 1) * 100svh);
 }
 
-[data-film="film"] [data-film-stage] {
+:is([data-film="film"], [data-film="loading"]) [data-film-stage] {
   height: 100svh;
 }
 
 @media (max-width: 767px) {
-  [data-film="film"] {
-    height: calc(var(--film-screens, 1) * 100dvh);
+  [data-film="film"],
+  [data-film="loading"] {
+    height: calc(var(--film-pages, 1) * var(--film-travel, 1) * 100dvh);
   }
 
-  [data-film="film"] [data-film-stage] {
+  :is([data-film="film"], [data-film="loading"]) [data-film-stage] {
     height: 100dvh;
+  }
+}
+
+/* With no script nothing ever replaces the box, so it stays the one screen it
+   always was instead of holding a whole film's worth of empty page. */
+@media (scripting: none) {
+  [data-film="loading"] {
+    --film-pages: 1;
+    --film-travel: 1;
   }
 }
 

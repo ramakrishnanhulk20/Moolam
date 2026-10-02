@@ -92,19 +92,41 @@ describe("the film on the light page, edge to edge", () => {
     expect(gate).toMatch(/<p[^>]*>How a picture gets its passport<\/p>/);
   });
 
-  it("is the page's own Linen with no theme class at all, and the shipped film only under the dark class", () => {
+  it("is the page's own Linen unless the page is dark, and the shipped film only under the dark class or a classless dark device", () => {
     expect(css).toMatch(/html\.dark \[data-film-room\] \{\s*--bg: #0b0b0c;/);
-    // Nothing in the film's rules is keyed to "not light", which is also a page with no script.
-    expect(css).not.toContain(":not(.light)");
+    // A page with no theme class follows the device, as the page's own tokens do, and a light class keeps the device out of it.
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\) \{\s*html:not\(\.light\) \[data-film-room\] \{\s*--bg: #0b0b0c;/,
+    );
+    // The dark tokens are the same list under both selectors.
+    const tokens = (selector: string) =>
+      rule(selector)
+        .split("\n")
+        .filter((line) => line.trim().startsWith("--"));
+    expect(tokens("html:not(.light) [data-film-room]")).toEqual(tokens("html.dark [data-film-room]"));
     const loading = render(createElement(FilmLoading));
     expect(loading).toContain("data-film-room");
     expect(loading).not.toContain('class="story"');
   });
 
   it("never wears the old dark-whatever-the-theme class", () => {
-    for (const file of ["components/story/StoryStage.tsx", "components/home/FilmGate.tsx", "components/story/LandingStory.tsx"]) {
+    for (const file of [
+      "components/story/StoryStage.tsx",
+      "components/home/FilmGate.tsx",
+      "components/home/FilmBox.tsx",
+      "components/story/LandingStory.tsx",
+    ]) {
       expect(readFileSync(file, "utf8"), file).not.toContain('className="story"');
     }
+  });
+
+  it("keys the still page's dark looks to the page's dark variant, which follows the device when no class is there", () => {
+    for (const file of ["components/story/StillStory.tsx", "components/story/words.tsx"]) {
+      expect(readFileSync(file, "utf8"), file).not.toContain("[html.dark_&]");
+    }
+    expect(readFileSync("components/story/StillStory.tsx", "utf8")).toContain("dark:bg-transparent");
+    expect(readFileSync("components/story/words.tsx", "utf8")).toContain("dark:text-accent");
+    expect(site).toContain("&:where(:not(.light, .light *))");
   });
 });
 
@@ -220,9 +242,14 @@ describe("04A: the tab bar through the film on a phone", () => {
 
   it("keeps a phone's thumb travel per beat what it was", () => {
     const film = readFileSync("components/story/LandingStory.tsx", "utf8");
-    expect(film).toContain("const PHONE_TRAVEL = 0.45;");
-    expect(film).toContain("const SHORT_PHONE_TRAVEL = 0.36;");
-    expect(film).toContain('"--film-screens": String(table.pages * travel)');
+    const room = readFileSync("components/story/room.ts", "utf8");
+    expect(room).toContain("export const PHONE_TRAVEL = 0.45;");
+    expect(room).toContain("export const SHORT_PHONE_TRAVEL = 0.36;");
+    expect(film).not.toContain("const PHONE_TRAVEL");
+    expect(film).toContain('"--film-pages": String(table.pages)');
+    // The section reads the travel off the window in CSS, so the film and the box that held its place agree on the first frame.
+    expect(inMedia("(max-width: 767px)", "[data-film-room]")).toContain("--film-travel: 0.45;");
+    expect(inMedia("(max-width: 639px) and (max-height: 699px)", "[data-film-room]")).toContain("--film-travel: 0.36;");
     expect(film).not.toContain("ScrollControls");
     expect(readFileSync("components/story/scroll.ts", "utf8")).toContain("export const DAMPING = 0.22;");
   });
@@ -245,7 +272,7 @@ describe("F2: the film's box while its code is on its way", () => {
   it("is the chapter's first frame on the room's own ground, at the film's height", () => {
     const markup = render(createElement(FilmLoading));
     expect(markup).toMatch(
-      /<div data-film-room="true" class="grain relative h-\[100svh\] w-full overflow-hidden bg-bg" data-film="loading">/,
+      /<div data-film-room="true" class="relative w-full" data-film="loading">.*<div data-film-stage="true" class="grain sticky top-0 w-full overflow-hidden bg-bg">/,
     );
     expect(text(markup)).toBe(`${en.story.chapter.kicker} ${en.story.chapter.title}`);
     expect(markup).toContain('data-beat="opening"');
@@ -316,7 +343,7 @@ describe("F25: the found beat counts bits, as its caption says", () => {
     expect(last.transform).toBe("resize-10");
     expect(markup).toContain(`>${said}</span>`);
     // Ink on Linen, the film's pink in the dark room.
-    expect(markup).toContain(`tabular-nums text-text [html.dark_&amp;]:text-accent">${bitsApart(last)}</span>`);
+    expect(markup).toContain(`tabular-nums text-text dark:text-accent">${bitsApart(last)}</span>`);
     expect(markup).not.toMatch(/\d\.\d\d of 64 bits apart/);
     const film = readFileSync("components/story/LandingStory.tsx", "utf8");
     expect(film).not.toContain("confidence.toFixed(2)");

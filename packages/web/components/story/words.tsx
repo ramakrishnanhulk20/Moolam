@@ -629,7 +629,7 @@ function Ladder({ label, still }: { label: string; still: boolean }) {
     <div ref={box} data-found-number className="mt-6 flex items-end gap-5">
       <span
         ref={value}
-        className="font-display text-[clamp(4.5rem,13vw,11rem)] font-semibold leading-[0.78] tracking-[-0.06em] tabular-nums text-text [html.dark_&]:text-accent"
+        className="font-display text-[clamp(4.5rem,13vw,11rem)] font-semibold leading-[0.78] tracking-[-0.06em] tabular-nums text-text dark:text-accent"
       >
         {bitsApart(shown)}
       </span>

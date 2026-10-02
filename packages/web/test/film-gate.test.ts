@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, type ReactElement } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilmGate } from "@/components/home/FilmGate";
+import type { StoryData } from "@/components/story/data";
+import { beatTable } from "@/components/story/beats";
+import { FILM_STYLE } from "@/components/story/room";
+import { filmCut, filmPages } from "@/components/story/stated";
 
 /**
  * The film's box under the home page's first screen: it holds the film back
@@ -38,7 +42,21 @@ afterEach(() => {
   host.remove();
 });
 
-async function mount() {
+/** The data of a day with nothing but the beats every cut carries. */
+const DAY: StoryData = {
+  source: "chain",
+  plates: [],
+  focal: null,
+  attestation: null,
+  agent: null,
+  statement: null,
+  statementError: null,
+  passportCount: null,
+  attestationCount: null,
+  error: null,
+};
+
+async function mount(child: ReactElement = createElement("div", { "data-the-film": true })) {
   host = document.createElement("div");
   document.body.append(host);
   await act(async () => {
@@ -48,7 +66,7 @@ async function mount() {
       createElement(
         NextIntlClientProvider,
         { locale: "en", messages: en, timeZone: "UTC" },
-        createElement(FilmGate, null, createElement("div", { "data-the-film": true })),
+        createElement(FilmGate, null, child),
       ),
     );
   });
@@ -61,7 +79,24 @@ describe("the film's box", () => {
     await mount();
 
     expect(film()).toBeNull();
-    expect(host.querySelector('[data-film="loading"]')?.className).toContain("h-[100svh]");
+    // The height itself is the rule in room.ts, from the pages on the box: the one pinned stage inside is the film's own.
+    expect(host.querySelector('[data-film="loading"] [data-film-stage]')?.className).toContain("sticky");
+    expect(host.querySelector<HTMLElement>("[data-film-gate]")?.style.getPropertyValue("--film-pages")).toBe("1");
+  });
+
+  it("holds open the screens the day's cut will take, read off the data its child was handed", async () => {
+    await mount(createElement("div", { "data-the-film": true, data: DAY }));
+
+    const held = host.querySelector<HTMLElement>("[data-film-gate]")?.style.getPropertyValue("--film-pages");
+    expect(Number(held)).toBe(filmPages(DAY));
+    expect(Number(held)).toBeGreaterThan(5);
+    expect(held).toBe(String(beatTable(filmCut(DAY)).pages));
+  });
+
+  it("gives the box no more than one screen when no script will ever fill it", () => {
+    expect(FILM_STYLE).toMatch(
+      /@media \(scripting: none\) \{\s*\[data-film="loading"\] \{\s*--film-pages: 1;\s*--film-travel: 1;/,
+    );
   });
 
   for (const move of ["wheel", "touchmove", "scroll", "keydown"]) {

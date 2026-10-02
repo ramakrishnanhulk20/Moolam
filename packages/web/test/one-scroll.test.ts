@@ -70,11 +70,16 @@ describe("the wiring", () => {
 
   it("pins the stage inside a section as tall as the cut, dynamic on a phone", () => {
     expect(story).toContain('data-film="film"');
-    expect(story).toContain('"--film-screens": String(table.pages * travel)');
+    expect(story).toContain('"--film-pages": String(table.pages)');
     expect(story).toContain("sticky top-0");
     expect(story).toContain("damp(source, pageProgress(");
-    expect(FILM_STYLE).toMatch(/\[data-film="film"\] \{\s*height: calc\(var\(--film-screens, 1\) \* 100svh\);/);
-    expect(FILM_STYLE).toMatch(/\[data-film="film"\] \[data-film-stage\] \{\s*height: 100dvh;/);
+    // The box that holds the film's place is under the same two rules, so the page below it does not move when the film arrives.
+    expect(FILM_STYLE).toMatch(
+      /\[data-film="film"\],\s*\[data-film="loading"\] \{\s*height: calc\(var\(--film-pages, 1\) \* var\(--film-travel, 1\) \* 100svh\);/,
+    );
+    expect(FILM_STYLE).toMatch(
+      /:is\(\[data-film="film"\], \[data-film="loading"\]\) \[data-film-stage\] \{\s*height: 100dvh;/,
+    );
   });
 
   it("hands nothing over: no scroller, no keys, no wheel forwarding, no hidden footer, no body flags but the bar's", () => {
