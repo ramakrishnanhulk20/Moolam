@@ -112,7 +112,7 @@ export function DemoLoop({ picture, className = "" }: { picture: DemoPictureData
             </span>
           </div>
 
-          <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-[8px]" style={{ background: "#e9e3d7" }}>
+          <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-[8px] lg:aspect-[16/9] lg:max-h-[max(10rem,calc(100svh-var(--header-h)-1px-2*var(--hero-pad)-21.75rem))]" style={{ background: "#e9e3d7" }}>
             <motion.div
               initial={false}
               animate={shown >= 1 ? { opacity: 1, filter: "blur(0px)", scale: 1 } : { opacity: 0.25, filter: "blur(14px)", scale: 1.06 }}

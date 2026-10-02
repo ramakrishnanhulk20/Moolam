@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRef } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { HERO_META } from "./content";
@@ -9,6 +9,7 @@ import type { BusinessData, DemoPicture as DemoPictureData } from "./data";
 import { DemoLoop } from "./DemoLoop";
 import { EASE, Kicker, Lead, Quiet } from "./Kit";
 import { Build, Call, Live, Person, Pricing, Security, Ways, Why } from "./Sections";
+import { useFitHeadline } from "./useFitHeadline";
 
 /** The demo's typing, its passkey ring and Chainlink's sweep: the three moves Tailwind cannot say. */
 const BUSINESS_STYLE = `
@@ -52,6 +53,8 @@ function Hero({ picture }: { picture: DemoPictureData | null }) {
   const t = useTranslations("business.hero");
   const reduced = useIsReducedMotion();
   const ref = useRef<HTMLElement>(null);
+  const column = useRef<HTMLDivElement>(null);
+  useFitHeadline(column, useLocale());
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const drift = useTransform(scrollYProgress, [0, 1], reduced ? ["0%", "0%"] : ["0%", "28%"]);
   const lift = useTransform(scrollYProgress, [0, 1], reduced ? ["0px", "0px"] : ["0px", "-60px"]);
@@ -72,29 +75,29 @@ function Hero({ picture }: { picture: DemoPictureData | null }) {
         <div className="absolute -right-[10%] -top-[20%] h-[70vw] max-h-[60rem] w-[70vw] max-w-[60rem] rounded-full bg-accent/[0.09] blur-[120px]" />
       </motion.div>
 
-      <div className="relative mx-auto grid min-h-[calc(100svh-var(--header-h))] w-full max-w-[90rem] items-center gap-12 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-14 lg:px-14 lg:py-16">
-        <div className="min-w-0">
+      <div className="relative mx-auto grid min-h-[calc(100svh-var(--header-h)-1px)] w-full max-w-[90rem] items-center min-[1800px]:max-w-[100rem] gap-12 px-5 pb-16 pt-12 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-14 lg:px-14 lg:py-[var(--hero-pad)] lg:[--hero-pad:clamp(1rem,3.5svh,4rem)] lg:[--hero-gap:clamp(0.75rem,2.8svh,2.5rem)]">
+        <div ref={column} className="@container min-w-0">
           <motion.div {...rise(0)}>
             <Kicker>{t("kicker")}</Kicker>
           </motion.div>
-          <h1 className="mt-6 font-display text-[clamp(3rem,7.6vw,8rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em]">
-            <motion.span {...rise(0.08)} className="block">
+          <h1 className="mt-6 font-display text-[length:var(--hero-type)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] [--hero-type:max(1.75rem,calc(clamp(3rem,7.6vw,8rem)*var(--hero-shrink,1)))] lg:mt-[calc(var(--hero-gap)*0.8)] lg:[--hero-type:max(2.75rem,calc(min(13.3cqw,13svh)*var(--hero-shrink,1)))]">
+            <motion.span {...rise(0.08)} className="block text-balance">
               {t("headline")}
             </motion.span>
-            <motion.span {...rise(0.18)} className="block text-accent">
+            <motion.span {...rise(0.18)} className="block text-balance text-accent">
               {t("tail")}
             </motion.span>
           </h1>
-          <motion.p {...rise(0.3)} className="mt-7 max-w-[46ch] text-base leading-relaxed text-text-muted sm:text-[1.15rem]">
+          <motion.p {...rise(0.3)} className="mt-7 max-w-[46ch] text-base leading-relaxed text-text-muted sm:text-[1.15rem] lg:mt-[calc(var(--hero-gap)*0.9)] lg:max-w-[52ch] lg:text-[length:clamp(1rem,2.1svh,1.2rem)]">
             {t("promise")}
           </motion.p>
-          <motion.div {...rise(0.4)} className="mt-9 flex flex-wrap gap-3">
+          <motion.div {...rise(0.4)} className="mt-9 flex flex-wrap gap-3 lg:mt-[calc(var(--hero-gap)*1.1)]">
             <Lead to="guide">{t("guide")}</Lead>
             <Quiet to="dreamloom">{t("live")}</Quiet>
           </motion.div>
           <motion.ul
             {...rise(0.5)}
-            className="mt-10 flex flex-col gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3"
+            className="mt-10 flex flex-col gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 lg:mt-[calc(var(--hero-gap)*1.3)]"
           >
             {HERO_META.map((item, at) => (
               <li key={item} className="flex items-center gap-3">
