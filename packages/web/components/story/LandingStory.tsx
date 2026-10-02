@@ -1,6 +1,6 @@
 "use client";
 
-import { AdaptiveDpr, Preload, ScrollControls, useScroll } from "@react-three/drei";
+import { AdaptiveDpr, Preload } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useReducedMotion } from "framer-motion";
 import { useTheme } from "next-themes";
@@ -36,21 +36,7 @@ import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel } from "@/components/story/TryPanel";
 import { pickSamples } from "@/lib/data/samples";
-import {
-  film,
-  filmArrived,
-  filmPlace,
-  forwardTouchMove,
-  forwardTouchStart,
-  forwardWheel,
-  keyReach,
-  movePage,
-  moveStory,
-  probe,
-  progress,
-  scroller,
-  whenRoom,
-} from "@/components/story/signals";
+import { filmArrived, probe, progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
 import {
@@ -73,7 +59,7 @@ import { PlateLedger } from "@/components/story/StatedLedger";
 import { filmCut } from "@/components/story/stated";
 import { roomOf, roomPalette, type RoomPalette } from "@/components/story/palette";
 import { FILM_STYLE, FILM_STYLE_HREF } from "@/components/story/room";
-import { DAMPING, damp, pageProgress, type Damped, type FilmScroll } from "@/components/story/scroll";
+import { DAMPING, damp, pageProgress, type Damped } from "@/components/story/scroll";
 import { PairRail, useBeats, useLedgerView, type StoryBeat } from "@/components/story/words";
 import { shortHex } from "@/lib/chain/client";
 
@@ -176,7 +162,7 @@ function RoomGround({ roomRef, palette }: { roomRef: RefObject<RoomPalette>; pal
   );
 }
 
-/** What every part of the scene reads the film's place from: 0 at the opening, 1 at the end of the close, eased by whichever scroll drives it. */
+/** What every part of the scene reads the film's place from: 0 at the opening, 1 at the end of the close, eased. */
 interface ScrollSource {
   offset: number;
 }
@@ -328,81 +314,9 @@ function World({
 }
 
 /**
- * The film on drei's scroller, as the home page plays it today.
- *
- * The panels pinned over the scene sit outside the scroller, so they need a
- * handle on it to pass a wheel or a drag back to the story. The attribute is
- * what the overscroll rules hang on, and what a measurement from outside the
- * page can find the scroller by.
- *
- * The element drei builds is a bare div: it carries no name, nothing says it
- * scrolls, and the keys that drive a document went nowhere on it. The rest of
- * this is the story answering a keyboard the way the page around it does,
- * through the same scrollTop the wheel moves so the film keeps one source of
- * truth for where it is.
- */
-function StageFilm({
-  label,
-  ...world
-}: WorldProps & {
-  /** What a screen reader calls the film. It is a scrolling region of its own. */
-  label: string;
-}) {
-  const scroll = useScroll();
-  const pages = world.table.pages;
-
-  useEffect(() => {
-    const el = scroll.el;
-    scroller.el = el;
-    el.setAttribute("data-story-scroller", "true");
-    el.setAttribute("tabindex", "0");
-    el.setAttribute("role", "region");
-    el.setAttribute("aria-label", label);
-
-    const onKey = (event: KeyboardEvent) => {
-      const reach = keyReach(
-        event.key,
-        event.shiftKey,
-        {
-          top: el.scrollTop,
-          max: el.scrollHeight - el.clientHeight,
-          height: window.innerHeight,
-          pageTop: Math.max(0, -film.top),
-          above: film.past && film.top > 1 ? film.top : 0,
-          lead: film.lead,
-        },
-        // One press is one screen of the cut being played.
-        pages,
-      );
-      if (reach === null) {
-        return;
-      }
-      // Tab and everything else is the browser's. These keys are the story's,
-      // and the browser's own answer to them would move the same scroller a
-      // second time.
-      event.preventDefault();
-      if (reach.story !== null) {
-        moveStory(el, reach.story);
-      }
-      if (reach.page !== null) {
-        movePage(reach.page);
-      }
-    };
-
-    el.addEventListener("keydown", onKey);
-    return () => {
-      el.removeEventListener("keydown", onKey);
-      scroller.el = null;
-    };
-  }, [label, scroll, pages]);
-
-  return <World {...world} source={scroll} />;
-}
-
-/**
  * The film on the page's own scroll: the stage is pinned inside a section as
  * tall as the cut, and the progress is how far the window has scrolled through
- * it, eased with the scroller's own damping so the camera feels the same.
+ * it, eased so a fast scroll pulls the camera rather than teleporting it.
  * Nothing is handed over, because the page is the one thing that scrolls.
  */
 function PageFilm({
@@ -495,9 +409,8 @@ function pixels(value: string): number {
 /**
  * Draws the phone's shot into the room between the header and the tab bar.
  *
- * The canvas fills the whole pinned screen so the scroller built on it does
- * too, which is what gives a drag over the words the browser's own momentum.
- * The header and the bar stand over it, so the renderer is told where they are
+ * The canvas fills the whole pinned screen. The header and the bar stand over
+ * it, so the renderer is told where they are
  * and draws around them, read from the film's own --film-top and --film-foot
  * (room.ts), registered as lengths so the browser hands them back in pixels.
  *
@@ -573,28 +486,15 @@ const noWatch = () => () => undefined;
 /**
  * The room the film plays in, from the page's own theme. Light is the default
  * for everyone; the film is browser only, so next-themes has already read the
- * reader's choice by the time this runs. `light` is the room a light page
- * plays: the one Ram last approved unless a lab route hands in the next.
+ * reader's choice by the time this runs.
  */
-function useRoom(light?: RoomPalette): RoomPalette {
+function useRoom(): RoomPalette {
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(noWatch, () => true, () => false);
-  return roomPalette(mounted ? roomOf(resolvedTheme) : "light", light);
+  return roomPalette(mounted ? roomOf(resolvedTheme) : "light");
 }
 
-export function LandingStory({
-  data,
-  variant,
-  light,
-  scroll = "stage",
-}: {
-  data: StoryData;
-  variant: StoryVariant;
-  /** The light room to play, when it is not the one the home page plays (palette.ts). */
-  light?: RoomPalette;
-  /** What drives the film: drei's scroller over the canvas, as the home page plays it, or the page's own scroll (scroll.ts). */
-  scroll?: FilmScroll;
-}) {
+export function LandingStory({ data, variant }: { data: StoryData; variant: StoryVariant }) {
   const t = useTranslations("story");
   const marks = useTranslations("mark.states");
   const reduced = useReducedMotion();
@@ -606,7 +506,7 @@ export function LandingStory({
   const [start, setStart] = useState(0);
   const [tier, setTier] = useState(0);
   const carried = useRef<number | null>(null);
-  const palette = useRoom(light);
+  const palette = useRoom();
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
@@ -698,24 +598,18 @@ export function LandingStory({
 
   const section = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const paged = scroll === "page";
 
-  // Whether the opening has played, read off the pinned stage: on the page's
-  // own scroll that is the sticky box inside the film's section.
+  // Whether the opening has played, read off the pinned stage: the sticky box
+  // inside the film's section.
   const arrived = useFilmArrived(stage, !still);
 
-  // Runs the story to its last beat, waits for the footer that arrives with it,
-  // and leaves the reader standing on it. On the page's own scroll the footer
-  // was never away: the page simply scrolls to its end.
+  // Takes the reader past the film to the end of the page and leaves focus on
+  // the footer's first link. The footer is never hidden, so there is nothing to
+  // wait for.
   const skip = useCallback(() => {
-    if (!paged && scroller.el !== null) {
-      moveStory(scroller.el, { to: "end" });
-    }
-    whenRoom((room) => {
-      window.scrollTo({ top: room, behavior: "smooth" });
-      document.querySelector<HTMLElement>("footer a")?.focus({ preventScroll: true });
-    });
-  }, [paged]);
+    window.scrollTo({ top: document.documentElement.scrollHeight - window.innerHeight, behavior: "smooth" });
+    document.querySelector<HTMLElement>("footer a")?.focus({ preventScroll: true });
+  }, []);
 
   const style = (
     <style href={FILM_STYLE_HREF} precedence="default">
@@ -748,7 +642,7 @@ export function LandingStory({
     onTier,
   };
 
-  // Everything pinned on the screen while the film plays, whichever scroll drives it.
+  // Everything pinned on the screen while the film plays.
   const pinned = (
     <>
       {/* The way out, for anyone on a keyboard who does not want the whole
@@ -775,13 +669,7 @@ export function LandingStory({
           // shot is taken out of the screen reader's way rather than named.
           onCreated={({ gl }) => gl.domElement.setAttribute("aria-hidden", "true")}
         >
-          {paged ? (
-            <PageFilm section={section} stage={stage} {...world} />
-          ) : (
-            <ScrollControls pages={table.pages} distance={travel} damping={DAMPING}>
-              <StageFilm label={t("chapter.title")} {...world} />
-            </ScrollControls>
-          )}
+          <PageFilm section={section} stage={stage} {...world} />
           <Band travel={travel} />
           <AdaptiveDpr pixelated />
           <Preload all />
@@ -833,7 +721,7 @@ export function LandingStory({
       )}
 
       <TryPanel onPreview={setDropped} samples={samples} />
-      <CloseCard data={data} scene={palette.closeShowsScene} />
+      <CloseCard data={data} />
       <ScrollCue />
     </>
   );
@@ -849,63 +737,33 @@ export function LandingStory({
 
   const fallback = <StillStory data={data} table={table} beats={beats} samples={samples} noWebgl />;
 
-  if (paged) {
-    return (
-      <SceneBoundary fallback={fallback}>
-        {style}
-        {/* The film's section is as many screens tall as the cut is long and
-            the stage is pinned inside it, so the page's own scroll plays the
-            film and nothing takes the wheel from it. The section's height is
-            the film's rule in room.ts, from the screens written here. */}
-        <section
-          ref={section}
-          className="relative w-full"
-          data-film="film"
-          data-film-scroll="page"
-          {...named}
-          style={{ "--film-screens": String(table.pages * travel) } as CSSProperties}
-        >
-          <div ref={stage} data-film-stage className="grain sticky top-0 h-[100svh] w-full overflow-hidden bg-bg">
-            {pinned}
-          </div>
-          <FilmHere section={section} stage={stage} />
-        </section>
-      </SceneBoundary>
-    );
-  }
-
   return (
     <SceneBoundary fallback={fallback}>
       {style}
-      {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
-          to the scene, so the wheel is handed straight to it. The three handlers
-          are on this wrapper rather than on each pinned panel: the scene's own
-          scroll element is only as big as the shot, so a gesture anywhere else
-          on the screen has to be carried to it from here. */}
-      <div
-        ref={stage}
-        className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
+      {/* The film's section is as many screens tall as the cut is long and the
+          stage is pinned inside it, so the page's own scroll plays the film and
+          nothing takes the wheel from it. The section's height is the film's
+          rule in room.ts, from the screens written here. */}
+      <section
+        ref={section}
+        className="relative w-full"
         data-film="film"
-        data-film-stage
         {...named}
-        data-lenis-prevent
-        onWheel={forwardWheel}
-        onTouchStart={forwardTouchStart}
-        onTouchMove={forwardTouchMove}
+        style={{ "--film-screens": String(table.pages * travel) } as CSSProperties}
       >
-        {pinned}
-        <FilmEnd stage={stage} />
-      </div>
+        <div ref={stage} data-film-stage className="grain sticky top-0 h-[100svh] w-full overflow-hidden bg-bg">
+          {pinned}
+        </div>
+        <FilmHere section={section} stage={stage} />
+      </section>
     </SceneBoundary>
   );
 }
 
 /**
- * The film on the page's own scroll hands nothing over: the page is the one
- * thing that scrolls, so the end, past and start flags and every rule on them
- * are not written. The one flag kept is the dark bar floating bare on the shot
- * while the stage is pinned (room.ts), written from the film's own frame as it
- * always was.
+ * Tells the header when the stage is pinned, so the dark bar can float bare on
+ * the shot while it is (room.ts). Written from the film's own frame, and
+ * cleared when the film goes.
  */
 function FilmHere({ section, stage }: { section: RefObject<HTMLElement | null>; stage: RefObject<HTMLElement | null> }) {
   useEffect(() => {
@@ -936,85 +794,6 @@ function FilmHere({ section, stage }: { section: RefObject<HTMLElement | null>; 
       document.body.removeAttribute("data-story-here");
     };
   }, [section, stage]);
-
-  return null;
-}
-
-/**
- * Tells the page when the film is over, where it stands in the window, and when
- * a gesture over it belongs to the page.
- *
- * While the story is pinned the document ends at the film's foot, so once the
- * film fills the window the next wheel turn cannot move the page instead of the
- * story. The footer is held back by the film's own rule (room.ts) that watches
- * the first attribute, and comes back once the last beat has been read, where
- * the same rules hand the scroll chain back so a gesture reaches it.
- *
- * The second attribute is the film not standing in the window: the first
- * screen above it still showing, or the page scrolled below it. Either way a
- * gesture over what can be seen of the film belongs to the page. The third is
- * the film standing in the window, and the fourth is the film at its first
- * frame with page above it to go back to.
- */
-function FilmEnd({ stage }: { stage: RefObject<HTMLDivElement | null> }) {
-  useEffect(() => {
-    let frame = 0;
-    let ended: boolean | null = null;
-    let past: boolean | null = null;
-    let here: boolean | null = null;
-    let start: boolean | null = null;
-
-    const flag = (name: string, on: boolean) => {
-      if (on) {
-        document.body.setAttribute(name, "true");
-      } else {
-        document.body.removeAttribute(name);
-      }
-    };
-
-    const loop = () => {
-      const done = progress.scroll >= 0.995;
-      if (done !== ended) {
-        ended = done;
-        film.ended = done;
-        flag("data-story-end", done);
-      }
-      const top = stage.current?.getBoundingClientRect().top ?? 0;
-      const room = document.documentElement.scrollHeight - window.innerHeight;
-      film.top = top;
-      film.lead = Math.max(0, window.scrollY + top);
-      const away = filmPlace(top, window.scrollY, room) !== "here";
-      if (away !== past) {
-        past = away;
-        film.past = away;
-        flag("data-story-past", away);
-      }
-      if (!away !== here) {
-        here = !away;
-        flag("data-story-here", here);
-      }
-      // drei parks its scroller one pixel down, so one pixel is the first frame.
-      const first = film.lead > 0 && (scroller.el?.scrollTop ?? 0) <= 1;
-      if (first !== start) {
-        start = first;
-        flag("data-story-start", first);
-      }
-      frame = requestAnimationFrame(loop);
-    };
-
-    frame = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(frame);
-      film.ended = false;
-      film.past = false;
-      film.lead = 0;
-      film.top = 0;
-      document.body.removeAttribute("data-story-end");
-      document.body.removeAttribute("data-story-past");
-      document.body.removeAttribute("data-story-here");
-      document.body.removeAttribute("data-story-start");
-    };
-  }, [stage]);
 
   return null;
 }

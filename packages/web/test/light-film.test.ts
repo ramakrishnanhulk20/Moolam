@@ -8,10 +8,10 @@ import en from "@/messages/en.json";
 import type { StoryData } from "@/components/story/data";
 
 /**
- * The light film as rich as the dark one (WO-292). Every light behaviour that
- * changed is a field on the room palette: LIGHT keeps today's values until Ram
- * approves the lab, INKED is the room the lab route plays, and DARK's new
- * fields spell out what the dark film already did, so it draws as before.
+ * The light film as rich as the dark one (WO-292, rolled in by WO-299). Every
+ * light behaviour is a field on the room palette: LIGHT is the inked Linen room
+ * Ram approved on the film lab, and DARK's fields spell out what the dark film
+ * always did, so it draws as before.
  */
 
 vi.mock("@/lib/i18n/routing", () => ({
@@ -21,7 +21,7 @@ vi.mock("@/lib/i18n/routing", () => ({
 
 const source = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
 
-const { DARK, INKED, LIGHT, roomPalette } = await import("@/components/story/palette");
+const { DARK, LIGHT, roomPalette } = await import("@/components/story/palette");
 const { FILM_STYLE } = await import("@/components/story/room");
 const { CloseCard } = await import("@/components/story/CloseCard");
 const { staticOpacity } = await import("@/components/story/scene/field");
@@ -50,14 +50,18 @@ const data: StoryData = {
 };
 
 describe("the room palette carries every light behaviour", () => {
-  it("keeps today's light room as the home page's default", () => {
+  it("plays the inked room by default in light: grain pressed into paper, soft crimson motes, a thin haze", () => {
     expect(roomPalette("light")).toBe(LIGHT);
+    expect(LIGHT.room).toBe("light");
     expect(LIGHT.haze).toBe(LIGHT.ground);
-    expect(LIGHT.fogDensity).toBe(0.05);
-    expect(LIGHT.grain.strength).toBe(0);
-    expect(LIGHT.paperFloor).toBe(0.4);
-    expect(LIGHT.motes).toEqual({ color: "#14130f", opacity: 0.75, size: 0.016, soft: false });
-    expect(LIGHT.closeShowsScene).toBe(false);
+    expect(LIGHT.ground).toBe("#e4ddd0");
+    expect(LIGHT.accent).toBe("#a52946");
+    expect(LIGHT.fogDensity).toBe(0.036);
+    expect(LIGHT.paper).toBe("#f6f2ea");
+    expect(LIGHT.paperFloor).toBe(0);
+    expect(LIGHT.grain).toEqual({ strength: 1, ink: "#2b2622" });
+    expect(LIGHT.motes).toEqual({ color: LIGHT.accent, opacity: 0.85, size: 0.024, soft: true });
+    expect(LIGHT.glows).toBe(false);
   });
 
   it("spells the dark film out exactly as it always drew itself", () => {
@@ -66,60 +70,51 @@ describe("the room palette carries every light behaviour", () => {
     expect(DARK.fogDensity).toBe(0.052);
     expect(DARK.grain).toEqual({ strength: 1, ink: "#ffffff" });
     expect(DARK.motes).toEqual({ color: "#FFB7C5", opacity: 0.9, size: 0.022, soft: false });
-    expect(DARK.closeShowsScene).toBe(true);
+    expect(DARK.glows).toBe(true);
   });
 
-  it("plays the inked room only where it is handed over, and never in dark", () => {
-    expect(roomPalette("light", INKED)).toBe(INKED);
-    expect(roomPalette("dark", INKED)).toBe(DARK);
-    expect(INKED.room).toBe("light");
-    expect(INKED.ground).toBe(LIGHT.ground);
-    expect(INKED.accent).toBe(LIGHT.accent);
-    expect(INKED.grain.strength).toBeGreaterThan(0);
-    expect(INKED.paperFloor).toBe(0);
-    expect(INKED.motes.soft).toBe(true);
-    expect(INKED.motes.color).toBe(LIGHT.accent);
-    expect(INKED.fogDensity).toBeLessThan(LIGHT.fogDensity);
-    expect(INKED.closeShowsScene).toBe(true);
+  it("has one light room and one dark room, with nothing to hand in", () => {
+    expect(roomPalette.length).toBe(1);
+    expect(source("components/story/palette.ts")).not.toContain("INKED");
+    expect(source("components/story/palette.ts")).not.toContain("closeShowsScene");
   });
 
   it("draws the static at the room's strength over the beat's", () => {
     expect(staticOpacity(DARK, 0.6)).toBeCloseTo(0.6, 9);
-    expect(staticOpacity(LIGHT, 0.6)).toBe(0);
-    expect(staticOpacity(INKED, 0.6)).toBeCloseTo(0.6 * INKED.grain.strength, 9);
+    expect(staticOpacity(LIGHT, 0.6)).toBeCloseTo(0.6 * LIGHT.grain.strength, 9);
+    expect(staticOpacity(LIGHT, 0)).toBe(0);
   });
 });
 
 describe("the close", () => {
-  it("stands on the page's ground only when the room says so, and the card says which", () => {
-    expect(FILM_STYLE).toContain('html:not(.dark) .film-close[data-close-ground="paper"]');
-    expect(FILM_STYLE).not.toMatch(/html:not\(\.dark\) \.film-close \{/);
-    expect(render(createElement(CloseCard, { data }))).toContain('data-close-ground="paper"');
-    expect(render(createElement(CloseCard, { data, scene: true }))).toContain('data-close-ground="scene"');
+  it("lets the scene show through in both rooms: no panel, no ground of its own, no marker to switch on", () => {
+    expect(FILM_STYLE).not.toContain("data-close-ground");
+    expect(FILM_STYLE).not.toMatch(/\.film-close\s*\{[^}]*background/);
+    expect(render(createElement(CloseCard, { data }))).not.toContain("data-close-ground");
     expect(render(createElement(CloseCard, { data, pinned: false }))).not.toContain("data-close-ground");
+    expect(source("components/story/CloseCard.tsx")).not.toContain("scene?:");
   });
 
-  it("gives the small lines a paper halo and nothing a panel when the scene shows through, in light only", () => {
-    const from = FILM_STYLE.indexOf('[data-close-ground="scene"]');
-    const scene = FILM_STYLE.slice(from, FILM_STYLE.indexOf("}", from) + 1);
-    expect(scene).toMatch(/text-shadow:\s*0 0 1px var\(--bg\)/);
-    expect(scene).not.toContain("background");
-    expect(scene).not.toContain("::before");
-    expect(FILM_STYLE.match(/data-close-ground="scene"/g)).toHaveLength(1);
+  it("gives the small lines a paper halo, in light only", () => {
+    const from = FILM_STYLE.indexOf("html:not(.dark)\n    .film-close");
+    expect(from).toBeGreaterThan(-1);
+    const rule = FILM_STYLE.slice(from, FILM_STYLE.indexOf("}", from) + 1);
+    expect(rule).toMatch(/text-shadow:\s*0 0 1px var\(--bg\)/);
+    expect(rule).not.toContain("background");
+    expect(rule).not.toContain("::before");
+    expect(FILM_STYLE.match(/html:not\(\.dark\)\s+\.film-close/g)).toHaveLength(1);
     // The halo is a laptop rule: a phone keeps the ground every caption rises from.
-    expect(FILM_STYLE.indexOf("@media (min-width: 640px)")).toBeLessThan(FILM_STYLE.indexOf('[data-close-ground="scene"]'));
-    expect(FILM_STYLE).toMatch(/html:not\(\.dark\)\s+\.film-close\[data-close-ground="scene"\]/);
-    expect(FILM_STYLE).not.toMatch(/html\.dark[^{]*data-close-ground/);
+    expect(FILM_STYLE.indexOf("@media (min-width: 640px)")).toBeLessThan(from);
+    expect(FILM_STYLE).not.toMatch(/html\.dark[^{]*\.film-close/);
   });
 });
 
 describe("the wiring", () => {
-  it("hands the inked room to the lab route alone, so the home page keeps today's light", () => {
-    expect(source("app/[locale]/lab/film/page.tsx")).toContain("light={INKED}");
-    expect(source("app/[locale]/lab/film/page.tsx")).toContain('process.env.NEXT_PUBLIC_LAB_PAGES !== "1"');
+  it("plays the one light room on the home page and the film, with no room handed in", () => {
     expect(source("app/[locale]/page.tsx")).not.toContain("light=");
-    expect(source("components/story/StoryStage.tsx")).toContain("light={light}");
-    expect(source("components/story/LandingStory.tsx")).toContain("scene={palette.closeShowsScene}");
+    expect(source("components/story/StoryStage.tsx")).not.toContain("light");
+    expect(source("components/story/LandingStory.tsx")).toContain("roomPalette(mounted ? roomOf(resolvedTheme) : \"light\")");
+    expect(source("components/story/LandingStory.tsx")).toContain("<CloseCard data={data} />");
   });
 
   it("reads the static, the motes and the haze off the room rather than off the glows flag", () => {

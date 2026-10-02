@@ -65,15 +65,14 @@ export function ScrollCue() {
     window.addEventListener("scroll", dismiss, { passive: true });
     window.addEventListener("keydown", onKey);
 
-    // The scroll may belong to the canvas, so the window may never report one.
-    // Twelve seconds of reading the title is long enough for a hint to have
-    // done its job either way, counted from the film reaching the window. The
-    // box watched is the pinned stage: on the page's own scroll the film's
-    // section is far taller than the window and never "here" by its top.
+    // A reader who stays put and never scrolls still has the hint taken away:
+    // twelve seconds of reading the title is long enough for it to have done
+    // its job, counted from the film reaching the window. The box watched is
+    // the pinned stage, because the film's section is far taller than the
+    // window and never "here" by its top.
     const watch = () => {
       const box = el.closest<HTMLElement>("[data-film-stage]")?.getBoundingClientRect();
-      const room = document.documentElement.scrollHeight - window.innerHeight;
-      if (box === undefined || filmPlace(box.top, window.scrollY, room) === "here") {
+      if (box === undefined || filmPlace(box.top) === "here") {
         arrived = performance.now();
         timer = window.setTimeout(dismiss, 12_000);
         return;

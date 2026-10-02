@@ -206,25 +206,16 @@ html.dark body[data-story-here]:has([data-film="film"]) .app-header {
   }
 }
 
-/* The card the film ends on stands on the page's own ground in a light room
-   that keeps the scene to itself, so the film ends on the Linen it started on
-   and no print sits behind the counts. In dark it floats on the settling
-   field, as it always did. The card says which with data-close-ground, read
-   off the room (palette.closeShowsScene). */
-html:not(.dark) .film-close[data-close-ground="paper"] {
-  background: var(--bg);
-}
-
-/* A light room that lets the scene through the close, composed as the dark
-   close is: the focal print whole with its frame and its stamp, the counts and
-   the title in ink straight on the paper, the wall of prints round the words,
-   and no panel anywhere. The small lines carry a halo of the room's paper
-   round each glyph instead, edgeless and invisible over plain paper, so a
-   label that crosses a print still reads. A phone keeps the ground every
-   caption rises from (.film-lower above). */
+/* The close in the light room is composed as the dark close is: the focal print
+   whole with its frame and its stamp, the counts and the title in ink straight
+   on the paper, the wall of prints round the words, and no panel anywhere. The
+   small lines carry a halo of the room's paper round each glyph instead,
+   edgeless and invisible over plain paper, so a label that crosses a print
+   still reads. A phone keeps the ground every caption rises from
+   (.film-lower above). */
 @media (min-width: 640px) {
   html:not(.dark)
-    .film-close[data-close-ground="scene"]
+    .film-close
     :is([data-close-half="text"] > p, [data-close-half="figures"] > p, [data-close-error] p, dt) {
     text-shadow:
       0 0 1px var(--bg),
@@ -244,54 +235,26 @@ html:not(.dark) .film-close[data-close-ground="paper"] {
   );
 }
 
-[data-film="film"],
-[data-story-scroller] {
-  overscroll-behavior-y: contain;
-}
-
-body[data-story-end] [data-film="film"],
-body[data-story-end] [data-story-scroller],
-body[data-story-start] [data-film="film"],
-body[data-story-start] [data-story-scroller],
-body[data-story-past] [data-film="film"] {
-  overscroll-behavior-y: auto;
-}
-
-body[data-story-past] [data-story-scroller] {
-  pointer-events: none;
-}
-
-[data-story-scroller]:focus-visible {
-  outline-offset: -3px;
-}
-
-/* While the film is pinned on its own scroller the document ends at the
-   film's foot, so the first wheel turn moves the story and not the page under
-   it. The footer comes back the moment the last beat has been read. A film on
-   the page's own scroll never hides it: the page simply goes on after the film. */
-body:has([data-film="film"]:not([data-film-scroll="page"])):not([data-story-end]) footer {
-  display: none;
-}
-
-/* The film on the page's own scroll: a section as many screens tall as the cut
-   is long (--film-screens, written by the film: its pages times a screen of
-   travel), with the stage pinned inside it one screen high. A phone's screen
-   is the dynamic one, so the stage follows the address bar folding away
-   rather than leaving a strip of page under it. */
-[data-film-scroll="page"] {
+/* The film is a section as many screens tall as the cut is long
+   (--film-screens, written by the film: its pages times a screen of travel),
+   with the stage pinned inside it one screen high. The page scrolls through it
+   and nothing else takes the wheel, so the footer is simply what follows. A
+   phone's screen is the dynamic one, so the stage follows the address bar
+   folding away rather than leaving a strip of page under it. */
+[data-film="film"] {
   height: calc(var(--film-screens, 1) * 100svh);
 }
 
-[data-film-scroll="page"] [data-film-stage] {
+[data-film="film"] [data-film-stage] {
   height: 100svh;
 }
 
 @media (max-width: 767px) {
-  [data-film-scroll="page"] {
+  [data-film="film"] {
     height: calc(var(--film-screens, 1) * 100dvh);
   }
 
-  [data-film-scroll="page"] [data-film-stage] {
+  [data-film="film"] [data-film-stage] {
     height: 100dvh;
   }
 }

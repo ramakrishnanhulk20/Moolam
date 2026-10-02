@@ -234,7 +234,7 @@ const SHAPES: Record<BeatName, Shape> = {
 export interface BeatTable {
   /** The beats in this cut, in playing order. */
   names: BeatName[];
-  /** Screens of scroll drei's ScrollControls hands the scene: the travel plus the first screen. */
+  /** Screens of page the film's section takes: the travel plus the one screen the stage stays pinned on. */
   pages: number;
   /** A caption's fade, in this cut's own fractions, so it is the same scroll distance in every cut. */
   fade: number;

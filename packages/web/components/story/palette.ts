@@ -4,12 +4,11 @@
  * The DOM reads its colours from the CSS tokens, but a WebGL material and a
  * canvas texture cannot, so the same values live here as plain strings and
  * every part of the scene takes them from this file. The film plays in one of
- * two rooms: light, the Linen paper room Ram approved on the story lab, and
+ * two rooms: light, the Linen paper room Ram approved on the film lab, and
  * dark, the film exactly as it shipped before it.
  *
  * Everything a room draws differently is a field here rather than a branch in
- * the scene, so a new light room can be played on a lab route while the home
- * page keeps the one Ram last approved, and rolling it in is one line.
+ * the scene.
  */
 
 /** Light pink, the dark room's one accent: the stamp, the plate edges and the label dots. */
@@ -78,52 +77,33 @@ export interface RoomPalette {
   glows: boolean;
   grain: RoomGrain;
   motes: RoomMotes;
-  /** True when the closing card lets the scene show through it, with only a scrim behind its words. */
-  closeShowsScene: boolean;
 }
 
 /**
- * The Linen room as the home page plays it today, every colour the light
- * tokens in globals.css hold. The print starts as blank paper, the specks are
- * square ink, the haze is the ground itself, and the close stands on the page.
+ * The Linen room, with everything the dark film shows drawn in paper and ink:
+ * every colour is one the light tokens in globals.css hold. The picture forms
+ * out of the same static as the dark film's, as charcoal grain pressed into the
+ * paper; the specks that gather into it are soft motes of the crimson accent;
+ * the haze is thin, so the wall of prints stands behind the words; and the
+ * close lets the print, its stamp and the wall show through.
  */
 export const LIGHT: RoomPalette = {
   room: "light",
   ground: "#e4ddd0",
   haze: "#e4ddd0",
-  fogDensity: 0.05,
-  paper: "#f1ece3",
+  fogDensity: 0.036,
+  paper: "#f6f2ea",
   shadow: "#3a3326",
-  shadowOpacity: 0.34,
-  paperFloor: 0.4,
+  shadowOpacity: 0.4,
+  paperFloor: 0,
   accent: "#a52946",
   matched: "#146458",
   refused: "#a92912",
   lookalike: "#875400",
   ink: "#14130f",
   glows: false,
-  grain: { strength: 0, ink: "#14130f" },
-  motes: { color: "#14130f", opacity: 0.75, size: 0.016, soft: false },
-  closeShowsScene: false,
-};
-
-/**
- * The same Linen room with everything the dark film shows drawn in paper and
- * ink: the picture forms out of the same static, as charcoal grain pressed into
- * the paper; the specks that gather into it are soft motes of the crimson
- * accent; the haze is thinner, so the wall of prints stands behind the words;
- * and the close lets the print, its stamp and the wall show through. Played on
- * /lab/film. It becomes LIGHT once Ram approves it there.
- */
-export const INKED: RoomPalette = {
-  ...LIGHT,
-  fogDensity: 0.036,
-  paper: "#f6f2ea",
-  shadowOpacity: 0.4,
-  paperFloor: 0,
   grain: { strength: 1, ink: "#2b2622" },
   motes: { color: "#a52946", opacity: 0.85, size: 0.024, soft: true },
-  closeShowsScene: true,
 };
 
 /** The film as it shipped: black field, glass plates, pink light. */
@@ -144,16 +124,10 @@ export const DARK: RoomPalette = {
   glows: true,
   grain: { strength: 1, ink: "#ffffff" },
   motes: { color: ACCENT, opacity: 0.9, size: 0.022, soft: false },
-  closeShowsScene: true,
 };
 
-/**
- * The palette for a room. `light` is the room to play when the page is light:
- * the home page passes nothing and gets LIGHT, the lab route passes the room
- * it is trying. Dark is always the shipped film.
- */
-export function roomPalette(room: Room, light: RoomPalette = LIGHT): RoomPalette {
-  return room === "dark" ? DARK : light;
+export function roomPalette(room: Room): RoomPalette {
+  return room === "dark" ? DARK : LIGHT;
 }
 
 /**

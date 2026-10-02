@@ -22,36 +22,26 @@ export const UNREAD_FIGURE = "-";
  *
  * The two figures are the registry's own totals through the live index, so the
  * page never claims a number nobody wrote on chain. It fades in over the
- * settling field and takes itself out of the tab order until it is there. Under
- * the light theme the .film-close rules in room.ts read data-close-ground: a
- * room that keeps the scene to itself stands this card on the page's own
- * ground, so the film ends by handing the page back; a room that lets the
- * scene through gives only its words a soft wash of paper.
+ * settling field and takes itself out of the tab order until it is there. The
+ * scene shows through it in both rooms, the print whole with its stamp; under
+ * the light theme the .film-close rule in room.ts gives only its small words a
+ * soft wash of paper so one that crosses a print still reads.
  *
  * This is the page's one final call, so its first button is named exactly as
  * the first screen's, and on a laptop the two counts leave the foot of the text
  * for the card's empty right half, at display size.
  */
-export function CloseCard({
-  data,
-  pinned = true,
-  scene = false,
-}: {
-  data: StoryData;
-  pinned?: boolean;
-  /** True when the room lets the scene show through the card (palette.closeShowsScene). */
-  scene?: boolean;
-}) {
+export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: boolean }) {
   const t = useTranslations("story.close");
   const first = useTranslations("home.first");
   const shell = useRef<HTMLDivElement>(null);
   const [wide, setWide] = useState(false);
 
-  // From 640 px the card owns the whole window, header included, and the film
-  // hands the scroll on at the end, which lifts it by the footer's height. The
-  // top inset below is what keeps the headline clear of the bar after that lift,
-  // and it only applies to the wide framing: on a phone the card already sits in
-  // the lower half of the window.
+  // From 640 px the card owns the whole window, header included, and the stage
+  // unpins at the end of the film and rides up as the footer arrives, which
+  // lifts it by the footer's height. The top inset below is what keeps the
+  // headline clear of the bar after that lift, and it only applies to the wide
+  // framing: on a phone the card already sits in the lower half of the window.
   useEffect(() => {
     const query = window.matchMedia("(min-width: 640px)");
     const read = () => setWide(query.matches);
@@ -101,15 +91,15 @@ export function CloseCard({
       ref={shell}
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
-      data-close-ground={pinned ? (scene ? "scene" : "paper") : undefined}
       style={
         pinned
           ? {
               opacity: 0,
               // The bar's height twice: the stylesheet already holds one for the
-              // bar itself, and the second is the room the card needs after the
-              // film hands the scroll on. safe center keeps the card centred
-              // while it fits and never lets it start above that inset.
+              // bar itself, and the second is the room the card needs once the
+              // stage has unpinned and the footer lifts it. safe center keeps
+              // the card centred while it fits and never lets it start above
+              // that inset.
               ...(wide ? { paddingTop: "calc(var(--header-h) * 2)", alignItems: "safe center" } : {}),
             }
           : undefined
@@ -133,8 +123,6 @@ export function CloseCard({
           }}
         />
       )}
-      {/* The film wrapper carries every gesture over the pinned screen back to
-          the story's scroller, this card included. */}
       <div
         data-close-card="chapter"
         className={`mx-auto w-full max-w-[100rem] ${pinned ? "pointer-events-auto" : ""} lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center lg:gap-16`}

@@ -1,23 +1,22 @@
 /**
- * What drives the film, and how far along it is.
+ * How far along the film is.
  *
- * "stage" is drei's own scroller laid over the canvas, as the home page plays
- * the film today: the film takes the wheel and hands it back at its two ends.
- * "page" is the film riding the page's own scroll: a section as tall as the
- * cut, the stage pinned inside it, and the progress read from how far the
- * window has scrolled through the section. The lab route tries "page"; the
- * roll-in is the home page asking for it.
+ * The film rides the page's own scroll: a section as tall as the cut, the
+ * stage pinned inside it, and the progress read from how far the window has
+ * scrolled through the section. Nothing takes the wheel, so the page has one
+ * scrollbar and the footer is simply what comes after the film.
  */
-export type FilmScroll = "stage" | "page";
 
-/** The scroller's easing, drei's own: a smooth time of 0.22 seconds. */
+/**
+ * The easing the camera was tuned with: a smooth time of 0.22 seconds, the
+ * number drei's scroll controls used before the film moved onto the page.
+ */
 export const DAMPING = 0.22;
 
 /**
  * How far the window has scrolled through the film's section, 0 on the frame
  * the stage pins and 1 on the frame it unpins. `top` is the section's top edge
- * against the window's. The travel is the section's height less the stage's,
- * which is exactly the length of the scroller the film rode before.
+ * against the window's. The travel is the section's height less the stage's.
  */
 export function pageProgress(top: number, sectionHeight: number, stageHeight: number): number {
   const travel = sectionHeight - stageHeight;
@@ -35,11 +34,10 @@ export interface Damped {
 }
 
 /**
- * One frame of drei's easing, which is maath's damp: a critically damped
- * spring that never crosses its target. Written out here rather than taken
- * from a package the app does not depend on directly, so the film on the
- * page's scroll eases its progress with the very numbers the scroller eased it
- * with.
+ * One frame of maath's damp, the easing drei used: a critically damped spring
+ * that never crosses its target. Written out here rather than taken from a
+ * package the app does not depend on directly, so the camera eases with the
+ * very numbers it was tuned with.
  */
 export function damp(state: Damped, target: number, smoothTime: number, delta: number, eps = 0.00001): void {
   if (Math.abs(state.offset - target) <= eps) {

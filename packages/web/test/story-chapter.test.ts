@@ -242,7 +242,7 @@ describe("the chapter cut's light header", () => {
     const source = readFileSync("components/story/LandingStory.tsx", "utf8");
     expect(source).not.toContain("CHAPTER_LOOK");
     expect(source).not.toContain("html.light body[data-story-here]");
-    // The cut is named on the film's box in either scroll structure (scroll.ts).
+    // The cut is named on the film's own section.
     expect(source).toContain('"data-story-cut": variant');
   });
 });
