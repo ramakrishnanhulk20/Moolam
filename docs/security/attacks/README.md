@@ -11,8 +11,8 @@ out a revert that is really an out-of-gas. If the read had gone through, the run
 would not send the transaction.
 
 The three receiver files were written again on 2026-09-28 by `npm run prove:receivers` in
-`packages/agents`, the same two steps aimed at the SimulationReceiver today's re-checks land
-through, without registering anything new.
+`packages/agents`, the same two steps aimed at the SimulationReceiver the simulator's re-checks
+land through, without registering anything new.
 
 Eleven of these attacks, and one control that has to pass, can also be sent from the browser and
 answered by the live contracts while you watch, on the [Try to break it](../try-to-break-it.md) page.

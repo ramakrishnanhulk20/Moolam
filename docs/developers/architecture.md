@@ -10,63 +10,84 @@ contracts depend on.
 ## System overview
 
 Five people or programs touch the system and each one enters through a different door. The creator
-binds a passkey and registers, and states how AI may use the picture. The generator agent registers
-on the creator's behalf, with both signatures. An editing app appends edits through a Privy session
-signer. Anyone verifying uploads a copy to the verify service and never touches the chain at all. On
-chain, `MoolamRegistry` reads the P-256 precompile for passkeys, the ERC-8004 Identity Registry for
+binds a passkey (`bindPasskey`) and registers, and states how AI may use the picture. The generator
+agent registers on the creator's behalf, with both signatures. An editing app appends edits through a
+Privy session signer. Anyone verifying uploads a copy to the verify service and never touches the
+chain at all. On chain, `MoolamRegistry` reads the P-256 precompile for passkeys, the ERC-8004 Identity Registry for
 agent ownership, and `VerifierPolicy` for who may attest, while `MoolamConsent` reads the registry
 for who holds a passport. Off chain, the Chainlink CRE workflow re-fetches and re-fingerprints,
 Envio indexes the events, and the verify service reads passports out of Envio and statements
 straight off the consent register.
 
-```mermaid height=1021
-flowchart LR
-    subgraph People and agents
-        C[Creator<br/>Privy embedded wallet + passkey]
-        G[Generator agent<br/>OpenAI model + Privy server wallet<br/>ERC-8004 identity]
-        E[Editing app<br/>Privy session signer]
-        V[Anyone verifying<br/>newsroom, platform, judge]
-    end
+Chainlink's verdicts reach the registry two ways. A verdict from Chainlink's network goes through the
+Keystone Forwarder to `MoolamReceiver`, and only those can light a passport's trust mark. A test run in
+Chainlink's simulator goes through the simulation forwarder to the `SimulationReceiver` pair, which also
+checks that Moolam's CRE wallet signed the transaction. The sealed workflow reads a private copy through
+a link the verify service mints.
 
-    subgraph Monad mainnet
-        R[MoolamRegistry<br/>ERC-721 passports, edit tree,<br/>attestations, disputes]
-        P[VerifierPolicy<br/>who may attest, 24h delay]
-        MF[Chainlink simulation forwarder<br/>MockKeystoneForwarder]
-        RC[SimulationReceiver, public<br/>0x4aD6…Aa95, CRE wallet only]
-        RS[SimulationReceiver, sealed<br/>0x52b8…57f6, CRE wallet only]
-        MC[MoolamConsent<br/>how AI may use a picture,<br/>dated and append only]
-        I8[ERC-8004 Identity Registry<br/>canonical, read only]
-        PC[P-256 precompile 0x0100]
-    end
+The drawing reads from top to bottom. Rounded boxes are people and agents, solid boxes are contracts on
+Monad mainnet, and dashed boxes run off chain.
 
-    subgraph Off-chain
-        S[Verifier service<br/>fingerprints, C2PA, Hamming search,<br/>x402-paid API]
-        X[Envio HyperIndex<br/>passports, trees, trust scores]
-        W[moolam-verifier<br/>Chainlink CRE workflow, public pictures]
-        WS[moolam-sealed-verifier<br/>Chainlink CRE workflow, private copies]
-        F[IPFS via Pinata<br/>image, manifest, thumbnail]
-    end
+```mermaid height=909
+---
+config:
+  flowchart:
+    nodeSpacing: 18
+    rankSpacing: 34
+    padding: 8
+---
+flowchart TD
+    R[MoolamRegistry<br/>ERC-721 passports,<br/>edit tree,<br/>attestations,<br/>disputes]
+    S[Verifier service<br/>fingerprints, C2PA,<br/>Hamming search,<br/>x402-paid API]
+    SR[SimulationReceiver<br/>pair, public<br/>0x4aD6…Aa95,<br/>sealed<br/>0x52b8…57f6,<br/>CRE wallet only]
+    F[IPFS via Pinata<br/>image, manifest,<br/>thumbnail]
+    I8[ERC-8004<br/>Identity Registry<br/>canonical,<br/>read only]
+    MC[MoolamConsent<br/>how AI may use<br/>a picture, dated<br/>and append only]
+    MF[Chainlink<br/>simulation<br/>forwarder<br/>MockKeystone<br/>Forwarder]
+    C([Creator<br/>Privy embedded<br/>wallet + passkey])
+    G([Generator agent<br/>OpenAI model +<br/>Privy server<br/>wallet, ERC-8004<br/>identity])
+    X[Envio HyperIndex<br/>passports, trees,<br/>trust scores]
+    PC[P-256 precompile<br/>0x0100]
+    W[moolam-verifier<br/>Chainlink CRE<br/>workflow,<br/>public pictures]
+    WS[moolam-sealed-<br/>verifier<br/>Chainlink CRE<br/>workflow,<br/>private copies]
+    E([Editing app<br/>Privy session<br/>signer])
+    P[VerifierPolicy<br/>who may attest,<br/>24h delay]
+    V([Anyone verifying<br/>newsroom,<br/>platform, judge])
+    KF[Keystone<br/>Forwarder<br/>Chainlink network]
+    MR[MoolamReceiver<br/>network verdicts<br/>0x0d69…ff04]
 
-    C -- bindPasskey, register --> R
-    C -- setConsent --> MC
-    G -- register on creator's behalf --> R
-    E -- appendEdit --> R
-    R -- WebAuthn verify --> PC
-    R -- ownerOf agentId --> I8
-    R -- isReceiver --> P
-    MC -- ownerOf passport --> R
-    W -- writeReport --> MF
-    WS -- writeReport --> MF
-    MF -- onReport --> RC -- attest --> R
-    MF -- onReport --> RS -- attest --> R
+    %% The ~~~ links draw nothing. They only keep each box in the row it reads best in.
+    R ~~~ MC
+    PC ~~~ X
+    WS ~~~ MF
+    E ~~~ KF
+    W ~~~ KF
+    MC -- ownerOf --> R
     R -- events --> X
     MC -- events --> X
     X -- GraphQL --> S
     S -- consentOf --> MC
-    S -- reads --> F
-    W -- fetches image --> F
-    WS -- private copy, by a link S mints --> F
+    W -- network report --> KF
+    W -- test run --> MF
+    WS -- test run --> MF
+    KF -- onReport --> MR
+    MF -- onReport --> SR
+    C -- register --> R
+    G -- "register for creator" --> R
+    E -- appendEdit --> R
+    C -- setConsent --> MC
+    MR -- attest --> R
+    SR -- attest --> R
+    R -- "WebAuthn verify" --> PC
+    R -- "ownerOf agentId" --> I8
+    R -- isReceiver --> P
     V -- upload any copy --> S
+    S -- reads --> F
+    W -- fetches --> F
+    WS -- private copy --> F
+
+    classDef offchain stroke-dasharray:5 4
+    class W,WS,X,S,F offchain
 ```
 
 ```mermaid phone "Half one: who writes to the registry, and what the registry reads." height=470
@@ -81,16 +102,17 @@ flowchart TD
     R -- isReceiver --> P[Verifier<br/>Policy]
 ```
 
-```mermaid phone "Half two: the independent re-check and the readers, off chain." height=412
+```mermaid phone "Half two: the independent re-check and the readers, off chain." height=408
 flowchart TD
     R[Moolam<br/>Registry] -- events --> X[Envio<br/>index]
     X -- trigger --> W[CRE<br/>workflow]
     W -- fetches --> F[IPFS via<br/>Pinata]
-    W -- writeReport --> MF[Simulation<br/>forwarder]
-    MF -- onReport --> RC[Simulation<br/>Receiver, public]
-    MF -- onReport --> RS[Simulation<br/>Receiver, sealed]
-    RC -- attest --> R
-    RS -- attest --> R
+    W -- network report --> KF[Keystone<br/>forwarder]
+    W -- test run --> MF[Simulation<br/>forwarder]
+    KF -- onReport --> MR[Moolam<br/>Receiver,<br/>network]
+    MF -- onReport --> SR[Simulation<br/>Receivers,<br/>public, sealed]
+    MR -- attest --> R
+    SR -- attest --> R
     X -- GraphQL --> S[Verifier<br/>service]
     S -- consentOf --> MC[Moolam<br/>Consent]
     V[Anyone<br/>verifying] -- uploads --> S
@@ -103,13 +125,15 @@ manifest, the four IPFS pins, and the EIP-712 digest read back from the contract
 signatures over that one digest, the creator's passkey and the agent owner's wallet, and one
 transaction that checks both. The registration event is what wakes the Chainlink workflow, which
 fetches the image itself, recomputes the fingerprint and writes the result back through Chainlink's
-simulation forwarder to the public `SimulationReceiver`, which takes it only in a transaction
-Moolam's CRE wallet signed. The workflow is written so that on Chainlink's network a quorum of nodes must
-produce the identical verdict before a report is signed. Every re-check on chain today came from
-Chainlink's simulator with `--broadcast`, which is one machine and no consensus, and the passport
-page labels each one by the forwarder that delivered it.
+Keystone Forwarder to `MoolamReceiver`. On Chainlink's network a quorum of nodes must produce the
+identical verdict before a report is signed, and the first one did on 2026-10-02: ten nodes, distance 0,
+written 16 seconds after the passport was registered
+([transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882)).
+A run in Chainlink's simulator with `--broadcast` is one machine and no consensus. It goes through the
+simulation forwarder to a `SimulationReceiver`, which takes it only in a transaction Moolam's CRE wallet
+signed. The passport page labels each verdict by the forwarder that delivered it.
 
-```mermaid height=948
+```mermaid height=960
 sequenceDiagram
     participant A as Generator agent
     participant S as Verifier service
@@ -118,8 +142,8 @@ sequenceDiagram
     participant R as MoolamRegistry
     participant X as Envio
     participant W as CRE workflow
-    participant MF as Simulation forwarder
-    participant RC as SimulationReceiver (public)
+    participant KF as Keystone Forwarder
+    participant MR as MoolamReceiver
 
     A->>A: generate image (OpenAI image model)
     A->>S: fingerprint(bytes): sha256, pHash, blockhash
@@ -139,12 +163,12 @@ sequenceDiagram
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
     W->>W: recompute fingerprint (on the network, nodes must agree)
-    W->>MF: writeReport(passportId, matched, distance), sent by the CRE wallet
-    MF->>RC: onReport(metadata, report)
-    RC->>RC: check the CRE wallet signed the transaction
-    RC->>R: attest(...)
+    W->>KF: writeReport(passportId, matched, distance), signed by the network
+    KF->>MR: onReport(metadata, report)
+    MR->>MR: check the forwarder and the pinned workflow
+    MR->>R: attest(...)
     R-->>X: VerificationAttested indexed
-    Note over MF,RC: a sealed picture's private re-check takes the same path to the sealed SimulationReceiver
+    Note over KF,MR: a test run in the simulator goes through the simulation forwarder<br/>to a SimulationReceiver, which also checks the CRE wallet signed
 ```
 
 ```mermaid phone "Half one: everything before the transaction, off chain and free." height=565
@@ -157,16 +181,16 @@ flowchart TD
     A5 --> A7[Agent owner signs]
 ```
 
-```mermaid phone "Half two: one transaction, then the re-check that follows it." height=850
+```mermaid phone "Half two: one transaction, then the re-check that follows it." height=913
 flowchart TD
     B1[register, both signatures] --> B2[P-256 precompile checks]
     B2 --> B3[ERC-8004 owner checked]
     B3 --> B4[Passport minted]
     B4 --> B5[Envio indexes event]
     B5 --> B6[CRE workflow wakes]
-    B6 --> B7[Re-fetch and re-fingerprint]
-    B7 --> B8[Simulation forwarder delivers]
-    B8 --> B9[Public SimulationReceiver<br/>checks CRE wallet]
+    B6 --> B7[Re-fetch and<br/>re-fingerprint,<br/>nodes agree]
+    B7 --> B8[Keystone forwarder<br/>delivers]
+    B8 --> B9[MoolamReceiver<br/>checks workflow]
     B9 --> B10[Registry records attestation]
 ```
 
@@ -232,11 +256,14 @@ flowchart TD
 
 `MoolamRegistry` is built out of OpenZeppelin v5.6.1 and reads two contracts it does not own. It
 holds `IVerifierPolicy` as an immutable address set at deployment and Monad's ERC-8004 Identity
-Registry the same way. Both receiver contracts inherit Chainlink's `ReceiverTemplate` verbatim,
+Registry the same way. Every receiver contract inherits Chainlink's `ReceiverTemplate` verbatim,
 vendored under `src/vendor/chainlink/` so it can be diffed against Chainlink's published source. The
 `SimulationReceiver` pair in use since 2026-09-27 takes `onReport` only from Chainlink's simulation
-forwarder and only in a transaction Moolam's CRE wallet signed. The `MoolamReceiver` pair, retired
-on 2026-09-26, took it from the Keystone Forwarder. `MoolamConsent` depends on
+forwarder and only in a transaction Moolam's CRE wallet signed. `MoolamReceiver` takes it from the
+Keystone Forwarder and from the workflow it is pinned to, which is how Chainlink's network writes. It
+came off the policy on 2026-09-26 and went back on the list on 2026-10-02 at 07:08:18 UTC, in
+[transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f).
+Its sealed twin has been off the list since 2026-09-26. `MoolamConsent` depends on
 nothing but an `IERC721` view: it holds the registry address as an immutable set at deployment and
 asks it `ownerOf`, which is the whole integration. The arrow points one way, so the registry does
 not know the consent register exists.
@@ -258,9 +285,9 @@ flowchart TD
     SR[SimulationReceiver, public and sealed] --> RT[Chainlink ReceiverTemplate]
     SR -. calls attest .-> MR
     MF[MockKeystoneForwarder, Chainlink] -. onReport, CRE wallet only .-> SR
-    RC[MoolamReceiver, retired 2026-09-26] --> RT
-    RC -. calls attest .-> MR
-    FW[Keystone Forwarder, Chainlink] -. onReport .-> RC
+    NR[MoolamReceiver, public, listed again 2026-10-02] --> RT
+    NR -. calls attest .-> MR
+    FW[Keystone Forwarder, Chainlink] -. onReport, network .-> NR
     MC[MoolamConsent] -. reads ownerOf .-> MR
 ```
 
@@ -269,11 +296,14 @@ flowchart TD
     MR[MoolamRegistry] --> OZ[OpenZeppelin v5.6.1<br/>ERC721<br/>EIP712<br/>WebAuthn and P256<br/>ECDSA<br/>Ownable2Step<br/>Pausable<br/>ReentrancyGuard<br/>SafeERC20]
 ```
 
-```mermaid phone "Half two: what it reads, and who may write a re-check." height=465
+```mermaid phone "Half two: what it reads, and who may write a re-check." height=446
 flowchart TD
     MF[Simulation<br/>forwarder] -. onReport .-> SR[Simulation<br/>Receivers]
+    FW[Keystone<br/>forwarder] -. onReport .-> NR[Moolam<br/>Receiver]
     SR --> RT[Chainlink<br/>Receiver<br/>Template]
+    NR --> RT
     SR -. attest .-> MR[Moolam<br/>Registry]
+    NR -. attest .-> MR
     MR -. reads .-> IVP[IVerifier<br/>Policy]
     MR -. ownerOf .-> I8[ERC-8004<br/>registry]
     VP[Verifier<br/>Policy] -. implements .-> IVP
@@ -301,7 +331,11 @@ address taken out of it first.
 - `VerifierPolicy` is the only mutable piece: the list of receivers allowed to attest, the dispute
   resolver, the treasury and the bond. Every change is queued and executes 24 hours later,
   publicly, except removing a receiver, which is immediate so a compromised verifier can be cut
-  off.
+  off. Two changes ran through that queue on 2026-10-02: `MoolamReceiver` was listed again at 07:08:18
+  UTC, and the treasury was set to the burn address `0x000000000000000000000000000000000000dEaD` at
+  07:27 UTC
+  ([transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d)),
+  so a rejected challenge's bond is burned.
 - The ERC-8004 registry is Monad's canonical deployment. Moolam only reads it.
 
 The exact function signatures, events and errors are in the

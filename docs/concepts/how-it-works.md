@@ -115,15 +115,20 @@ the best passport, the bit distances and a confidence number.
 The Chainlink CRE workflow answers "does the registered fingerprint still describe the file the
 passport points at". A log trigger on `PassportRegistered` wakes it, it reads the passport back out
 of the registry rather than trusting the event, each node downloads the thumbnail and recomputes
-the 64-bit hash inside the sandbox. The verdict is signed into a report and delivered by
-Chainlink's simulation forwarder to a `SimulationReceiver`, which takes it only in a transaction
-Moolam's CRE wallet signed and then calls `attest` on the registry. That attestation is public and
-permanent.
+the 64-bit hash inside the sandbox. The verdict is signed into a report and delivered by a Chainlink
+forwarder to a receiver, which calls `attest` on the registry. That attestation is public and
+permanent. A report from Chainlink's network goes through the Keystone Forwarder to `MoolamReceiver`.
+A report from a run in Chainlink's simulator goes through Chainlink's simulation forwarder to a
+`SimulationReceiver`, which takes it only in a transaction Moolam's CRE wallet signed.
 
-The workflow is written so that on Chainlink's network a quorum of nodes must produce the identical
-verdict before a report is signed. Every re-check on chain today came from Chainlink's simulator
-with `--broadcast`, which is one machine and no consensus, and the passport page labels each one by
-the forwarder that delivered it.
+On Chainlink's network a quorum of nodes must produce the identical verdict before a report is
+signed. That has been live for the verdict step since 2026-10-02: the first network verdict was
+written at 07:23:42 UTC, ten nodes agreeing on distance 0, 16 seconds after the passport was
+registered
+([transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882)).
+Every verdict written before that came from Chainlink's simulator with `--broadcast`, which is one
+machine and no consensus, and the passport page labels each one by the forwarder that delivered it.
+The look-alike step joins the network workflow on push day, 2026-10-12.
 
 ## 6. Trusted
 
@@ -140,4 +145,5 @@ reading, so the verifier signs with its own wallet.
 
 Anyone who disagrees with a record can post a bond and call `flag`. The dispute resolver named by
 `VerifierPolicy` settles it. An upheld challenge marks the passport disputed forever and returns
-the bond; a rejected one sends the bond to the treasury.
+the bond; a rejected one sends the bond to the treasury, which is the burn address, so nobody
+receives it.

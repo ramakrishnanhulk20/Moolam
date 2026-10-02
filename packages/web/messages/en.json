@@ -1810,11 +1810,11 @@
     "uphold": "Uphold",
     "reject": "Reject",
     "upholdWhat": "Uphold marks the record disputed for good and credits the bond back to the challenger.",
-    "rejectWhat": "Reject leaves the record standing and credits the bond to the treasury.",
+    "rejectWhat": "Reject leaves the record standing and credits the bond to the treasury, the burn address, so nobody receives it.",
     "sending": "Sending",
     "watching": "Waiting for Monad to show it",
     "settledUpheld": "Upheld. The bond is credited back to the challenger.",
-    "settledRejected": "Rejected. The bond is credited to the treasury.",
+    "settledRejected": "Rejected. The bond is credited to the treasury, the burn address, so nobody receives it.",
     "failure": {
       "notResolver": "The registry refused this: the account that sent it is not the resolver the policy names.",
       "noOpenDispute": "There is no open dispute on that passport any more.",

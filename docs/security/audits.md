@@ -102,7 +102,7 @@ anything is signed, so no transaction reaches Monad at all, which is the point.
 `verifier-api-limits` is refused over HTTP by the verify service's own limits.
 
 The three receiver files were written again on 2026-09-28 by `npm run prove:receivers`, against
-the SimulationReceiver today's re-checks land through.
+the SimulationReceiver the simulator's re-checks land through.
 
 ## Verified source
 
@@ -113,7 +113,8 @@ read against the source in this repository:
 - [VerifierPolicy](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821)
 - [SimulationReceiver, public](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95), listed in the policy since 2026-09-27 14:18 UTC
 - [SimulationReceiver, sealed](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6), listed in the policy since 2026-09-27 14:18 UTC
-- [MoolamReceiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) (retired 2026-09-26), off the policy with its history kept
+- [MoolamReceiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), where Chainlink's network writes: off the policy on 2026-09-26, listed again on 2026-10-02 at 07:08:18 UTC in [transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f), its earlier history kept
+- [MoolamReceiver, sealed](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A), off the policy since 2026-09-26, its history kept
 - [MoolamConsent](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277)
 
 ## What this does not cover

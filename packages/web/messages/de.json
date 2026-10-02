@@ -1809,11 +1809,11 @@
     "uphold": "Stattgeben",
     "reject": "Abweisen",
     "upholdWhat": "Stattgeben markiert den Eintrag dauerhaft als bestritten und schreibt die Kaution der einspruchsführenden Person wieder gut.",
-    "rejectWhat": "Abweisen lässt den Eintrag bestehen und schreibt die Kaution der Treasury gut.",
+    "rejectWhat": "Abweisen lässt den Eintrag bestehen und schreibt die Kaution der Treasury gut. Das ist die Burn-Adresse, also erhält niemand die Kaution.",
     "sending": "Wird gesendet",
     "watching": "Wartet darauf, dass Monad es zeigt",
     "settledUpheld": "Stattgegeben. Die Kaution geht zurück an die einspruchsführende Person.",
-    "settledRejected": "Abgewiesen. Die Kaution geht an die Treasury.",
+    "settledRejected": "Abgewiesen. Die Kaution geht an die Treasury, die Burn-Adresse, also erhält sie niemand.",
     "failure": {
       "notResolver": "Das Register hat abgelehnt: Das sendende Konto ist nicht die Schlichterin, die die Policy benennt.",
       "noOpenDispute": "Zu diesem Pass ist kein Einspruch mehr offen.",

@@ -5,8 +5,9 @@ title: VerifierPolicy and MoolamReceiver
 # VerifierPolicy and MoolamReceiver
 
 The contracts around the registry: the one that says who may attest, and the receivers a Chainlink
-workflow writes through. Since 2026-09-27 those are two `SimulationReceiver` contracts, one per
-workflow. `MoolamReceiver`, below, is the contract they replaced, and its verdicts stay on chain.
+workflow writes through. The policy lists three today. `MoolamReceiver`, below, is the door for
+Chainlink's network, back on the list since 2026-10-02. Two `SimulationReceiver` contracts, one per
+workflow, take the test runs from Chainlink's simulator, and have since 2026-09-27.
 
 ## VerifierPolicy
 
@@ -33,7 +34,7 @@ the open. Removing a receiver is immediate.
 | --- | --- |
 | `isReceiver(address who)` | True when that address may call `attest` on the registry |
 | `resolver()` | The address allowed to settle disputes |
-| `treasury()` | Where a rejected challenger's bond goes |
+| `treasury()` | Where a rejected challenger's bond goes. Since 2026-10-02 it is the burn address `0x000000000000000000000000000000000000dEaD` |
 | `disputeBond()` | The exact bond a `flag` must carry, in wei |
 | `bootstrapped()` | False until the setup window is closed. Once true it can never go back |
 | `getPendingChange(bytes32 id)` | The queued change. A zero `executeAfter` means nothing is queued under that id |
@@ -92,6 +93,15 @@ refuse a real payout. The registry's `withdrawTo` is the actual escape hatch.
 | `UnknownChange` | `execute` or `cancel` on an id with nothing queued |
 | `ChangeNotReady` | `execute` before `executeAfter` |
 
+Two changes that ran on 2026-10-02 came through this queue. `MoolamReceiver` was listed again at
+07:08:18 UTC, block 109,830,535, in
+[transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f).
+The treasury was set to the burn address, change id
+`0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, at 07:27 UTC, block
+109,834,440, in
+[transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d).
+Rejected bonds are burned.
+
 Each `queue*` call emits `ChangeQueued`. `execute` emits `ChangeExecuted` plus the event for the
 specific change (`ReceiverAdded`, `ResolverSet`, `TreasurySet` or `DisputeBondSet`). `cancel` emits
 `ChangeCancelled`.
@@ -100,16 +110,24 @@ Ownership uses `Ownable2Step`.
 
 ## MoolamReceiver
 
-`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` on Monad mainnet (retired 2026-09-26). ABI in
+`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` on Monad mainnet, listed in the policy. ABI in
 `packages/contracts/abi/MoolamReceiver.json`.
 
-The door a Chainlink CRE workflow used to write a verification result into the registry until
-2026-09-26, when it and its sealed twin `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` came off the
-policy. Every attestation they wrote stays on chain under their addresses. It inherits Chainlink's
-`ReceiverTemplate` unchanged, so the forwarder check and the workflow identity checks are
-Chainlink's, not Moolam's.
+The door Chainlink's network writes its verdicts through. It listens to Chainlink's production
+Keystone Forwarder, `0x76c9cf548b4179F8901cda1f8623568b58215E62`, and takes a report only from the
+workflow author and name it is pinned to. It inherits Chainlink's `ReceiverTemplate` unchanged, so the
+forwarder check and the workflow identity checks are Chainlink's, not Moolam's.
 
-Since 2026-09-27 14:18 UTC the policy lists two `SimulationReceiver` contracts instead:
+It was the first receiver, deployed with the registry. It came off the policy on 2026-09-26, when
+simulated reports got receivers of their own, and went back on the list on 2026-10-02 at 07:08:18 UTC
+(block 109,830,535, transaction `0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f`).
+The first verdict that came through it from Chainlink's network is block 109,833,597, transaction
+`0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882`. Every attestation it wrote
+before 2026-09-26 stays on chain under its address. Its sealed twin
+`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` stays off the list.
+
+Since 2026-09-27 14:18 UTC the policy also lists two `SimulationReceiver` contracts, for runs in
+Chainlink's simulator:
 `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` for `moolam-verifier`, listed in transaction
 `0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb`, and
 `0x52b8fE549B432920eeB061c26cAc5c2D527657f6` for `moolam-sealed-verifier`, listed in transaction

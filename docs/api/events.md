@@ -68,8 +68,10 @@ event VerificationAttested(
 ```
 
 Fires when a listed receiver rechecks a passport and records the result, which in practice means a
-Chainlink CRE report landed through one of the two `SimulationReceiver` contracts the policy has
-listed since 2026-09-27. Rows from before 2026-09-26 name the retired `MoolamReceiver` pair.
+Chainlink CRE report landed through one of three receivers: `MoolamReceiver`, the door for Chainlink's
+network, listed again since 2026-10-02, or one of the two `SimulationReceiver` contracts the policy has
+listed since 2026-09-27 for runs in Chainlink's simulator. Rows from before 2026-09-26 name
+`MoolamReceiver` or its sealed twin.
 
 | Field | Meaning |
 | --- | --- |

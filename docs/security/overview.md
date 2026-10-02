@@ -21,7 +21,10 @@ are all `nonReentrant`. `_takeCredit` zeroes the caller's balance and decrements
 **Pull payments.** `resolve` records a credit and never pushes native token, so a resolver cannot be
 blocked by a challenger or treasury that refuses a transfer. `withdraw` and `withdrawTo` keep
 working while the registry is paused, so a pause can never trap someone's money. `withdrawTo` only
-ever spends the caller's own credit.
+ever spends the caller's own credit. The policy's treasury has been the burn address
+`0x000000000000000000000000000000000000dEaD` since 2026-10-02
+([transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d)),
+so a rejected challenge's bond is burned and nobody receives it.
 
 **`_mint`, not `_safeMint`.** There is no `ERC721Received` callback, so minting hands control to
 nobody and there is no reentrancy surface at the end of `register` or `appendEdit`.
@@ -39,8 +42,9 @@ unclaimed credit can never be swept.
 | An old bind assertion reused | `bindPasskey` consumes a nonce per wallet |
 | A stale signature | `deadline` is inside the signed struct and is checked against `block.timestamp` |
 
-**Report replay.** Both receiver contracts, the `SimulationReceiver` pair in use since 2026-09-27 and
-the `MoolamReceiver` pair retired on 2026-09-26, refuse a report built for another chain (`WrongChain`) and any
+**Report replay.** Every receiver contract, the `SimulationReceiver` pair in use since 2026-09-27 and
+the `MoolamReceiver` pair (the public one listed again since 2026-10-02, the sealed one off the list
+since 2026-09-26), refuse a report built for another chain (`WrongChain`) and any
 report whose `executedAt` is not newer than the last one recorded for that passport
 (`StaleReport`). Both values travel inside the signed payload, because Chainlink's own guidance is
 that a report whose first transmission reverted can be sent again.

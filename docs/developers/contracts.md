@@ -45,6 +45,12 @@ dispute resolver, the treasury and the bond size. Adding trust waits 24 hours in
 watching can react. Removing a receiver is immediate, because a compromised verifier has to stop
 writing in the same block someone notices.
 
+Two changes went through that wait on 2026-10-02: `MoolamReceiver` was listed again at 07:08:18 UTC,
+and the treasury was set to the burn address `0x000000000000000000000000000000000000dEaD` at 07:27
+UTC
+([transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
+block 109,834,440). A rejected challenge's bond is burned.
+
 A candidate treasury with code is probed with an empty zero value call before it can be queued,
 which catches the common mistake of pointing the treasury at a contract with no way to take native
 token. That probe is a heuristic and nothing more. The registry's `withdrawTo` is the actual escape
@@ -52,17 +58,22 @@ hatch.
 
 ## MoolamReceiver and SimulationReceiver
 
-Since 2026-09-27 the policy lists two `SimulationReceiver` contracts, public
+The policy lists three receivers today. `MoolamReceiver`
+(`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`) is the door for Chainlink's network. It came off the
+policy on 2026-09-26 and went back on the list on 2026-10-02 at 07:08:18 UTC, in
+[transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f).
+Since 2026-09-27 the policy also lists two `SimulationReceiver` contracts, public
 `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` and sealed `0x52b8fE549B432920eeB061c26cAc5c2D527657f6`,
-and every new re-check lands through one of them. The two `MoolamReceiver` contracts before them
-came off the policy on 2026-09-26, and every verdict they wrote stays on chain.
+and every re-check from Chainlink's simulator lands through one of them. The sealed `MoolamReceiver`,
+`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`, stays off the list, and every verdict either
+`MoolamReceiver` wrote before 2026-09-26 stays on chain.
 
 Both kinds inherit Chainlink's own `ReceiverTemplate`, vendored word for word under
 `src/vendor/chainlink/` so it can be diffed against Chainlink's published source. For
-`MoolamReceiver`, two things had to line up before it wrote anything: the call came from the
-Chainlink KeystoneForwarder, and the report metadata carried the workflow author and workflow name
-it was pinned to. The deploy script pinned both in the same batch as the deploy, and
-`script/ConfigureReceiver.s.sol` could repin or unpin it later. A `SimulationReceiver` listens to
+`MoolamReceiver`, two things have to line up before it writes anything: the call comes from the
+Chainlink KeystoneForwarder, and the report metadata carries the workflow author and workflow name
+it is pinned to. The deploy script pinned both in the same batch as the deploy, and
+`script/ConfigureReceiver.s.sol` can repin or unpin it later. A `SimulationReceiver` listens to
 Chainlink's simulation forwarder instead, pins what the simulator stamps, and adds one lock the
 template does not have: the transaction must be signed by Moolam's CRE wallet, fixed at deployment
 with no setter, or it reverts `WrongSendingWallet`.

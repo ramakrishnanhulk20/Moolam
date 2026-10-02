@@ -1830,11 +1830,11 @@
     "uphold": "支持",
     "reject": "驳回",
     "upholdWhat": "支持会把记录永久标记为有争议，并把保证金记回质疑者名下。",
-    "rejectWhat": "驳回会让记录维持原样，并把保证金记入金库。",
+    "rejectWhat": "驳回会让记录维持原样，并把保证金记入金库，也就是销毁地址，所以没有人会收到。",
     "sending": "发送中",
     "watching": "等待 Monad 显示它",
     "settledUpheld": "已支持。保证金记回质疑者名下。",
-    "settledRejected": "已驳回。保证金记入金库。",
+    "settledRejected": "已驳回。保证金记入金库，也就是销毁地址，所以没有人会收到。",
     "failure": {
       "notResolver": "登记处拒绝了：发送交易的账户不是政策指定的仲裁者。",
       "noOpenDispute": "那本护照上已经没有未决的争议了。",

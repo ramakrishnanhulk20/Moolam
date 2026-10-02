@@ -112,8 +112,8 @@ USDC and no gas, because the facilitator pays the settlement itself.
 ## How would Moolam make money
 
 Nothing in the app charges today. Registering, generating and editing are sponsored, inside daily
-limits the whole app shares, and every re-check today is run by Moolam itself. That is the cost of
-proving the product works, not the business.
+limits the whole app shares, and every re-check Moolam's own runner starts is run by Moolam itself.
+That is the cost of proving the product works, not the business.
 
 The plan for after: a paid Creator Pro tier, a per-call price for machines over the x402 route
 already built into the verify service, agents paying for their own passports once sponsorship ends,
@@ -145,10 +145,12 @@ Because nobody has re-checked it yet, and the page will not pretend otherwise. A
 independent verifier fetching the pinned thumbnail, hashing it again and writing the answer on chain,
 and the Chainlink CRE workflow is what does it here. It needs the thumbnail reachable through an IPFS
 gateway before anything is written, so a fresh passport reads "Not re-checked yet", which is the
-honest word for registered and nothing more. The workflow is written so that on Chainlink's network
-a quorum of nodes must produce the identical verdict before a report is signed; every re-check on
-chain today came from Chainlink's simulator with `--broadcast`, which is one machine and no
-consensus, and the passport page labels each one by the forwarder that delivered it. On
+honest word for registered and nothing more. On Chainlink's network a quorum of nodes must produce
+the identical verdict before a report is signed, and since 2026-10-02 the workflow's verdict step runs
+there. The first network verdict is
+[transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882).
+Every re-check before it came from Chainlink's simulator with `--broadcast`, which is one machine and
+no consensus, and the passport page labels each one by the forwarder that delivered it. On
 Explore, the plates with a lit R mark are the ones that have one, and the "Re-checked" chip shows
 only those.
 

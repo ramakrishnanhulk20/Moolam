@@ -66,7 +66,8 @@ both together, the way the Explore filter does.
 
 ## Look-alikes and Chainlink's network
 
-These fields arrive with the index's next redeploy; the live endpoint does not serve them yet.
+These fields arrive when the hosted index is rebuilt on push day, 2026-10-12; the live endpoint does
+not serve them yet.
 
 On `Passport`:
 
@@ -77,8 +78,8 @@ On `Passport`:
 
 On `Attestation`, `network` (`Boolean`) is true only for a result written by the verdict receiver
 `0x0d69055c43eacb3b1ca687ca2263a049bc7eff04` in a transaction sent to Chainlink's forwarder
-`0x76c9cf548b4179f8901cda1f8623568b58215e62`, at or after the network went live. Simulator results
-stay false.
+`0x76c9cf548b4179f8901cda1f8623568b58215e62`, at or after the network went live, 1790924898
+(2026-10-02 07:08:18 UTC). Simulator results stay false.
 
 `Lookalike`, one row per passport, the newest check only:
 
@@ -262,9 +263,10 @@ Run against the live endpoint when this was the only re-check on chain, so it is
 ```
 
 That row is a real Chainlink CRE attestation, the first one, written on 2026-09-08. The `id` is the
-transaction hash plus the log index, `receiver` is `MoolamReceiver` (retired 2026-09-26; newer rows
-name a `SimulationReceiver`), and `distance` 0 means the fingerprint the Chainlink nodes
-recomputed from the thumbnail matched the one the creator registered exactly. The generator's trust
+transaction hash plus the log index, `receiver` is `MoolamReceiver` (rows from simulator runs since
+2026-09-27 name a `SimulationReceiver`; a verdict from Chainlink's network names `MoolamReceiver`
+again), and `distance` 0 means the fingerprint the Chainlink nodes recomputed from the thumbnail
+matched the one the creator registered exactly. The generator's trust
 score of 67 is `round(100 * (1 + 1) / (1 + 0 + 0 + 2))`, one matched recheck against the smoothing
 prior.
 

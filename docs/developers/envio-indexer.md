@@ -36,7 +36,8 @@ The consent register was deployed ten days after the other two, so it carries a 
 its own and the sync skips 2.7 million blocks it could find nothing in.
 
 The two look-alike contracts start at the blocks they were deployed in on 2026-10-01. The live
-endpoint gains them, and every field below that comes from them, at its next redeploy.
+endpoint gains them, and every field below that comes from them, when the hosted index is rebuilt on
+push day, 2026-10-12.
 
 Every passport row records the transaction that created it, through `field_selection`, so the app
 can link straight to the explorer without a second lookup. The same selection brings in each
@@ -87,9 +88,11 @@ recheck record and its trust score.
 log index. `network` is true only when the result was written by the verdict receiver
 `0x0d69055c43eacb3b1ca687ca2263a049bc7eff04`, in a transaction sent to Chainlink's forwarder
 `0x76c9cf548b4179f8901cda1f8623568b58215e62`, at or after the moment Chainlink's network deployment
-went live. That moment is `NETWORK_ACTIVATION_TIME` in `src/network.ts`, in unix seconds; while it
-is zero, nothing is the network's. Simulator results, and anything sent to a receiver by whoever
-holds its keys, stay false. The rule reads the transaction, never a receiver's settings, so a
+went live. That moment is `NETWORK_ACTIVATION_TIME` in `src/network.ts`, in unix seconds: 1790924898,
+which is block 109,830,535, 2026-10-02 07:08:18 UTC, when `MoolamReceiver` went back on the policy's
+list. While it is zero, nothing is the network's. The hosted index does not carry the flag until its
+rebuild on 2026-10-12, so until then it cannot tell a network verdict from a test run. Simulator
+results, and anything sent to a receiver by whoever holds its keys, stay false. The rule reads the transaction, never a receiver's settings, so a
 receiver re-pointed at another sender cannot pass it. It does not cover the network itself writing a
 wrong result.
 

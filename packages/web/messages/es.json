@@ -1829,11 +1829,11 @@
     "uphold": "Dar la razón",
     "reject": "Rechazar",
     "upholdWhat": "Dar la razón marca el registro como disputado para siempre y abona la fianza de vuelta a quien impugnó.",
-    "rejectWhat": "Rechazar deja el registro en pie y abona la fianza a la tesorería.",
+    "rejectWhat": "Rechazar deja el registro en pie y abona la fianza a la tesorería, la dirección de quema, así que nadie la recibe.",
     "sending": "Enviando",
     "watching": "Esperando a que Monad lo muestre",
     "settledUpheld": "Aceptada. La fianza se abona de vuelta a quien impugnó.",
-    "settledRejected": "Rechazada. La fianza se abona a la tesorería.",
+    "settledRejected": "Rechazada. La fianza se abona a la tesorería, la dirección de quema, así que nadie la recibe.",
     "failure": {
       "notResolver": "El registro lo rechazó: la cuenta que lo envió no es el árbitro que nombra la política.",
       "noOpenDispute": "Ese pasaporte ya no tiene ninguna disputa abierta.",

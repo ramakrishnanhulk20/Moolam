@@ -59,12 +59,11 @@ challenge costs an honest challenger nothing but gas. The registry keeps a runni
 `rescueNative` computes what the owner may sweep as `balance - totalBonds - totalOwed`, so an open
 bond can never be swept out from under a live dispute.
 
-A rejected challenge's bond is credited to the policy's treasury. Today that is the deployer
-0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c. A change of the treasury to the burn address
-0x000000000000000000000000000000000000dEaD is queued (change id
-`0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
-07:22:03 UTC). Once it runs, a rejected bond is credited to an address nobody holds a key for, so
-nobody can ever withdraw it and Moolam gains nothing from a rejection.
+A rejected challenge's bond is credited to the policy's treasury, and since 2026-10-02 the treasury is
+the burn address 0x000000000000000000000000000000000000dEaD
+([transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
+block 109,834,440, 07:27 UTC). A rejected bond is burned: it is credited to an address nobody holds a
+key for, so nobody can ever withdraw it and Moolam gains nothing from a rejection.
 
 Flagging costs 172,939 gas at the median, including the bond going into escrow.
 
@@ -88,8 +87,8 @@ rules, and publishes every decision with its reasons. Moolam is one company, not
 decider is one address named on Monad. Changing it takes a public 24 hour wait." Below that it says
 where a rejected bond goes, read from the policy as the panel opens: while the treasury is any other
 address, "A rejected challenge's bond is credited to the treasury the policy names", with the
-address; only once the treasury is the burn address, "A rejected challenge's bond is burned, so
-Moolam gains nothing either way."
+address; once the treasury is the burn address, as it is today, "A rejected challenge's bond is
+burned, so Moolam gains nothing either way."
 
 Two outcomes:
 
@@ -98,8 +97,8 @@ Two outcomes:
   An edit registered from that picture is shown as disputed too, everywhere the app lists it, because
   the registry marks only the passport the challenge named and a copy of a picture proven fake is
   still a copy of a picture proven fake.
-- **Rejected.** The record stands, and the bond is credited to `VerifierPolicy.treasury()`. Where
-  that is today, and the queued change to a burn address, is under [The bond](#the-bond).
+- **Rejected.** The record stands, and the bond is credited to `VerifierPolicy.treasury()`, which is
+  the burn address, so nobody receives it. The treasury change is under [The bond](#the-bond).
 
 ## The holder's answer
 
@@ -267,7 +266,9 @@ signed in is told plainly that the registry would refuse anything sent from ther
 Each open dispute is one row: the picture and the title, the passport, the claim, the challenger, the
 bond and when it was opened, then two buttons with what each one does written next to it. "Uphold
 marks the record disputed for good and credits the bond back to the challenger." "Reject leaves the
-record standing and credits the bond to the treasury." With nothing open the page says "No challenge
+record standing and credits the bond to the treasury, the burn address, so nobody receives it." Once
+a decision lands, the row says "Rejected. The bond is credited to the treasury, the burn address, so
+nobody receives it." With nothing open the page says "No challenge
 is open. Nothing here is waiting on you."
 
 The list comes from two places, each doing the thing only it can. The index answers which disputes

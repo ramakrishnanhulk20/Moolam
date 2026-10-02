@@ -45,22 +45,45 @@ verify service and the Chainlink workflow keep byte for byte the same.
 
 ## Why only the network's verdicts count
 
-Until now every verdict on Monad came from Chainlink's simulator: one machine, with no group of
-nodes having to agree. Those verdicts stay on the record and are still shown, each labelled "Test
+Every verdict on Monad before 2026-10-02 came from Chainlink's simulator: one machine, with no group
+of nodes having to agree. Those verdicts stay on the record and are still shown, each labelled "Test
 run" with one line: "A test run on one machine, in Chainlink's simulator. It stays in the record and
 never turns on the mark."
 
 A verdict counts as the network's only when three things hold: it was written by Moolam's network
 receiver, `MoolamReceiver` (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04); the transaction went to
 Chainlink's forwarder on Monad, 0x76c9cf548b4179F8901cda1f8623568b58215E62; and its block is at or
-after the time the network deployment went live. The rule looks at the transaction rather than at
-the receiver's settings, because whoever owns a receiver could point it somewhere else, and a
-transaction that never went through the forwarder never came from Chainlink. The same rule decides
-look-alike records. It is held by `isNetworkWrite` in `packages/indexer/src/network.ts`.
+after 1790924898, which is 2026-10-02 07:08:18 UTC, the moment the network deployment went live. The
+rule looks at the transaction rather than at the receiver's settings, because whoever owns a receiver
+could point it somewhere else, and a transaction that never went through the forwarder never came
+from Chainlink. The same rule decides look-alike records. It is held by `isNetworkWrite` in
+`packages/indexer/src/network.ts`.
 
-As this is written, that start time is not set in the index, so nothing counts as the network's yet
-and a public passport reads "Waiting for Chainlink". The policy's listing of `MoolamReceiver` is
-queued and can run after 2026-10-02 05:35:29 UTC.
+### What is live, and what comes on push day
+
+Live on Monad mainnet since 2026-10-02:
+
+- `MoolamReceiver` is on the policy's list again, in
+  [transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f),
+  block 109,830,535, at 07:08:18 UTC.
+- Chainlink's network runs `moolam-verifier`, workflow ID
+  `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner
+  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. This deployment holds the
+  verdict step only.
+- The first network verdict was written at 07:23:42 UTC for passport
+  `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782`, registered at 07:23:26 UTC in
+  [transaction 0x162c97a7…feaa](https://monadvision.com/tx/0x162c97a70e53441e16633250e1cf96d695b01939d10625bf29248a9c01e3feaa).
+  Ten Chainlink nodes recomputed its fingerprint, got distance 0 and matched. The verdict is
+  [transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882),
+  block 109,833,597, sent to the Keystone Forwarder: 16 seconds from registration to the network's
+  verdict.
+
+Still to come on push day, 2026-10-12:
+
+- The look-alike step in the network workflow.
+- The verify service's look-alike routes and its Google web check on the hosted service.
+- The hosted index rebuild that lets the live site's marks and counts see the network flag. Until
+  that rebuild the live site's index cannot tell a network verdict from a test run.
 
 ## Look-alikes
 
@@ -68,6 +91,10 @@ queued and can run after 2026-10-02 05:35:29 UTC.
 
 Anyone can save a copy of someone else's picture and register it as a new original, because a new
 file is a new hash. The look-alike check is how Moolam catches that after the fact.
+
+The look-alike step is built and tested but is not in the network deployment yet. It arrives on push
+day, 2026-10-12, with the verify service's look-alike routes. What follows is how it works once it is
+in.
 
 When Chainlink's workflow has written its verdict on a new original passport, and its own
 measurement of the picture matched, it asks Moolam's verify service for up to three earlier

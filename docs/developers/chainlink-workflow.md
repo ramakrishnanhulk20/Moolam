@@ -8,8 +8,9 @@ Chainlink's network is the second opinion on every Moolam passport. When a creat
 image on Monad, this workflow wakes up, downloads the picture the passport points at, recomputes
 the perceptual fingerprint itself, and writes the result back on chain as an attestation. Nothing
 in that chain of steps trusts Moolam's own servers: the nodes fetch the image and do the maths
-themselves. The workflow is written so that on Chainlink's network a quorum of nodes must produce
-the identical verdict before a report is signed. Every re-check on chain today came from Chainlink's
+themselves. On Chainlink's network a quorum of nodes must produce the identical verdict before a
+report is signed, and since 2026-10-02 the workflow's verdict step runs there: the first network
+verdict is in "On Chainlink's network" below. Every re-check before it came from Chainlink's
 simulator with `--broadcast`, which is one machine and no consensus, and the passport page labels
 each one by the forwarder that delivered it. "What is on chain today" below has the transactions.
 
@@ -75,10 +76,13 @@ node is fine as long as every node lands on the same answer.
 
 ### 6. Write
 
-The verdict is ABI encoded, signed into a report, and delivered through a Chainlink forwarder to the
-public `SimulationReceiver`, `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`, which calls `attest` on
-the registry. Today that forwarder is the simulator's `MockKeystoneForwarder`; "The receiver, and
-what a simulation needs" below says why that needs a receiver of its own.
+The verdict is ABI encoded, signed into a report, and delivered through a Chainlink forwarder to a
+receiver, which calls `attest` on the registry. On Chainlink's network the forwarder is the Keystone
+Forwarder, `0x76c9cf548b4179F8901cda1f8623568b58215E62`, and the receiver is `MoolamReceiver`,
+`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`. In a run in Chainlink's simulator the forwarder is the
+simulator's `MockKeystoneForwarder` and the receiver is the public `SimulationReceiver`,
+`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`; "The receiver, and what a simulation needs" below says
+why that needs a receiver of its own.
 
 ```
 (uint256 chainId, uint64 executedAt, bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed)
@@ -184,11 +188,13 @@ again goes through the policy's public 24 hour queue.
 
 **Where it stands.** Both were deployed on 2026-09-26 in blocks 108,102,667 and 108,102,676,
 verified through Sourcify, and put in the policy's queue. The listing ran on 2026-09-27 at 14:18 UTC,
-after the policy's public 24 hour wait, in the two transactions in the table above. The two older
-receivers came off the policy on 2026-09-26, in the deploy run, and every verdict they wrote stays
-on chain under their addresses. Both workflow configs name the new receivers. A receiver for a real
-Chainlink network deployment would be a separate contract, listed through the same queue: this one
-has no switch that turns the sending-wallet rule off. The deploy record is
+after the policy's public 24 hour wait, in the two transactions in the table above. The two
+`MoolamReceiver` contracts came off the policy on 2026-09-26, in the deploy run, and every verdict
+they wrote stays on chain under their addresses. The public one was listed again on 2026-10-02, as
+the receiver for Chainlink's network (see "On Chainlink's network" below). Both workflow configs name
+the new receivers for simulator runs. A receiver for Chainlink's network is a separate contract, which
+is why `MoolamReceiver` is the one back on the list: a `SimulationReceiver` has no switch that turns
+the sending-wallet rule off. The deploy record is
 [simulation-receivers.txt](../../proofs/simulation-receivers.txt), and the addresses and
 transactions are in `packages/contracts/deployments/simulation-receivers-monad-mainnet.json`.
 
@@ -205,15 +211,53 @@ transaction `0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0`
 registry afterwards showed `attestationCount` of 1 for that passport, with the receiver, `matched`
 true and distance 0.
 
+## On Chainlink's network
+
+Since 2026-10-02 `moolam-verifier` also runs on Chainlink's network, where a quorum of nodes has to
+agree before a report is signed. The deployment holds the verdict step only: the fetch, the
+fingerprint, the consensus and the write. The look-alike step is not in it yet.
+
+| What | Value |
+| --- | --- |
+| Workflow | `moolam-verifier`, deployed to Chainlink's network, verdict step only |
+| Workflow ID | `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890` |
+| Owner | `0xf072a8c620bfc818875736e3f2d3a2a339c06584` |
+| Active from | about 07:09 UTC on 2026-10-02 |
+| Writes through | the Keystone Forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62`, to `MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` |
+| Listed in the policy | 2026-10-02 at 07:08:18 UTC, block 109,830,535, transaction [`0x446c3051…ff9f`](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f) |
+| Counted as the network's from | 1790924898, which is 07:08:18 UTC. The index and the workflow both count network writes from that second |
+
+The first verdict from the network:
+
+| What | Value |
+| --- | --- |
+| Passport | `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782` |
+| Registered | 07:23:26 UTC, transaction [`0x162c97a7…feaa`](https://monadvision.com/tx/0x162c97a70e53441e16633250e1cf96d695b01939d10625bf29248a9c01e3feaa) |
+| Checked by | ten Chainlink nodes, each recomputing the fingerprint |
+| Result | distance 0, matched |
+| Verdict | transaction [`0x760dcb5e…2882`](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882), block 109,833,597, 07:23:42 UTC |
+| Delivered by | the Keystone Forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` |
+| Time | 16 seconds from registration to the network's verdict |
+
+To check it yourself, open the verdict transaction on MonadVision: its `to` is the Keystone
+Forwarder, not the simulator's mock, and the passport page says the same under the verdict.
+
+Still to come on push day, 2026-10-12:
+
+- The look-alike step in the network workflow.
+- The verify service's look-alike routes and its Google web check on the hosted service.
+- The hosted index rebuild that lets the live site's marks and counts see the network flag. Until
+  that rebuild the live site's index cannot tell network verdicts from test runs.
+
 ## What is on chain today
 
 The seventeen re-checks on the seventeen real pictures, counted on 2026-09-25 at index block 107,960,831 (seven on 2026-09-14, seven on 2026-09-17, one on 2026-09-23, and two on 2026-09-25, one of them by the private workflow through its own receiver, described below), were all written this way: `cre workflow simulate
 --broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and
-every check the receiver makes. They are not a run on the live Chainlink network: the workflow ran on one
-machine and no quorum of nodes agreed on the answer. Deploying to the network needs a deployment access this
-project does not have.
+every check the receiver makes. They are not runs on Chainlink's network: the workflow ran on one
+machine and no quorum of nodes agreed on the answer. The first network run came later, on 2026-10-02,
+and is described in "On Chainlink's network" above.
 
 Since 2026-09-27 the re-checks after those come from the re-check runner, still `cre workflow simulate
 --broadcast`, through the two `SimulationReceiver` contracts and with no owner step at all. Its first two,
@@ -225,7 +269,7 @@ in block 108,505,240, both matched.
 
 The passport page does not take this on trust either. It reads the `to` address of each report transaction
 and prints which forwarder delivered it, so a simulation run says so under the verdict and a network run
-will say so the day the first one lands. The transactions are listed in `proofs/rechecks.txt`.
+says so too, as the first one does. The transactions are listed in `proofs/rechecks.txt`.
 
 ## What this does not prove
 
@@ -304,7 +348,7 @@ The receiver `moolam-sealed-verifier` sends to now:
 
 Before it, private verdicts went through the older sealed `MoolamReceiver`
 [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
-(retired 2026-09-26): deployed in block 107,265,126, pinned to Chainlink's production forwarder, the
+(off the policy since 2026-09-26): deployed in block 107,265,126, pinned to Chainlink's production forwarder, the
 CRE wallet as author and the same workflow name, listed on 2026-09-25 in transaction
 [`0x79d34b81...`](https://monadvision.com/tx/0x79d34b81ce94d4a21b10277a70d656b4588360e232839e0e25a16edf91687380),
 and taken off the policy on 2026-09-26. The first two private verdicts carry its address.
@@ -395,7 +439,7 @@ published:
 | Verdict | distance 1, matched |
 | Report | [`0xdc1834ea...`](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef), block 107,817,793, status 1 |
 | Delivered by | the simulation forwarder: one machine, no network consensus, not a real enclave |
-| Written by | the older sealed `MoolamReceiver` (retired 2026-09-26), which the attestation names |
+| Written by | the older sealed `MoolamReceiver` (off the policy since 2026-09-26), which the attestation names |
 
 Afterwards the receiver read back on the production forwarder, pinned to the workflow author and
 `moolam-sealed-verifier`. The records are in [sealed-passports.txt](../../proofs/sealed-passports.txt)
@@ -413,7 +457,8 @@ recomputed to `0x85c0d272787e6e77`, the stored fingerprint exactly, distance 0, 
 - **No enclave, no consensus.** The simulator is one machine and not a real TEE. A run proves the
   code's shape, that the confidential capability accepts it, and every check the receiver makes. It
   does not prove hardware isolation.
-- **Deploying it needs access Moolam does not have.** Nothing here has run on Chainlink's network.
+- **It has not run on Chainlink's network.** Only the public `moolam-verifier` has, since 2026-10-02,
+  and only its verdict step. Deploying a confidential workflow needs access Moolam does not have.
 - **The logic is public, only the data is private.** The workflow's code is in this repository. What
   an enclave would keep from its operator is the token, the link, the bytes and the values made from
   them.

@@ -36,7 +36,8 @@ Chain 143, every one verified on MonadVision through Sourcify.
 | VerifierPolicy | [0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 |
 | SimulationReceiver, public re-checks, listed in the policy since 2026-09-27 14:18 UTC ([listing](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb)) | [0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | 108102667 |
 | SimulationReceiver, private re-checks, listed in the policy since 2026-09-27 14:18 UTC ([listing](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d)) | [0x52b8fE549B432920eeB061c26cAc5c2D527657f6](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | 108102676 |
-| MoolamReceiver (retired 2026-09-26), removed from the policy with its sealed twin, every re-check it wrote kept | [0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 |
+| MoolamReceiver, the door for Chainlink's network verdicts, off the policy 2026-09-26 and listed again on 2026-10-02 at 07:08:18 UTC ([listing](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f), block 109830535), every re-check it wrote kept | [0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 |
+| MoolamReceiver, private re-checks, off the policy since 2026-09-26, every re-check it wrote kept | [0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) | 107265126 |
 | MoolamConsent | [0x1151E69a82947920546e779c4C8c785b2a3C1277](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 |
 
 Two contracts Moolam reads but did not deploy: Monad's canonical
@@ -56,11 +57,13 @@ is how an editing session writes ten edits without ten passkey prompts.
 
 **Chainlink CRE** is the second opinion. When a passport is registered, a log-triggered workflow
 downloads the image the passport points at, decodes the JPEG and recomputes the perceptual hash
-inside the sandbox, and the result is written back on chain as an attestation. The workflow is
-written so that on Chainlink's network a quorum of nodes must produce the identical verdict before
-a report is signed. Every re-check on chain today came from Chainlink's simulator with
-`--broadcast`, which is one machine and no consensus, and the passport page labels each one by the
-forwarder that delivered it.
+inside the sandbox, and the result is written back on chain as an attestation. On Chainlink's
+network a quorum of nodes must produce the identical verdict before a report is signed, and since
+2026-10-02 that is live for the verdict step: the first network verdict, written 16 seconds after the
+passport was registered, was agreed by ten nodes in
+[transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882).
+Every re-check before that came from Chainlink's simulator with `--broadcast`, which is one machine
+and no consensus, and the passport page labels each one by the forwarder that delivered it.
 
 **Envio** turns the events into data. HyperIndex V3 builds the passports, the edit trees, the
 verification tallies, the disputes and the per-generator trust scores, and serves them over

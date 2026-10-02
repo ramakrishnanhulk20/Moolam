@@ -202,7 +202,7 @@ beside it says the picture is public since, and the passport page reads the two 
 5i). On 2026-09-23 the Chainlink workflow re-checked it through that record: distance 2, matched,
 report transaction
 [0x48aa7543...](https://monadvision.com/tx/0x48aa75431f6f564ad8dd53806d7723ec397adca25ddb21f5e8e3eb0888f96ce0),
-a simulation run on one machine like every re-check on chain today. The addresses are in
+a simulation run on one machine like every re-check on chain then. The addresses are in
 [sealed-passports.txt](../../proofs/sealed-passports.txt) and the row in
 [rechecks.txt](../../proofs/rechecks.txt).
 
@@ -277,7 +277,7 @@ deleting a 49 hour old copy whose passport the chain says was never registered.
 | `/prepare` with the private re-check | Ask without sealing; make a copy when the chain cannot be reached; get Pinata's public duplicate kept as the private copy; send a picture whose thumbnail is too large; find the private file in the public document | Private re-check needs sealed; no copy without the duplicate check; the upload's answer must say private; the thumbnail budget of 60,000 bytes; the strict schema | 4a: 400 `private-recheck-needs-sealed`; 4b: 503 `chain-unreachable`, 0 Pinata calls; 4c: 409 `private-copy-not-private`, no document pinned; 4d: 422 `thumbnail-too-large`; 4e: 0 of 6 leaks in the document or the answer. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
 | The sweep | Delete a copy whose passport is only late, delete on a chain read that failed, delete in the dry pass, delete a lookalike name | 48 hours before anything is deleted, one failed read stops the run, the dry pass only counts, the whole name must match | 5a: 47 hours, kept; 5b: 49 hours and never registered, deleted as designed; 5c: stopped, 0 deletes; 5d: counted 1, deleted 0; 5e: counted as an odd name, 0 deletes. Not covered: a creator who signs more than 48 hours after preparing. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
 | The live service, from outside | Take a link or delete a copy on mainnet without the right token; find the private copy in the live document | The same checks as above, on the hosted build | 6a to 6e: 401 or 409 and no-store; 6f: `kept` for the private passport; 6g: `gone` for a public one; 7a: the live document passes the service's own strict schema, 10 keys, 0 links, commitment equals the passport id. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
-| The receivers on chain | A stranger calls the sealed receiver with a false verdict and the pinned name and author; a stranger calls `attest` directly | Attack pass 4 ran against the old sealed receiver, which accepted only the production forwarder. That receiver and the old public one came off the policy list on 2026-09-26, when the simulation receivers were deployed, and the policy has listed the two simulation receivers since 2026-09-27 14:18 UTC. A simulation receiver accepts a report only through Chainlink's mock forwarder and only in a transaction signed by the CRE wallet. The registry accepts only receivers the policy lists | 8a: reverted `InvalidSender`; 8b: forwarder, author and name read back pinned to Chainlink's production forwarder, the workflow author and `moolam-sealed-verifier`; 8c: reverted `NotReceiver`. [pass-4.txt](../../proofs/attacks/pass-4.txt). For the simulation receivers: real report calldata replayed through the real mock on a fork lands only from the CRE wallet, and an old receiver reverts `NotReceiver` once removed, `SimulationReceiver.fork.t.sol` |
+| The receivers on chain | A stranger calls the sealed receiver with a false verdict and the pinned name and author; a stranger calls `attest` directly | Attack pass 4 ran against the old sealed receiver, which accepted only the production forwarder. That receiver and the old public one came off the policy list on 2026-09-26, when the simulation receivers were deployed (the old public one has been listed again since 2026-10-02, for Chainlink's network), and the policy has listed the two simulation receivers since 2026-09-27 14:18 UTC. A simulation receiver accepts a report only through Chainlink's mock forwarder and only in a transaction signed by the CRE wallet. The registry accepts only receivers the policy lists | 8a: reverted `InvalidSender`; 8b: forwarder, author and name read back pinned to Chainlink's production forwarder, the workflow author and `moolam-sealed-verifier`; 8c: reverted `NotReceiver`. [pass-4.txt](../../proofs/attacks/pass-4.txt). For the simulation receivers: real report calldata replayed through the real mock on a fork lands only from the CRE wallet, and an old receiver reverts `NotReceiver` once removed, `SimulationReceiver.fork.t.sol` |
 
 ### The first private re-check on mainnet
 
@@ -289,21 +289,23 @@ fingerprint and landed 1 bit of 64 from the chain's: matched. The report transac
 block 107,817,793, delivered by the simulation forwarder, and the attestation it wrote names the
 sealed receiver
 [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
-(retired 2026-09-26; attack 8d reads it back). The receiver was put back on the production forwarder and pinned again
+(off the policy since 2026-09-26; attack 8d reads it back). The receiver was put back on the production forwarder and pinned again
 afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passports.txt). A second
 private re-check the same afternoon, on [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4),
 matched at distance 0 ([0xa38fd971...](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613).
 
 ## Simulator-fed receivers and the re-check runner
 
-Every re-check runs in Chainlink's CRE simulator with `--broadcast`, and a small machine, the
-re-check runner, starts one within minutes of each new picture. A simulated report reaches Monad
+Every re-check the runner starts runs in Chainlink's CRE simulator with `--broadcast`, and a small
+machine, the re-check runner, starts one within minutes of each new picture. A simulated report reaches Monad
 through Chainlink's MockKeystoneForwarder, which checks no signature. So the verdicts land through
 two receivers built for that path, `SimulationReceiver` (one for the public workflow, one for the
 sealed one). Each accepts a report only when the transaction was signed by Moolam's CRE wallet, fixed
 when the contract was deployed. The policy has listed both since 2026-09-27 14:18 UTC. The two
-receivers that came before came off the policy on 2026-09-26, in the run that deployed these, and
-every verdict they already wrote keeps their address.
+`MoolamReceiver` contracts that came before came off the policy on 2026-09-26, in the run that
+deployed these, and every verdict they already wrote keeps their address. The public one has been
+listed again since 2026-10-02 at 07:08:18 UTC, as the door for Chainlink's network (see "Look-alikes,
+the trust mark and challenges" below). This section is about the simulator path only.
 
 ### A) What kind of system this is
 
@@ -415,7 +417,7 @@ twelve transactions, all status 1. The full record is
 | Sealed receiver | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6), block 108,102,676, Sourcify match |
 | Read back from both | forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d` (Chainlink's MockKeystoneForwarder), `SENDING_WALLET` `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, `MAX_FUTURE_SKEW` 3600, owner the deployer, and a report from any other wallet reverting `WrongSendingWallet` |
 | Policy | both queued in `VerifierPolicy` `0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821` (`executeAfter` 1790489031, 2026-09-27 06:03:51 UTC), and listed on 2026-09-27 at 14:18 UTC: the public one in [`0xac642cc5...`](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb), block 108,487,207, the sealed one in [`0x0e1e2937...`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d), block 108,487,216 |
-| Old receivers | `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` and `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` removed from the policy on 2026-09-26, in the same run; every attestation they wrote stays on chain under their address |
+| Old receivers | `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` and `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` removed from the policy on 2026-09-26, in the same run; every attestation they wrote stays on chain under their address. `0x0d69...` was listed again on 2026-10-02 at 07:08:18 UTC in [`0x446c3051...`](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f), block 109,830,535 |
 
 Between the deploy and the listing none of Moolam's four receivers was listed, so no new re-check
 could be written. The workflow configs point at the new receivers since the listing ran (R3). The
@@ -685,13 +687,33 @@ Both contracts are on Monad mainnet with a full Sourcify match:
 and
 [`MoolamDecisions` 0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F](https://monadvision.com/address/0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F).
 This section states what the code does today. The live attack pass has not run against any of it,
-so every row below is proven by the contract, workflow, service, index and web tests it names. Three
-switches are not on as this is written. The index's network activation time is zero, so nothing in
-it counts as the network's and no passport wears "Checked by Chainlink" yet. The policy's listing of
-`MoolamReceiver` (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), the receiver the network's verdicts
-go through, is queued and can run after 2026-10-02 05:35:29 UTC. The verify service's look-alike
-routes and its web check reach the hosted service with its next deploy. Paths are under
-`packages/verifier` unless they name another package.
+so every row below is proven by the contract, workflow, service, index and web tests it names.
+
+What went live on 2026-10-02, on Monad mainnet:
+
+- The policy's listing of `MoolamReceiver` (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), the receiver
+  the network's verdicts go through, ran at 07:08:18 UTC, block 109,830,535, in
+  [`0x446c3051...`](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f).
+- Chainlink's network runs `moolam-verifier`, workflow ID
+  `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner
+  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. It holds the verdict
+  step only. The index and the workflow count network writes from 1790924898 (07:08:18 UTC).
+- The first network verdict: passport `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782`,
+  registered at 07:23:26 UTC in
+  [`0x162c97a7...`](https://monadvision.com/tx/0x162c97a70e53441e16633250e1cf96d695b01939d10625bf29248a9c01e3feaa).
+  Ten Chainlink nodes recomputed its fingerprint, distance 0, matched. The verdict is
+  [`0x760dcb5e...`](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882),
+  block 109,833,597, 07:23:42 UTC, sent to the Keystone Forwarder
+  0x76c9cf548b4179F8901cda1f8623568b58215E62: 16 seconds from registration to the network's verdict.
+- The treasury was set to the burn address 0x000000000000000000000000000000000000dEaD in
+  [`0x45700954...`](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
+  block 109,834,440, 07:27 UTC. Rejected bonds are burned.
+
+Still to come on push day, 2026-10-12: the look-alike step in the network workflow, the verify
+service's look-alike routes and its Google web check on the hosted service, and the hosted index
+rebuild that lets the live site's marks and counts see the network flag. Until that rebuild the live
+site's index cannot tell network verdicts from test runs. Paths are under `packages/verifier` unless
+they name another package.
 
 ### A) What kind of system this is
 
@@ -737,7 +759,7 @@ values that become `executedAt`.
 
 **What the privileged position holds.** The forwarder's signed path is the only thing that can light
 "Checked by Chainlink" or "Registered after a look-alike". The deployer key owns `MoolamReceiver`
-and is today the policy's owner, resolver and treasury. The verify service holds the Vision key, the
+and is today the policy's owner and resolver. The treasury is the burn address. The verify service holds the Vision key, the
 Pinata key and the index copy, and decides which candidates the network ever hears about. The
 workflow owner 0xf072a8c620bfc818875736e3f2d3a2a339c06584 deploys what the pins accept. The resolver
 key alone decides a bond and the mark "Challenge upheld".
@@ -804,10 +826,12 @@ The rules across all of it:
 - **Fail closed.** No candidate without this run's own measurement, no record without two passports
   in order, no mark on a tie, "could not check" instead of silence, "not ready" instead of a partial
   list, no answer outside an open dispute, and a refused write is a failed run.
-- **The bond.** A rejected challenge's bond is credited to the policy's treasury. A change of the
-  treasury to the burn address 0x000000000000000000000000000000000000dEaD is queued (change id
-  `0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
-  07:22:03 UTC); until it runs, the treasury is the deployer 0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c.
+- **The bond.** A rejected challenge's bond is credited to the policy's treasury, and since 2026-10-02
+  at 07:27 UTC the treasury is the burn address 0x000000000000000000000000000000000000dEaD (change id
+  `0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executed in
+  [`0x45700954...`](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
+  block 109,834,440). Before that the treasury was the deployer
+  0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c. Rejected bonds are burned.
 
 ## What the screens promise
 
@@ -1006,8 +1030,8 @@ a registrant wrote into their document.
   once, and the registry then holds the new dispute. Reasons for the earlier decision that were not
   yet published can no longer be published through `MoolamDecisions`, because it reads the dispute
   the registry holds now.
-- **A burned bond is gone for good.** Once the queued treasury change runs, a rejected challenge's
-  bond is credited to an address nobody holds a key for. The registry credits bonds rather than
-  sending them, so nothing reaches that address and nothing can be withdrawn from it.
+- **A burned bond is gone for good.** Since the treasury was set to the burn address on 2026-10-02,
+  a rejected challenge's bond is credited to an address nobody holds a key for. The registry credits
+  bonds rather than sending them, so nothing reaches that address and nothing can be withdrawn from it.
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.

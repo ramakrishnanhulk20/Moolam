@@ -1831,11 +1831,11 @@
     "uphold": "Dar razão",
     "reject": "Recusar",
     "upholdWhat": "Dar razão marca o registro como contestado para sempre e credita a caução de volta a quem contestou.",
-    "rejectWhat": "Recusar deixa o registro de pé e credita a caução à tesouraria.",
+    "rejectWhat": "Recusar deixa o registro de pé e credita a caução à tesouraria, o endereço de queima, então ninguém a recebe.",
     "sending": "Enviando",
     "watching": "Esperando a Monad mostrar a decisão",
     "settledUpheld": "Aceita. A caução é creditada de volta a quem contestou.",
-    "settledRejected": "Recusada. A caução é creditada à tesouraria.",
+    "settledRejected": "Recusada. A caução é creditada à tesouraria, o endereço de queima, então ninguém a recebe.",
     "failure": {
       "notResolver": "O registro recusou: a conta que enviou não é o árbitro que a política indica.",
       "noOpenDispute": "Esse passaporte não tem mais nenhuma contestação aberta.",

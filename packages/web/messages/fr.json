@@ -1821,11 +1821,11 @@
     "uphold": "Donner raison",
     "reject": "Rejeter",
     "upholdWhat": "Donner raison marque l'enregistrement contesté pour de bon et recrédite la caution à son auteur.",
-    "rejectWhat": "Rejeter laisse l'enregistrement tel quel et crédite la caution au trésor.",
+    "rejectWhat": "Rejeter laisse l'enregistrement tel quel et crédite la caution au trésor, l'adresse de destruction, si bien que personne ne la reçoit.",
     "sending": "Envoi",
     "watching": "En attente de son affichage par Monad",
     "settledUpheld": "Contestation retenue. La caution revient à son auteur.",
-    "settledRejected": "Contestation rejetée. La caution va au trésor.",
+    "settledRejected": "Contestation rejetée. La caution va au trésor, l'adresse de destruction, donc personne ne la reçoit.",
     "failure": {
       "notResolver": "Le registre a refusé : le compte qui a envoyé n'est pas l'arbitre désigné par la politique.",
       "noOpenDispute": "Ce passeport n'a plus de contestation ouverte.",

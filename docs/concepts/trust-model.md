@@ -112,19 +112,27 @@ lets one editing session write ten edits.
 
 ## Attestations
 
-`attest` is callable only by an address `VerifierPolicy.isReceiver` returns true for, which in
-practice is the two `SimulationReceiver` contracts listed since 2026-09-27; before 2026-09-26 it was
-the `MoolamReceiver` pair. A passport holds at most 64 attestations. Attestations stay open
-while the registry is paused, so a verification already in flight can still land.
+`attest` is callable only by an address `VerifierPolicy.isReceiver` returns true for. Today that is
+three receivers: the two `SimulationReceiver` contracts, listed since 2026-09-27, and the public
+`MoolamReceiver` (0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), which went back on the list on
+2026-10-02 at 07:08:18 UTC in
+[transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f),
+block 109,830,535. Its sealed twin, 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, has been off the list
+since 2026-09-26. A passport holds at most 64 attestations. Attestations stay open while the registry
+is paused, so a verification already in flight can still land.
 
 An attestation is a signal, not a verdict. It says a Chainlink CRE workflow downloaded the file the
 passport points at and got a fingerprint this far from the recorded one. It sits next to the
-signatures rather than above them. Every attestation on chain today was written by a simulation run
-of that workflow, one machine and no node consensus, and the passport page labels each one a test
-run. Only a verdict from Chainlink's network, where a quorum of nodes has to agree, can turn on a
-passport's trust mark: one written by `MoolamReceiver` in a transaction sent to Chainlink's
-forwarder. That receiver's listing on the policy is queued and can run after 2026-10-02 05:35:29
-UTC. What each mark means, and what lights it, is in [The trust mark](trust-mark).
+signatures rather than above them. Every attestation written before 2026-10-02 came from a simulation
+run of that workflow, one machine and no node consensus, and the passport page labels each one a test
+run. Since 2026-10-02 07:09 UTC Chainlink's network runs the verdict step too, and its first verdict
+is on chain: ten nodes recomputed the fingerprint, distance 0, matched, written in
+[transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882)
+at 07:23:42 UTC, 16 seconds after the passport was registered. Only a verdict from Chainlink's
+network, where a quorum of nodes has to agree, can turn on a passport's trust mark: one written by
+`MoolamReceiver` in a transaction sent to Chainlink's forwarder. The live site's index cannot tell
+those from test runs until its rebuild on push day, 2026-10-12. What each mark means, and what
+lights it, is in [The trust mark](trust-mark).
 
 ## Disputes and bonds
 
@@ -134,11 +142,11 @@ of the evidence URI is stored, so the URI cannot be swapped for something else l
 
 The resolver named by the policy settles it. Upheld marks the passport disputed and credits the
 bond back to the challenger, and the passport's trust mark becomes "Challenge upheld" for good.
-Rejected credits the bond to the policy's treasury, which today is the deployer
-0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c. A change of the treasury to the burn address
-0x000000000000000000000000000000000000dEaD is queued (change id
-`0x87571be2e5c590b8fa1e9f2921d8a3807c8e210f216c32fbc1f29b069030f3a0`, executable after 2026-10-02
-07:22:03 UTC); once it runs, a rejected bond can never be withdrawn by anyone. How the mark reads
+Rejected credits the bond to the policy's treasury, which since 2026-10-02 is the burn address
+0x000000000000000000000000000000000000dEaD
+([transaction 0x45700954…371d](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
+block 109,834,440, 07:27 UTC). Rejected bonds are burned: nobody holds a key for that address, so
+nobody can ever withdraw a rejected bond and Moolam gains nothing from a rejection. How the mark reads
 during and after a challenge is in [The trust mark](trust-mark). A passport whose challenge
 was upheld cannot be flagged again, because the record already says disputed and a second bond
 would be burned for nothing. One whose challenge was rejected can be flagged again with new

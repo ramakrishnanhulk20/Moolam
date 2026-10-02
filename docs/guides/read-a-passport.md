@@ -126,13 +126,15 @@ page from those two values rather than copied from the figure the receiver wrote
 
 Under that sentence the page says how the report reached the chain. It reads the `to` address of the
 report transaction: the CRE simulation forwarder means one machine ran the workflow with no network
-consensus, which is what every re-check on chain today came from, and the Chainlink network forwarder
-means a quorum of nodes agreed on the answer. An address that is neither gets no line at all.
+consensus, which is what every re-check on chain before 2026-10-02 came from, and the Chainlink
+network forwarder means a quorum of nodes agreed on the answer. The first one that says so is the
+verdict written at 07:23:42 UTC on 2026-10-02, in
+[transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882). An address that is neither gets no line at all.
 
 | Field | What it is |
 | --- | --- |
 | matched or did not match | Whether the recomputed hash was inside the threshold |
-| Who wrote it | "Checked again by a Chainlink CRE workflow" when the writer is one of Moolam's four receivers: the two `SimulationReceiver` contracts in use since 2026-09-27, or the two `MoolamReceiver` contracts retired on 2026-09-26, whose verdicts keep their name. Any other writer reads "Written on Monad by an unknown writer" |
+| Who wrote it | "Checked again by a Chainlink CRE workflow" when the writer is one of Moolam's four receivers: the two `SimulationReceiver` contracts in use since 2026-09-27, or the two `MoolamReceiver` contracts, the public one listed again since 2026-10-02 and the sealed one off the list since 2026-09-26, whose verdicts keep their name. Any other writer reads "Written on Monad by an unknown writer" |
 | "As the receiver wrote it" | How many of 64 bits the receiver itself said the two hashes were apart |
 | "At" | The block timestamp on the attestation |
 | "Written by" | The receiver address, linked to MonadVision |
@@ -142,10 +144,11 @@ means a quorum of nodes agreed on the answer. An address that is neither gets no
 The Chainlink line is not a badge Moolam awards itself. A log-triggered Chainlink CRE workflow wakes
 on `PassportRegistered`, reads the passport back out of the registry rather than trusting the event,
 downloads the thumbnail on each node, decodes the JPEG and recomputes the 64-bit hash inside the
-sandbox, and the verdict is signed into a report. Chainlink's simulation forwarder delivers it to
-a `SimulationReceiver`, which takes it only in a transaction Moolam's CRE wallet signed and then
-calls `attest`. The registry checks the receiver against `VerifierPolicy`
-before it writes. The workflow is written so that on Chainlink's network a quorum of nodes must
+sandbox, and the verdict is signed into a report. From Chainlink's network the report goes through
+the Keystone Forwarder to `MoolamReceiver`. From a run in Chainlink's simulator, Chainlink's
+simulation forwarder delivers it to a `SimulationReceiver`, which takes it only in a transaction
+Moolam's CRE wallet signed. Either one then calls `attest`. The registry checks the receiver against
+`VerifierPolicy` before it writes. The workflow is written so that on Chainlink's network a quorum of nodes must
 produce the identical verdict before that report is signed, which is the difference the forwarder
 line above names.
 

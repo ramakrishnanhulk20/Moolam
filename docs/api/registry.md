@@ -182,8 +182,9 @@ function attest(bytes32 passportId, bool matched, uint16 distance, bytes32 recom
 
 Writes one verifier's recheck of a passport. Only an address `VerifierPolicy.isReceiver` returns
 true for may call it, which in practice is the two `SimulationReceiver` contracts listed since
-2026-09-27; before 2026-09-26 it was the `MoolamReceiver` pair. It stays open while the registry is
-paused, so a verification already in flight can still land.
+2026-09-27 and the public `MoolamReceiver`, listed again on 2026-10-02. The sealed `MoolamReceiver`
+has been off the list since 2026-09-26. It stays open while the registry is paused, so a verification
+already in flight can still land.
 
 | Reverts | When |
 | --- | --- |
@@ -223,7 +224,8 @@ function resolve(bytes32 passportId, bool upheld) external
 Settles an open dispute. Callable only by `VerifierPolicy.resolver()`. Reentrancy guarded.
 
 `upheld` true marks the passport disputed and credits the bond back to the challenger. False
-credits the bond to `VerifierPolicy.treasury()`. Credits are recorded, never pushed, so a resolver
+credits the bond to `VerifierPolicy.treasury()`, which since 2026-10-02 is the burn address
+`0x000000000000000000000000000000000000dEaD`, so nobody can withdraw it. Credits are recorded, never pushed, so a resolver
 can never be blocked by a challenger or treasury that refuses native token.
 
 | Reverts | When |
