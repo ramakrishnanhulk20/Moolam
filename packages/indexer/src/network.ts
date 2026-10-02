@@ -4,8 +4,9 @@ import { addressId } from "./ids.js";
 /// live, in unix seconds. Zero means it has not, and then nothing in this index is
 /// marked as the network's. The verdict receiver held simulator results long
 /// before this moment, so the time is what separates the two, and it is set once
-/// from the deploy, never read from a service.
-export const NETWORK_ACTIVATION_TIME = 0n;
+/// from the deploy, never read from a service. 1790924898 is block 109830535, 2026-10-02
+/// 07:08:18 UTC, which listed the receiver in the policy; the workflow went live a minute later.
+export const NETWORK_ACTIVATION_TIME = 1790924898n;
 
 /// Chainlink's KeystoneForwarder on Monad, the only sender a network report has.
 export const FORWARDER = "0x76c9cf548b4179f8901cda1f8623568b58215e62";

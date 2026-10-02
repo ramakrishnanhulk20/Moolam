@@ -6,7 +6,7 @@
   "verifierUrl": "https://verifier-production-d76f.up.railway.app",
   "matchThreshold": 10,
   "lookalikeReceiver": "0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C",
-  "activationTime": 0,
+  "activationTime": 1790924898,
   "backlogPerRun": 7,
   "lookalikesPerDay": 1000
 }

@@ -628,7 +628,7 @@ test("L15: the off switches", () => {
 	expect(cronRun.seen.verdicts).toHaveLength(1);
 	expect(cronRun.seen.reads.some((line) => line.startsWith("originOf"))).toBe(false);
 
-	const notActivated = configSchema.parse({ ...networkConfig, lookalikeReceiver: LOOKALIKES });
+	const notActivated = configSchema.parse({ ...networkConfig, lookalikeReceiver: LOOKALIKES, activationTime: 0 });
 	const idle = run(backlogWorld(ids), "cron", notActivated);
 	expect(idle.outcome).toEqual({ result: "catch-up off: activationTime is not set" });
 	expect(idle.seen.http).toHaveLength(0);
