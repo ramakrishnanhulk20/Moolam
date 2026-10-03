@@ -27,7 +27,17 @@ export interface Failure {
   key: string;
   reason?: string;
   /** The one button offered under the message. */
-  next?: "signIn" | "signOut" | "bind" | "openPassport" | "unsponsored" | "again" | "generateAgain" | "recheck";
+  next?:
+    | "signIn"
+    | "signOut"
+    | "bind"
+    | "openPassport"
+    | "unsponsored"
+    | "again"
+    | "generateAgain"
+    | "recheck"
+    | "openUpload"
+    | "editPrompt";
   /** An account to open on MonadVision, shown when the message asks the reader to go and look. */
   address?: Hex;
   /** The passport that already holds this picture, when the service named it before anything was pinned. */
@@ -208,20 +218,38 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
 }
 
 /**
+ * The refusals on the agent path that a second press would only repeat, and the way on each one gets.
+ *
+ * A spent day and a refused prompt fail the same way every time, so neither offers a retry. Left
+ * with no button, the run stays folded and locks the switch, and the only way out was a reload. A
+ * spent day sends the creator to the upload path, which has no daily count. A refused prompt
+ * brings the agent form back with the words still in it, because the sentence already asks for
+ * an edit. These live here and not in VERIFIER_KEYS because the upload path can raise the same
+ * word, and an offer to open the upload path would be pointless on the upload path itself.
+ */
+const AGENT_WAYS_ON: Record<string, Failure["next"]> = {
+  quotaReached: "openUpload",
+  promptRefused: "editPrompt",
+};
+
+/**
  * What the agent path says about a failed call to /generate.
  *
  * A host that cannot draw either does not serve the route at all, which is a 404 for any
  * path it does not have, or serves it closed while its registry check has not passed, which is
  * a 503 named `generator-unchecked`. Neither is a shape this page misread, and neither is
  * worth the service's own words under the sentence: they name a missing key or a path.
- * The route has no 404 of its own, so the status alone is enough. Everything else is the
- * upload path's mapping, unchanged.
+ * The route has no 404 of its own, so the status alone is enough. It sends the creator on to
+ * the upload path. Everything else is the upload path's mapping, plus the way on that
+ * AGENT_WAYS_ON gives a refusal that no retry could change.
  */
 export function describeGenerateFailure(error: unknown): Failure {
   if (error instanceof VerifierError && (error.status === 404 || error.serviceCode === "generator-unchecked")) {
-    return { key: "agentOff" };
+    return { key: "agentOff", next: "openUpload" };
   }
-  return describeFailure(error, "prepare");
+  const failure = describeFailure(error, "prepare");
+  const next = AGENT_WAYS_ON[failure.key];
+  return next === undefined ? failure : { ...failure, next };
 }
 
 /**

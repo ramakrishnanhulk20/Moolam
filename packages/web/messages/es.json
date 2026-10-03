@@ -1742,7 +1742,9 @@
       "again": "Reintentar",
       "recheck": "Volver a preguntar a Monad",
       "openAddress": "Abrir {wallet} en MonadVision",
-      "generateAgain": "Generar otra vez"
+      "generateAgain": "Generar otra vez",
+      "openUpload": "Subir una imagen en su lugar",
+      "editPrompt": "Cambiar la instrucción"
     },
     "showcaseCaption": "Un pasaporte real en Monad. Esto es lo que obtienes.",
     "titleNeeded": "Ponle un título a la imagen.",

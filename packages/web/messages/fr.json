@@ -1734,7 +1734,9 @@
       "again": "Réessayer",
       "recheck": "Redemander à Monad",
       "openAddress": "Ouvrir {wallet} sur MonadVision",
-      "generateAgain": "En refaire une"
+      "generateAgain": "En refaire une",
+      "openUpload": "Téléverser une image à la place",
+      "editPrompt": "Modifier la consigne"
     },
     "showcaseCaption": "Un vrai passeport sur Monad. Voilà ce que vous obtenez.",
     "titleNeeded": "Donnez un titre à l’image.",

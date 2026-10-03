@@ -1744,7 +1744,9 @@
       "again": "Tentar de novo",
       "recheck": "Perguntar à Monad de novo",
       "openAddress": "Abrir {wallet} no MonadVision",
-      "generateAgain": "Gerar de novo"
+      "generateAgain": "Gerar de novo",
+      "openUpload": "Enviar uma imagem no lugar",
+      "editPrompt": "Mudar a instrução"
     },
     "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe.",
     "titleNeeded": "Dê um título à imagem.",

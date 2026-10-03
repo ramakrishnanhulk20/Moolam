@@ -115,12 +115,12 @@ describe("the failure Ram met", () => {
 describe("a /generate that is not served maps to the one line", () => {
   it("answers a 404 for a path the service does not have, with no words of the service's under it", async () => {
     answer(404, { error: "no route for POST /generate" });
-    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff" });
+    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff", next: "openUpload" });
   });
 
   it("answers any 404 the same way, whatever the body says or whether it has one", async () => {
     answer(404, { error: "unknown route" });
-    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff" });
+    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff", next: "openUpload" });
 
     vi.stubGlobal(
       "fetch",
@@ -132,19 +132,23 @@ describe("a /generate that is not served maps to the one line", () => {
         },
       })),
     );
-    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff" });
+    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff", next: "openUpload" });
   });
 
   it("answers a host whose registry check has not passed yet the same way, because it is the same state", async () => {
     answer(503, { error: "generator-unchecked", reason: "the registry on chain has not been read yet" });
-    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff" });
+    expect(describeGenerateFailure(await drawn())).toEqual({ key: "agentOff", next: "openUpload" });
   });
 
   it("leaves every other answer from /generate on the mapping it always had", async () => {
     const cases: [number, unknown, object][] = [
       [401, { error: "unauthorized" }, { key: "signedOut", next: "signIn" }],
-      [429, { error: "quota", quota: { used: 3, limit: 3, resetsAt: 1_788_961_533 } }, { key: "quotaReached" }],
-      [400, { error: "prompt-refused", reason: "the safety system said no" }, { key: "promptRefused", reason: "the safety system said no" }],
+      [429, { error: "quota", quota: { used: 3, limit: 3, resetsAt: 1_788_961_533 } }, { key: "quotaReached", next: "openUpload" }],
+      [
+        400,
+        { error: "prompt-refused", reason: "the safety system said no" },
+        { key: "promptRefused", reason: "the safety system said no", next: "editPrompt" },
+      ],
       [502, { error: "model-failed" }, { key: "modelFailed", next: "again" }],
       [503, { error: "busy" }, { key: "agentBusy", next: "again" }],
       [503, { error: "service-fault" }, { key: "serviceFault", next: "again" }],
@@ -376,11 +380,35 @@ describe("the two ways in with the agent switched off", () => {
 
 describe("the same line when the press is the first to find out", () => {
   it("is what the failure note prints, with no button to try again and no service words folded under it", () => {
-    const markup = draw(createElement(FailureNote, { failure: { key: "agentOff" } }));
+    const markup = draw(createElement(FailureNote, { failure: { key: "agentOff", next: "openUpload" } }));
     expect(markup).toContain(escaped(en.studio.failure.agentOff));
-    expect(markup).not.toContain("<button");
+    expect(markup).not.toContain(en.studio.actions.again);
+    expect(markup).not.toContain(en.studio.actions.generateAgain);
     expect(markup).not.toContain("<details");
     expect(markup).not.toContain(en.studio.failure.badResponse);
+  });
+
+  it("offers the upload path as its one button once the screen can answer it, and no button before", () => {
+    const failure = { key: "agentOff", next: "openUpload" } as const;
+    expect(draw(createElement(FailureNote, { failure }))).not.toContain("<button");
+
+    let opened = 0;
+    document.body.innerHTML = "<main></main>";
+    const box = document.querySelector("main") as HTMLElement;
+    root = createRoot(box);
+    act(() => {
+      root?.render(
+        createElement(
+          Provider,
+          { locale: "en", messages: en, timeZone: "UTC" },
+          createElement(FailureNote, { failure, onUpload: () => (opened += 1) }),
+        ),
+      );
+    });
+    const buttons = [...box.querySelectorAll("button")];
+    expect(buttons.map((button) => button.textContent)).toEqual([en.studio.actions.openUpload]);
+    act(() => buttons[0].click());
+    expect(opened).toBe(1);
   });
 });
 

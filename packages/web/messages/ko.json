@@ -1733,7 +1733,9 @@
       "again": "다시 시도",
       "recheck": "Monad에 다시 묻기",
       "openAddress": "MonadVision에서 {wallet} 열기",
-      "generateAgain": "다시 만들기"
+      "generateAgain": "다시 만들기",
+      "openUpload": "대신 이미지 올리기",
+      "editPrompt": "프롬프트 고치기"
     },
     "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다.",
     "titleNeeded": "이미지에 제목을 붙여 주세요.",

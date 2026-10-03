@@ -16,7 +16,9 @@ import { verifierUrl } from "@/lib/verifier/client";
  * leaves the agent's half switched off with its one line and the upload form on
  * screen, a link that opened on the agent lands on the upload form, a /health
  * that cannot be read leaves everything as it was, and the service is asked
- * once.
+ * once. A run that ended on the agent being off, a spent day or a refused
+ * prompt shows one button on its note that opens the next form, with no reload
+ * (WO-311).
  */
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -106,6 +108,8 @@ vi.mock("@/lib/studio/useStudio", async () => {
             hook.modes.push(mode);
             dispatch({ type: "mode", mode });
           },
+          openUpload: () => dispatch({ type: "mode", mode: "upload" }),
+          editPrompt: () => dispatch({ type: "reopen" }),
           setConsent: nothing,
           setSealed: nothing,
           setIncludePrompt: nothing,
@@ -311,5 +315,114 @@ describe("a service that can draw, or that cannot be asked", () => {
     });
     expect(offLine()?.textContent).toBe(en.studio.failure.agentOff);
     expect(radios()[1].disabled).toBe(true);
+  });
+});
+
+const FAILED_DRAW = {
+  prepare: "waiting",
+  draw: "failed",
+  pin: "waiting",
+  agentSign: "waiting",
+  sign: "waiting",
+  send: "waiting",
+} as const;
+const PROMPT = "a fishing boat leaving a harbour at first light";
+const noteButtons = () => [...box.querySelectorAll<HTMLButtonElement>("[data-run-failure] button")];
+const noteWords = () => noteButtons().map((button) => button.textContent);
+
+describe("a failed agent run that offers no retry", () => {
+  it("shows the agent off with one button, the switch locked, and opens the upload form on the press", async () => {
+    service(says(HEALTH));
+    hook.patch = {
+      steps: FAILED_DRAW,
+      title: "His Dream",
+      prompt: PROMPT,
+      failure: { key: "agentOff", next: "openUpload" },
+    };
+    await open("generate");
+
+    expect(box.querySelector("[data-run-failure]")?.textContent).toContain(en.studio.failure.agentOff);
+    expect(noteWords()).toEqual([en.studio.actions.openUpload]);
+    expect(radios().every((radio) => radio.disabled)).toBe(true);
+    expect(agent()?.getAttribute("data-face")).toBe("run");
+
+    await act(async () => {
+      noteButtons()[0].click();
+    });
+
+    expect(upload()).not.toBeNull();
+    expect(agent()).toBeNull();
+    expect(box.querySelector("[data-run-failure]")).toBeNull();
+    expect(box.querySelector('[role="alert"]')).toBeNull();
+    expect(radios()[0].getAttribute("aria-checked")).toBe("true");
+    expect(radios().every((radio) => !radio.disabled)).toBe(true);
+    expect(box.querySelector<HTMLInputElement>('input[type="file"]')?.disabled).toBe(false);
+  });
+
+  it("shows a spent day with the same one button, and keeps the count under it", async () => {
+    service(says(HEALTH));
+    hook.patch = {
+      steps: FAILED_DRAW,
+      title: "His Dream",
+      prompt: PROMPT,
+      quota: { used: 3, limit: 3, resetsAt: 1_788_961_533 },
+      failure: { key: "quotaReached", next: "openUpload" },
+    };
+    await open("generate");
+
+    expect(box.querySelector("[data-run-failure]")?.textContent).toContain(en.studio.failure.quotaReached);
+    expect(noteWords()).toEqual([en.studio.actions.openUpload]);
+    expect(box.textContent).toContain("3 of 3 today");
+
+    await act(async () => {
+      noteButtons()[0].click();
+    });
+
+    expect(upload()).not.toBeNull();
+    expect(agent()).toBeNull();
+    expect(radios().every((radio) => !radio.disabled)).toBe(true);
+  });
+
+  it("shows a refused prompt with one button that reopens the agent form, the prompt kept and the switch free", async () => {
+    service(says(HEALTH));
+    hook.patch = {
+      steps: FAILED_DRAW,
+      title: "His Dream",
+      prompt: PROMPT,
+      failure: { key: "promptRefused", reason: "the safety system said no", next: "editPrompt" },
+    };
+    await open("generate");
+
+    expect(box.querySelector("[data-run-failure]")?.textContent).toContain(en.studio.failure.promptRefused);
+    expect(noteWords()).toEqual([en.studio.actions.editPrompt]);
+    expect(radios().every((radio) => radio.disabled)).toBe(true);
+
+    await act(async () => {
+      noteButtons()[0].click();
+    });
+
+    expect(agent()?.getAttribute("data-face")).toBe("form");
+    expect(upload()).toBeNull();
+    expect(box.querySelector("textarea")?.value).toBe(PROMPT);
+    expect(box.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe("His Dream");
+    expect(box.querySelector("[data-run-failure]")).toBeNull();
+    expect(box.querySelector("[data-press-failure]")).toBeNull();
+    expect(radios()[1].getAttribute("aria-checked")).toBe("true");
+    expect(radios().every((radio) => !radio.disabled)).toBe(true);
+  });
+
+  it("leaves a failure that already offers a retry with that retry and nothing more", async () => {
+    service(says(HEALTH));
+    hook.patch = {
+      steps: FAILED_DRAW,
+      title: "His Dream",
+      prompt: PROMPT,
+      failure: { key: "modelFailed", next: "generateAgain" },
+    };
+    await open("generate");
+
+    expect(noteWords()).toEqual([en.studio.actions.generateAgain]);
+    expect(noteWords()).not.toContain(en.studio.actions.openUpload);
+    expect(noteWords()).not.toContain(en.studio.actions.editPrompt);
   });
 });

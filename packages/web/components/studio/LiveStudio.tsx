@@ -223,6 +223,8 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
                     onIncludePrompt={studio.actions.setIncludePrompt}
                     onSaved={studio.actions.saveSealed}
                     onGenerate={() => run(studio.actions.generateImage)}
+                    onUpload={studio.actions.openUpload}
+                    onEditPrompt={studio.actions.editPrompt}
                     onReset={studio.actions.reset}
                     onUnsponsored={() => void studio.actions.resend(true)}
                     onBind={toBind}

@@ -1722,7 +1722,9 @@
       "again": "Try again",
       "recheck": "Ask Monad again",
       "openAddress": "Open {wallet} on MonadVision",
-      "generateAgain": "Make it again"
+      "generateAgain": "Make it again",
+      "openUpload": "Upload a picture instead",
+      "editPrompt": "Edit the prompt"
     },
     "showcaseCaption": "A real passport on Monad. This is what you get.",
     "titleNeeded": "Give the picture a title.",

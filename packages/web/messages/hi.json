@@ -1749,7 +1749,9 @@
       "again": "फिर कोशिश करें",
       "recheck": "Monad से दोबारा पूछें",
       "openAddress": "MonadVision पर {wallet} खोलें",
-      "generateAgain": "फिर से बनवाएँ"
+      "generateAgain": "फिर से बनवाएँ",
+      "openUpload": "इसकी जगह तस्वीर अपलोड करें",
+      "editPrompt": "प्रॉम्प्ट बदलें"
     },
     "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपको यही मिलता है।",
     "titleNeeded": "तस्वीर को एक शीर्षक दें।",

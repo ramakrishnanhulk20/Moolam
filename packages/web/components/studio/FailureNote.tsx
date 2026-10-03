@@ -21,6 +21,8 @@ export function FailureNote({
   passportId,
   onAgain,
   onGenerateAgain,
+  onUpload,
+  onEditPrompt,
   onSignIn,
   onBind,
   onUnsponsored,
@@ -32,6 +34,10 @@ export function FailureNote({
   onAgain?: () => void;
   /** The agent path's retry: it draws a new picture rather than resending the last one. */
   onGenerateAgain?: () => void;
+  /** Leaves the agent path for the upload form, when the agent cannot draw or today's pictures are spent. */
+  onUpload?: () => void;
+  /** Brings the agent form back with the refused prompt in it. */
+  onEditPrompt?: () => void;
   onSignIn?: () => void;
   onBind?: () => void;
   onUnsponsored?: () => void;
@@ -44,6 +50,8 @@ export function FailureNote({
   const handlers: Record<string, (() => void) | undefined> = {
     again: onAgain,
     generateAgain: onGenerateAgain,
+    openUpload: onUpload,
+    editPrompt: onEditPrompt,
     signIn: onSignIn,
     bind: onBind,
     unsponsored: onUnsponsored,

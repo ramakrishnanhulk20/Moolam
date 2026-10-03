@@ -83,6 +83,13 @@ export interface Studio {
     setTitle: (title: string) => void;
     setPrompt: (prompt: string) => void;
     setMode: (mode: Mode) => void;
+    /**
+     * Leaves a failed agent run for the upload form, which the failure note offers when the agent
+     * cannot draw or the day's pictures are spent. Still signed in, and nothing is signed or sent.
+     */
+    openUpload: () => void;
+    /** Brings the agent form back after a refused prompt, with the prompt as it was. Nothing is sent. */
+    editPrompt: () => void;
     /** What the creator says about AI use. It travels with the file and then goes to the register. */
     setConsent: (draft: ConsentDraft) => void;
     /**
@@ -1022,6 +1029,8 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       setTitle: (title: string) => dispatchRegister({ type: "title", title }),
       setPrompt: (prompt: string) => dispatchRegister({ type: "prompt", prompt }),
       setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
+      openUpload: () => dispatchRegister({ type: "mode", mode: "upload" }),
+      editPrompt: () => dispatchRegister({ type: "reopen" }),
       setConsent: (draft: ConsentDraft) => dispatchRegister({ type: "consent", draft }),
       setSealed: (on: boolean, privateRecheck?: boolean) => dispatchRegister({ type: "sealed", on, privateRecheck }),
       setIncludePrompt: (include: boolean) => dispatchRegister({ type: "includePrompt", include }),

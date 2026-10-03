@@ -1736,7 +1736,9 @@
       "again": "もう一度試す",
       "recheck": "Monad にもう一度尋ねる",
       "openAddress": "MonadVision で {wallet} を開く",
-      "generateAgain": "もう一度作る"
+      "generateAgain": "もう一度作る",
+      "openUpload": "代わりに画像をアップロードする",
+      "editPrompt": "プロンプトを直す"
     },
     "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。",
     "titleNeeded": "画像にタイトルを付けてください。",

@@ -1743,7 +1743,9 @@
       "again": "再试一次",
       "recheck": "再问一次 Monad",
       "openAddress": "在 MonadVision 上打开 {wallet}",
-      "generateAgain": "再生成一张"
+      "generateAgain": "再生成一张",
+      "openUpload": "改为上传一张图片",
+      "editPrompt": "改一下提示词"
     },
     "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。",
     "titleNeeded": "请给这张图片取个标题。",

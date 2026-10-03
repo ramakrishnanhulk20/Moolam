@@ -204,6 +204,8 @@ export type RegisterAction =
    * and keeps pulsing on a run that has stopped.
    */
   | { type: "failed"; failure: Failure; quota?: QuotaState; stage?: Stage; step?: Step }
+  /** The same form again after a run that ended in a refusal, with everything the creator typed and chose still in it. */
+  | { type: "reopen" }
   | { type: "reset" }
   /** Another account signed in on this tab. Nothing of the last one's run is theirs to see. */
   | { type: "account" };
@@ -397,6 +399,24 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
           state: action.failure.key === "confirmPending" ? "unconfirmed" : "failed",
           failure: action.failure,
         },
+      };
+    case "reopen":
+      // Only the run is cleared. A refused prompt is the creator's to edit, so
+      // the prompt, the title, the plates and the switch come back as they left them.
+      return {
+        ...initialRegisterState,
+        mode: state.mode,
+        file: state.file,
+        title: state.title,
+        prompt: state.prompt,
+        consent: state.consent,
+        sealed: {
+          ...NOTHING_SEALED,
+          on: state.sealed.on,
+          includePrompt: state.sealed.includePrompt,
+          privateRecheck: state.sealed.privateRecheck === true,
+        },
+        quota: state.quota,
       };
     case "reset":
       return {

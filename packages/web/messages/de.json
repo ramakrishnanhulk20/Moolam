@@ -1722,7 +1722,9 @@
       "again": "Noch einmal versuchen",
       "recheck": "Monad noch einmal fragen",
       "openAddress": "{wallet} auf MonadVision öffnen",
-      "generateAgain": "Noch einmal machen"
+      "generateAgain": "Noch einmal machen",
+      "openUpload": "Stattdessen ein Bild hochladen",
+      "editPrompt": "Prompt ändern"
     },
     "showcaseCaption": "Ein echter Pass auf Monad. So etwas bekommst du.",
     "titleNeeded": "Gib dem Bild einen Titel.",

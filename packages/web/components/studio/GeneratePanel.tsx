@@ -60,6 +60,8 @@ export function GeneratePanel({
   onIncludePrompt,
   onSaved,
   onGenerate,
+  onUpload,
+  onEditPrompt,
   onReset,
   onUnsponsored,
   onBind,
@@ -84,6 +86,10 @@ export function GeneratePanel({
   /** The creator has written the one copy of a sealed drawing to their own disk. */
   onSaved: () => void;
   onGenerate: () => void;
+  /** Opens the upload form from a failed run, for an agent that cannot draw or a spent day. */
+  onUpload?: () => void;
+  /** Brings this form back after a refused prompt, with the prompt as it was. */
+  onEditPrompt?: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
   onBind: () => void;
@@ -152,6 +158,8 @@ export function GeneratePanel({
             <Run
               state={state}
               onGenerate={onGenerate}
+              onUpload={onUpload}
+              onEditPrompt={onEditPrompt}
               onBind={onBind}
               onUnsponsored={onUnsponsored}
               onRecheck={onRecheck}
@@ -187,6 +195,8 @@ export function GeneratePanel({
           <Run
             state={state}
             onGenerate={onGenerate}
+            onUpload={onUpload}
+            onEditPrompt={onEditPrompt}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
@@ -383,6 +393,8 @@ export function GeneratePanel({
 function Run({
   state,
   onGenerate,
+  onUpload,
+  onEditPrompt,
   onBind,
   onUnsponsored,
   onRecheck,
@@ -393,6 +405,8 @@ function Run({
 }: {
   state: RegisterState;
   onGenerate: () => void;
+  onUpload?: () => void;
+  onEditPrompt?: () => void;
   onBind: () => void;
   onUnsponsored: () => void;
   onRecheck?: () => void;
@@ -443,6 +457,8 @@ function Run({
             passportId={passportId(state)}
             onAgain={onGenerate}
             onGenerateAgain={onGenerate}
+            onUpload={onUpload}
+            onEditPrompt={onEditPrompt}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
