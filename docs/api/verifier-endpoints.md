@@ -1890,7 +1890,7 @@ The service keeps only the handle's sha256. The person's link is `https://moolam
 | `500` | `metadata-refused`: the document's statements did not fit their shape. Nothing was pinned |
 | `502` | `sign-failed` or `pin-failed` |
 | `503` | `claims-unavailable`: with `deliverTo`, the host's claim routes are closed (no `CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`), or the ticket file could not be read |
-| `503` | `chain-unreachable`, `busy`, `service-fault`, `cosign-unavailable` (nowhere to freeze files), `pending-full` (5,000 waiting co-signs on the service), `closed` (the replay memory could not be believed after a restart, so every prepare is refused for ten minutes) or `full` (the replay memory holds 20,000 entries) |
+| `503` | `chain-unreachable`, `busy`, `service-fault`, `cosign-unavailable` (nowhere to freeze files), `pending-full` (5,000 waiting co-signs on the service), `closed` (the replay memory could not be believed after a restart, so every prepare is refused for ten minutes, or it could not be saved, so every prepare is refused until it can be) or `full` (the replay memory holds 20,000 entries) |
 
 Every answer on the four `/platform` routes carries `Cache-Control: no-store`.
 
