@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "../env.js";
 import type { DisputeAnswer } from "../disputeRead.js";
 import type { Hex } from "../types.js";
-import { findUnsealRecord, pinnedUnsealOf, sealedStateOf } from "../unseal.js";
+import { findUnsealRecord, pinnedContentId, pinnedUnsealOf, sealedStateOf } from "../unseal.js";
 import { LOOKALIKE_PHASH_BITS } from "../lookalike-rule.js";
 import { issueMark, type Mark, type MarkDispute, type MarkLookalike, type MarkPicture, type MarkVerdict } from "./mark.js";
 import { heldReads } from "./memory.js";
@@ -193,7 +193,7 @@ export async function pictureForMark(
   document: { read: true; document: unknown } | { read: false },
   unsealed: UnsealedReader,
 ): Promise<MarkPicture | null> {
-  if (!metadataURI.startsWith("ipfs://")) return "none";
+  if (pinnedContentId(metadataURI) === null) return "none";
   if (!document.read) return null;
   const state = sealedStateOf(document.document);
   if (state === "unreadable") return null;
