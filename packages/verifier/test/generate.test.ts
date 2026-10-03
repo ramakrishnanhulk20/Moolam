@@ -25,10 +25,15 @@ import { makeImage } from "./helpers.js";
 
 // env.ts validates once at import, so everything the route reads has to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The Pinata token is a fake: every
-// call to Pinata is answered by the stub below. No image model key is set at all, which is also
-// what proves the route stays off a host that has none.
+// call to Pinata is answered by the stub below. No image model key and no generator wallet are set,
+// which is also what proves the route stays off a host that has none. They are blanked rather than
+// left unset because env.ts fills any unset name from the repo's own .env, and a blank shell value
+// wins over the file, so what a developer keeps in that file cannot open the route here.
 const APP_ID = vi.hoisted(() => {
   const id = "moolamtestapp0000002";
+  process.env.OPENAI_API_KEY = "";
+  process.env.OPENROUTER_API_KEY = "";
+  process.env.GENERATOR_WALLET_ID = "";
   process.env.PRIVY_APP_ID = id;
   process.env.PINATA_JWT = "test-token-not-a-real-pinata-jwt";
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
