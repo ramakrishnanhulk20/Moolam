@@ -22,8 +22,8 @@ import { postFeedback, readReputation, scoreFor, verificationSummary } from "../
 import { REPUTATION_REGISTRY, reputationAbi } from "../src/reputation/registry.js";
 import type { Hex } from "../src/types.js";
 
-// Anvil's second account, printed by Foundry on every start. It holds nothing
-// and signs nothing outside this file.
+// Anvil's published development account #1, the second one Foundry prints on every start. The key is
+// public and holds nothing on any real network, and it signs nothing outside this file.
 const SIGNER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" as Hex;
 const SIGNER = privateKeyToAccount(SIGNER_KEY).address.toLowerCase();
 const PASSPORT = "0x59bdee9f4478fcb4bab722ca2224bac05350ed3d1d0397a81c998a2b0ad24440" as Hex;

@@ -527,15 +527,14 @@ is for and which piece stops without it.
 | --- | --- |
 | `MONAD_MAINNET_RPC_URL` | Monad's public endpoint `https://rpc.monad.xyz`, or your own provider |
 | `MONAD_RPC_URL` | Optional and secret: a dedicated endpoint whose address carries its access token. The app's server reads through it first and the public endpoint only when it fails. Server side only, never `NEXT_PUBLIC` |
-| `DEPLOYER_PRIVATE_KEY`, `DEPLOYER_ADDRESS` | The wallet that deploys and runs the seed and proof scripts. Monad reserves 10 MON per account on top of gas |
+| `DEPLOYER_PRIVATE_KEY` | The wallet that deploys and runs the seed and proof scripts. Monad reserves 10 MON per account on top of gas |
 | `PROOF_P256_PRIVATE_KEY` | The proof script's stand-in passkey. It generates one on first run |
 | `CRE_ETH_PRIVATE_KEY`, `CRE_WALLET_ADDRESS`, `CRE_API_KEY` | The Chainlink CRE wallet that signs attestation transactions, and the CRE dashboard key or `cre login` |
 | `CRE_WORKFLOW_NAME` | The workflow name in `packages/workflow/moolam-verifier/workflow.yaml`. The receiver is pinned to it, so the two must match |
 | `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` | dashboard.privy.io. The authorization key is what controls server wallets from the backend |
-| `ENVIO_API_TOKEN`, `ENVIO_GRAPHQL_URL` | envio.dev/app/api-tokens, and the GraphQL endpoint of the Cloud deployment |
+| `ENVIO_API_TOKEN`, `ENVIO_GRAPHQL_URL` | envio.dev/app/api-tokens, which the envio command itself reads when you run the indexer, and the GraphQL endpoint of the Cloud deployment |
 | `OPENAI_API_KEY`, `OPENROUTER_API_KEY` | The generator agent's brain and image model. OpenRouter is the text fallback |
 | `PINATA_JWT`, `PINATA_GATEWAY_URL` | app.pinata.cloud. The JWT pins images and manifests, so treat it as a spending secret |
-| `ALCHEMY_API_KEY`, `ALCHEMY_WEBHOOK_SIGNING_KEY` | dashboard.alchemy.com, a Monad app key |
 | `VERIFIER_PRIVATE_KEY`, `VERIFIER_ADDRESS` | The wallet that posts ERC-8004 reputation feedback. It must not own an agent, because the registry refuses self-feedback |
 | `VERIFIER_PORT`, `VERIFIER_BASE_URL`, `CORS_ORIGINS` | Where the verify service listens, its public URL, and the exact browser origins allowed to call it |
 | `PASSPORT_SOURCE`, `PASSPORT_SOURCE_PATH` | `envio` reads the live index, `json` reads a local file |

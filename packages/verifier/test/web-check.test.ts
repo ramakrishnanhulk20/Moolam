@@ -53,7 +53,7 @@ type WebDetector = import("../src/webcheck/vision.js").WebDetector;
 type WebCheckSubject = import("../src/webcheck/check.js").WebCheckSubject;
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
-const KEY = "AIzaSyTESTKEYnotarealonexxxxxxxxxxxxxx1";
+const KEY = "fake-vision-key-for-tests-0000000001";
 const STUDIO: WebCheckSubject = { route: "studio", kind: 1, sealed: false, platform: false, generated: false };
 const SHUT = { generations: 0, edits: 0, unseals: 0, links: 0 };
 const QUIET = { info: () => undefined, warn: () => undefined };
