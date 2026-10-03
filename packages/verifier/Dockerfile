@@ -18,6 +18,16 @@ RUN npm ci --workspace packages/verifier --include-workspace-root=false
 FROM deps AS build
 COPY packages/verifier/tsconfig.json packages/verifier/tsconfig.build.json packages/verifier/
 COPY packages/verifier/src packages/verifier/src
+COPY packages/verifier/scripts/bundle-network-rule.mjs packages/verifier/scripts/bundle-network-rule.mjs
+# The thumbnail guard runs the workflow's own JPEG decoder, fingerprints and limits, so the build
+# bundles exactly these files into dist/networkRuleEntry.js (packages/verifier/scripts/bundle-network-rule.mjs).
+COPY packages/workflow/moolam-verifier/blockhash.ts \
+     packages/workflow/moolam-verifier/decode.ts \
+     packages/workflow/moolam-verifier/dihedral.ts \
+     packages/workflow/moolam-verifier/phash.ts \
+     packages/workflow/moolam-verifier/lookalike-rule.ts \
+     packages/workflow/moolam-verifier/config.network.json \
+     packages/workflow/moolam-verifier/
 RUN npm run build --workspace packages/verifier
 
 # Installed from the manifests again rather than pruned from `deps`, so the

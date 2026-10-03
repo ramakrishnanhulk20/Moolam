@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import {
   SignerRefusedFile,
   SignerUnavailable,
@@ -13,6 +13,7 @@ import {
 } from "./c2pa.js";
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
+  BLOCKHASH_MATCH_THRESHOLD,
   FingerprintFault,
   MAX_IMAGE_PIXELS,
   PHASH_MATCH_THRESHOLD,
@@ -27,6 +28,7 @@ import {
 } from "./fingerprint.js";
 import { manifestDocument } from "./metadata.js";
 import { safeReason } from "./net/errorText.js";
+import { networkRule } from "./networkRule.js";
 
 export type { Fingerprint, ManifestSummary };
 
@@ -84,19 +86,23 @@ export const FINGERPRINT_UNSTABLE_REASON =
   "this picture has too little detail across its width for a fingerprint that survives copying: its own small copy already reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. A picture with more detail from side to side will register. Nothing was pinned.";
 
 /**
- * The picture's pHash and the pHash of its own thumbnail are further apart than the match
- * threshold, so the re-check would call the registered thumbnail a mismatch and an honest copy of
- * the picture could not be matched either (review pass 5, intake 1).
+ * The picture's fingerprint and the fingerprint of its own thumbnail are further apart than the
+ * match threshold, however the thumbnail is made, so the re-check would call the registered
+ * thumbnail a mismatch and an honest copy of the picture could not be matched either (review pass
+ * 5, intake 1). `distance` and `limit` describe the same measure: the pHash by default, or the
+ * block hash when that is the one the closest thumbnail missed by (review of WO-309, finding 1).
  */
 export class FingerprintUnstable extends Error {
-  readonly limit = PHASH_MATCH_THRESHOLD;
+  readonly limit: number;
   readonly distance: number;
-  constructor(distance: number) {
+  constructor(distance: number, measure: "phash" | "blockhash" = "phash") {
+    const limit = measure === "phash" ? PHASH_MATCH_THRESHOLD : BLOCKHASH_MATCH_THRESHOLD;
     super(
-      `the thumbnail's pHash is ${distance} of 64 bits from the picture's, over the ${PHASH_MATCH_THRESHOLD} bit threshold`,
+      `the thumbnail's ${measure === "phash" ? "pHash" : "block hash"} is ${distance} of ${measure === "phash" ? 64 : 256} bits from the picture's, over the ${limit} bit threshold`,
     );
     this.name = "FingerprintUnstable";
     this.distance = distance;
+    this.limit = limit;
   }
 }
 
@@ -128,6 +134,15 @@ const QUALITY_START = 85;
 const QUALITY_FLOOR = 30;
 const QUALITY_STEP = 5;
 
+/** The highest quality a thumbnail that failed the network's rule is made again at. */
+const QUALITY_CEILING = 100;
+
+/**
+ * The longest sides a thumbnail is made at after the 512 pixel one failed the network's rule, from
+ * the largest down. A smaller picture takes a higher quality inside the same byte cap, and that
+ * puts it closer to the pixels the registered print was taken from.
+ */
+const SMALLER_SIDES = [448, 384, 320, 256];
 export interface PreparedImage {
   original: Buffer;
   thumbnail: Buffer;
@@ -263,6 +278,7 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
   );
 
   const signedPrint = await fingerprint(signed);
+  registeredPrints.set(signed, signedPrint);
   if (signedPrint.phash !== sourcePrint.phash) {
     throw new Error(
       `Signing changed the perceptual hash of this ${format} upload, so the soft binding would describe other pixels.`,
@@ -392,7 +408,7 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
     return {
       bytes: upright,
       thumbnail: await makeThumbnail(upright),
-      print: await fingerprint(upright),
+      print: await registeredPrint(upright),
       manifestHash: ZERO_BYTES32,
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
@@ -439,7 +455,7 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
     const upright = await uprightImage(source);
     result = {
       bytes: upright,
-      print: await fingerprint(upright),
+      print: await registeredPrint(upright),
       manifestHash: ZERO_BYTES32,
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
@@ -689,17 +705,30 @@ async function isProgressive(source: Buffer): Promise<boolean> {
   return metadata.isProgressive === true;
 }
 
+
 /**
- * Shrinks the image until it fits the verifier's fetch budget.
+ * Makes the thumbnail the Chainlink re-check will fetch.
  *
- * The output is a baseline JPEG on purpose: the Chainlink sandbox decodes with jpeg-js, which
- * reads baseline files only, so a progressive thumbnail would fail every verification.
+ * The first choice is the 512 pixel baseline JPEG at the highest quality that fits the byte cap,
+ * which is what every thumbnail was before the network's own rule was applied here. That thumbnail
+ * is then measured exactly the way the network measures it (networkRule: the workflow's JPEG
+ * decoder and fingerprint code, against the print registered for this picture) and kept when the
+ * network would call it a match. When it would not, the thumbnail is made again, the next higher
+ * quality that still fits the cap first and then a smaller longest side at its highest quality that
+ * fits, until one passes. When none passes, the first choice is returned and marked, and
+ * assertStableFingerprint refuses the picture with FingerprintUnstable. Nothing here throws for a
+ * picture that fails: every route asks assertStableFingerprint next, and a route already answers
+ * FingerprintUnstable there.
+ *
+ * `image` must be the bytes whose print is registered, because the print is taken from them: the
+ * signed file of a public or sealed registration, or the unsigned upright copy.
  *
  * `maxBytes` is smaller than THUMBNAIL_MAX_BYTES only for a private copy, which gains a comment
  * after this and still has to fit the fetch budget (review pass 5, intake 5).
  *
  * Throws ThumbnailTooLarge when even the lowest quality is over the budget, FingerprintFault when a
- * decoder runs out of memory, and UndecodableImage for pixels it cannot decode.
+ * decoder runs out of memory or the network's rule cannot be loaded, and UndecodableImage for
+ * pixels it cannot decode.
  */
 export async function makeThumbnail(image: Buffer, maxBytes: number = THUMBNAIL_MAX_BYTES): Promise<Buffer> {
   const budget = Math.min(maxBytes, THUMBNAIL_MAX_BYTES);
@@ -709,34 +738,179 @@ export async function makeThumbnail(image: Buffer, maxBytes: number = THUMBNAIL_
       `The thumbnail is still ${shrunk.thumbnail.length} bytes at quality ${QUALITY_FLOOR}, over the ${budget} byte cap.`,
     );
   }
-  return shrunk.thumbnail;
+  return await thumbnailTheNetworkAccepts(image, shrunk, budget);
+}
+
+function resizedTo(image: Buffer, side: number): Sharp {
+  return sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({
+    width: side,
+    height: side,
+    fit: "inside",
+    withoutEnlargement: true,
+  });
+}
+
+function encodedAt(resized: Sharp, quality: number): Promise<Buffer> {
+  return viaSharp(() => resized.clone().jpeg({ quality, progressive: false }).toBuffer());
 }
 
 /**
  * The first quality at or under the budget, or the lowest quality tried when none fits. Every
  * candidate is a baseline JPEG of the same resized pixels, so the one kept is exactly what
- * makeThumbnail would hand the workflow.
+ * makeThumbnail would hand the workflow when the network accepts it.
  */
-async function shrinkToBudget(image: Buffer, maxBytes: number): Promise<{ thumbnail: Buffer; fits: boolean }> {
-  const resized = sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({
-    width: THUMBNAIL_LONGEST_SIDE,
-    height: THUMBNAIL_LONGEST_SIDE,
-    fit: "inside",
-    withoutEnlargement: true,
-  });
+async function shrinkToBudget(
+  image: Buffer,
+  maxBytes: number,
+): Promise<{ thumbnail: Buffer; fits: boolean; quality: number }> {
+  const resized = resizedTo(image, THUMBNAIL_LONGEST_SIDE);
 
   let last: Buffer | undefined;
   for (let quality = QUALITY_START; quality >= QUALITY_FLOOR; quality -= QUALITY_STEP) {
-    const candidate = await viaSharp(() => resized.clone().jpeg({ quality, progressive: false }).toBuffer());
+    const candidate = await encodedAt(resized, quality);
     if (candidate.length <= maxBytes) {
-      return { thumbnail: candidate, fits: true };
+      return { thumbnail: candidate, fits: true, quality };
     }
     last = candidate;
   }
   if (last === undefined) {
     throw new Error("the thumbnail quality range is empty");
   }
-  return { thumbnail: last, fits: false };
+  return { thumbnail: last, fits: false, quality: QUALITY_FLOOR };
+}
+
+/**
+ * The thumbnails tried after the first choice failed, best first, each made only when asked for.
+ * Higher qualities at the same size come first: the walk up stops at the first one over the budget,
+ * because a file only grows with quality. Then each smaller longest side, at the highest quality
+ * that fits, skipping a side the picture is already no larger than since that would only repeat
+ * the pixels already tried.
+ */
+async function* remakes(image: Buffer, pickedQuality: number, budget: number): AsyncGenerator<Buffer> {
+  const full = resizedTo(image, THUMBNAIL_LONGEST_SIDE);
+  for (let quality = pickedQuality + QUALITY_STEP; quality <= QUALITY_CEILING; quality += QUALITY_STEP) {
+    const candidate = await encodedAt(full, quality);
+    if (candidate.length > budget) {
+      break;
+    }
+    yield candidate;
+  }
+
+  const { width = 0, height = 0 } = await viaSharp(() =>
+    sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata(),
+  );
+  const longest = Math.max(width, height);
+  for (const side of SMALLER_SIDES) {
+    if (side >= longest) {
+      continue;
+    }
+    const smaller = resizedTo(image, side);
+    for (let quality = QUALITY_CEILING; quality >= QUALITY_FLOOR; quality -= QUALITY_STEP) {
+      const candidate = await encodedAt(smaller, quality);
+      if (candidate.length <= budget) {
+        yield candidate;
+        break;
+      }
+    }
+  }
+}
+
+/** What the network's rule said about a thumbnail makeThumbnail made, and for which registered pHash. */
+type Verdict =
+  | { stable: true; phash: bigint }
+  | { stable: false; phash: bigint; distance: number; measure: "phash" | "blockhash" };
+
+/**
+ * Keyed by the very Buffer makeThumbnail returned, like unsealThumbnails, and gone with it. The
+ * routes call assertStableFingerprint with the print's pHash and that Buffer, which is all it needs
+ * to look the verdict up; the block hash and the picture the verdict was measured against are not
+ * in that call.
+ */
+const verdicts = new WeakMap<Buffer, Verdict>();
+
+/**
+ * The print registered for these bytes, taken once. prepare signs and fingerprints the file that is
+ * registered, so makeThumbnail finds that print here instead of decoding the picture a second time.
+ */
+const registeredPrints = new WeakMap<Buffer, Fingerprint>();
+
+async function registeredPrint(image: Buffer): Promise<Fingerprint> {
+  const known = registeredPrints.get(image);
+  if (known !== undefined) {
+    return known;
+  }
+  const print = await fingerprint(image);
+  registeredPrints.set(image, print);
+  return print;
+}
+
+/** How far one thumbnail missed the rule, in the measure it missed by most (bits over its limit). */
+interface Miss {
+  overshoot: number;
+  distance: number;
+  measure: "phash" | "blockhash";
+}
+
+async function thumbnailTheNetworkAccepts(
+  image: Buffer,
+  first: { thumbnail: Buffer; quality: number },
+  budget: number,
+): Promise<Buffer> {
+  const rule = await networkRule();
+  const stored = await registeredPrint(image);
+  const misses: Miss[] = [];
+
+  const accepts = async (candidate: Buffer): Promise<boolean> => {
+    // The service's own pHash has to agree too: /verify matches an honest copy by it, and
+    // assertStableFingerprint has always refused a thumbnail it called a different picture.
+    const serviceDistance = hamming64(stored.phash, await phashOf(candidate));
+    let measured: ReturnType<typeof rule.measure> | undefined;
+    try {
+      measured = rule.measure(new Uint8Array(candidate), stored);
+    } catch {
+      // A thumbnail the network's decoder cannot read gets no verdict from the network, so it is
+      // never one that matches.
+      measured = undefined;
+    }
+    if (measured?.matched === true && serviceDistance <= PHASH_MATCH_THRESHOLD) {
+      return true;
+    }
+
+    let miss: Miss;
+    if (measured === undefined) {
+      miss = { overshoot: Number.POSITIVE_INFINITY, distance: 64, measure: "phash" };
+    } else {
+      const phashOver = Math.max(measured.phashDistance - rule.phashBits, serviceDistance - PHASH_MATCH_THRESHOLD);
+      const blockhashOver = measured.blockhashDistance - rule.blockhashBits;
+      miss =
+        blockhashOver > phashOver
+          ? { overshoot: blockhashOver, distance: measured.blockhashDistance, measure: "blockhash" }
+          : { overshoot: phashOver, distance: Math.max(measured.phashDistance, serviceDistance), measure: "phash" };
+    }
+    misses.push(miss);
+    return false;
+  };
+
+  if (await accepts(first.thumbnail)) {
+    verdicts.set(first.thumbnail, { stable: true, phash: stored.phash });
+    return first.thumbnail;
+  }
+  for await (const candidate of remakes(image, first.quality, budget)) {
+    if (await accepts(candidate)) {
+      verdicts.set(candidate, { stable: true, phash: stored.phash });
+      return candidate;
+    }
+  }
+
+  // The first thumbnail was measured and missed before any remake ran, so there is at least one.
+  const missed = misses.reduce((best, next) => (next.overshoot < best.overshoot ? next : best));
+  verdicts.set(first.thumbnail, {
+    stable: false,
+    phash: stored.phash,
+    distance: missed.distance,
+    measure: missed.measure,
+  });
+  return first.thumbnail;
 }
 
 /**
@@ -753,17 +927,31 @@ export async function recheckThumbnail(image: Buffer): Promise<Buffer> {
 }
 
 /**
- * Refuses a picture whose fingerprint does not survive its own thumbnail, measured the way the
- * Chainlink re-check measures it: the registered pHash against the pHash of the thumbnail, over
- * the same match threshold. A picture that only changes from top to bottom leaves the pHash's
- * 8 by 8 block almost empty, so its bits are decided by grain and compression noise and the two
- * land 30 bits apart. Such a passport could never be re-checked as matched, and no re-encoded copy
- * of it could be found by /verify.
+ * Refuses a picture whose fingerprint does not survive its own thumbnail, judged the way the
+ * Chainlink network judges it. makeThumbnail has already measured the thumbnail with the workflow's
+ * own decoder and rule (pHash within the match threshold and block hash within its limit, against
+ * the registered print) and tried every remake it has; this reads that verdict, and also holds the
+ * thumbnail to the service's own pHash, which /verify matches copies by. A picture that only
+ * changes from top to bottom leaves the pHash's 8 by 8 block almost empty, so its bits are decided
+ * by grain and compression noise and the two land 30 bits apart. Such a passport could never be
+ * re-checked as matched, and no re-encoded copy of it could be found by /verify.
  *
- * Returns the distance in bits. Throws FingerprintUnstable past PHASH_MATCH_THRESHOLD, and what
- * phashOf throws for a thumbnail it cannot read.
+ * Returns the service's pHash distance in bits. Throws FingerprintUnstable when the network would
+ * not match the thumbnail or the service's pHash is past PHASH_MATCH_THRESHOLD, and what phashOf
+ * throws for a thumbnail it cannot read. Throws a plain Error, failing closed, for a thumbnail
+ * makeThumbnail did not make or one made for another picture than `phash`: a thumbnail never
+ * measured by the network's rule is never accepted.
  */
 export async function assertStableFingerprint(phash: bigint, thumbnail: Buffer): Promise<number> {
+  const verdict = verdicts.get(thumbnail);
+  if (verdict === undefined || verdict.phash !== phash) {
+    throw new Error(
+      "this thumbnail was not made by makeThumbnail for this picture, so the network's rule never measured it",
+    );
+  }
+  if (!verdict.stable) {
+    throw new FingerprintUnstable(verdict.distance, verdict.measure);
+  }
   const distance = hamming64(phash, await phashOf(thumbnail));
   if (distance > PHASH_MATCH_THRESHOLD) {
     throw new FingerprintUnstable(distance);

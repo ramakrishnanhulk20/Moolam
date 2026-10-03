@@ -48,6 +48,7 @@ import { getAddress, type Hex } from "viem";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { makeImage } from "./helpers.js";
+import { texturedPicture } from "./texturedPicture.js";
 import { skyOverHorizon } from "./skyPicture.js";
 
 const APP_ID = vi.hoisted(() => {
@@ -295,9 +296,9 @@ async function ask(
   });
 }
 
-/** Another flat picture and its facts, for a test that needs a second passport of the same holder. */
+/** Another picture and its facts, for a test that needs a second passport of the same holder. */
 async function anotherSealedFile(background: string): Promise<{ bytes: Buffer; passportId: Hex; phash: bigint; blockhash: Hex }> {
-  const bytes = await sharp({ create: { width: 640, height: 480, channels: 3, background } }).jpeg({ quality: 92 }).toBuffer();
+  const bytes = await texturedPicture(background);
   const print = await fingerprint(bytes);
   return { bytes, passportId: print.sha256, phash: print.phash, blockhash: print.blockhash };
 }
@@ -353,11 +354,7 @@ describe("unsealing a sealed passport", () => {
 
     // The real sealed pipeline, so the file under test is the file a creator would be holding.
     const prepared = await prepareSealed(
-      await sharp({
-        create: { width: 640, height: 480, channels: 3, background: "#1d3b53" },
-      })
-        .jpeg({ quality: 92 })
-        .toBuffer(),
+      await texturedPicture("#1d3b53"),
       { title: "Monsoon nets, sealed", claimGenerator: "moolam-studio/0.1.0", action: "c2pa.created" },
     );
     sealedFile = {

@@ -13,11 +13,11 @@
 // stubs them, and every pin is answered at the fetch layer.
 
 import { SignJWT, generateKeyPair } from "jose";
-import sharp from "sharp";
 import { getAddress, type Hex } from "viem";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { multipartBody, recordFor } from "./helpers.js";
+import { texturedPicture } from "./texturedPicture.js";
 
 const APP_ID = vi.hoisted(() => {
   const id = "moolamtestapp0000104";
@@ -100,7 +100,7 @@ const trailingFinder = async (passportId: Hex) =>
 
 async function sealed(background: string, title: string): Promise<Sealed> {
   const prepared = await prepareSealed(
-    await sharp({ create: { width: 640, height: 480, channels: 3, background } }).jpeg({ quality: 92 }).toBuffer(),
+    await texturedPicture(background),
     { title, claimGenerator: "moolam-studio/0.1.0", action: "c2pa.created" },
   );
   const passportId = prepared.print.sha256;

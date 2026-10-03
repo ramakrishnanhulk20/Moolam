@@ -26,3 +26,12 @@ packages/contracts/broadcast
 # workspace package.json has to stay in the context even when its source does not.
 !packages/web/package.json
 !packages/indexer/package.json
+
+# The verifier's build bundles these workflow files into its thumbnail guard. Nothing else of the
+# workflow reaches the image.
+!packages/workflow/moolam-verifier/blockhash.ts
+!packages/workflow/moolam-verifier/decode.ts
+!packages/workflow/moolam-verifier/dihedral.ts
+!packages/workflow/moolam-verifier/phash.ts
+!packages/workflow/moolam-verifier/lookalike-rule.ts
+!packages/workflow/moolam-verifier/config.network.json

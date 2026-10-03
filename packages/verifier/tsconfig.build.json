@@ -6,5 +6,6 @@
     "sourceMap": false,
     "declaration": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/networkRuleEntry.ts"]
 }
