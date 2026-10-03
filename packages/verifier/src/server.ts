@@ -28,6 +28,7 @@ import { envioLookalikeReader, type LookalikeIndexReader } from "./lookalike/ind
 import type { LedgerChain } from "./lookalike/ledger.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { safeReason } from "./net/errorText.js";
+import { networkRule } from "./networkRule.js";
 import {
   fileQueueStore,
   memoryQueueStore,
@@ -1261,6 +1262,9 @@ export async function buildServer(
 }
 
 async function start(): Promise<void> {
+  // Every thumbnail is measured with the bundled network rule. A build without it must fail its
+  // boot, so the host keeps the deployment before it, rather than answer the first picture 503.
+  await networkRule();
   const app = await buildServer();
   await app.listen({ port: env.VERIFIER_PORT, host: "0.0.0.0" });
 }
