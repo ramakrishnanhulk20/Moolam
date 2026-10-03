@@ -135,9 +135,11 @@ without moving index 0.
 Chainlink's log trigger drops events over its quota, and passports registered before activation
 were never run by the network at all. The cron handler fills both gaps.
 
-1. `GET {verifierUrl}/lookalikes/backlog?asOf=<run time less 10 minutes>&n=<backlogPerRun>`. The
-   service names up to seven passports, oldest first. No answer, in the same sense as above, writes
-   nothing and fails the run.
+1. `GET {verifierUrl}/lookalikes/backlog?asOf=<run time less 10 minutes>&n=<backlogPerRun>&slot=<scheduled time / 600>`.
+   The service names up to seven of the passports still waiting, oldest first from a starting place
+   the slot moves on each run, so one that can never be finished does not hold the rest. "Not
+   ready" skips the catch-up for that run with a log line; any other non-answer writes nothing and
+   fails the run.
 2. For each id: `getPassport`, the verdict receiver's `lastExecutedAt(id)`, and for an original
    `MoolamLookalikes.originOf(id).executedAt`. A floor counts as the network's only at or after
    `activationTime`; verdicts the simulator wrote to `0x0d69` before 2026-09-26 sit below it and
