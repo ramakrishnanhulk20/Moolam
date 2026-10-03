@@ -93,7 +93,8 @@ function assetChain(state: { used: boolean; logs: { nonce: Hex; block: bigint }[
     getTransactionReceipt: vi.fn(async ({ hash }: { hash: Hex }) => {
       const logs = state.receipts[hash];
       if (logs === undefined) throw new Error("Transaction receipt with hash could not be found");
-      return { status: "success", logs };
+      // After the block the payment was held at, as the real receipt's own block always is.
+      return { status: "success", logs, blockNumber: 1_100n };
     }),
   };
 }

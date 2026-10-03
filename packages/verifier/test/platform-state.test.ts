@@ -117,6 +117,34 @@ describe("platform state across a restart", () => {
     expect(memory.accept(seen, NOW)).toEqual({ ok: true });
   });
 
+  it("WO-317: refuses a prepare whose nonce cannot be written, so a restart cannot replay it", () => {
+    // Failed on the code before this order: the prepare was accepted and kept in memory only, so a
+    // restart inside its window forgot it and the same signed message was accepted a second time.
+    const file = path.join(folder(), PLATFORM_STATE_FILES.nonces);
+    const real = fileNonceStore(file);
+    let diskFull = true;
+    const lines: string[] = [];
+    const store = {
+      read: real.read,
+      write: (seen: Parameters<typeof real.write>[0]) => {
+        if (diskFull) throw new Error("ENOSPC: no space left on device");
+        real.write(seen);
+      },
+    };
+    const memory = nonceMemory(store, { log: (line) => lines.push(line) });
+    const seen = { platform: bytes32("a"), nonce: bytes32("1"), picture: bytes32("2"), expiresAt: Number(NOW + 600n) };
+
+    expect(memory.accept(seen, NOW)).toEqual({ ok: false, reason: "closed" });
+    expect(memory.accept({ ...seen, nonce: bytes32("3"), picture: bytes32("4") }, NOW)).toEqual({ ok: false, reason: "closed" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/could not be saved/);
+
+    // Nothing was accepted, so nothing is held against the same message when the disk works again.
+    diskFull = false;
+    expect(memory.accept(seen, NOW)).toEqual({ ok: true });
+    expect(nonceMemory(fileNonceStore(file)).accept(seen, NOW + 10n)).toEqual({ ok: false, reason: "replayed" });
+  });
+
   it("keeps the per-key quota and the platform day ceiling", () => {
     const dir = folder();
     const quotaFile = path.join(dir, PLATFORM_STATE_FILES.quota);

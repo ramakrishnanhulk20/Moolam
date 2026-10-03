@@ -700,7 +700,9 @@ const CAPTURE_METADATA_LABELS = ["stds.exif", "stds.iptc", "c2pa.metadata", "caw
 /**
  * What the standard does not allow to be redacted, and what the record is kept for: the actions,
  * the hard bindings and the ingredients. A location or serial inside one of these cannot be taken
- * out, so it survives into the signed bytes and the read back after signing drops the record.
+ * out, so it survives into the signed bytes. A text one is found by the read back after signing, which
+ * drops the record. One that is not text, a number a camera wrote under a GPS key, cannot be found that
+ * way, so the plan drops the record before anything is signed (cameraRecordOf).
  */
 const NEVER_REDACTED = ["c2pa.actions", "c2pa.hash.", "c2pa.ingredient"];
 
@@ -735,7 +737,10 @@ const MAX_DATA_DEPTH = 32;
  * In every manifest of the store, an assertion is redacted when it is capture metadata (EXIF, IPTC,
  * c2pa.metadata, cawg.metadata), when any key in its data names a place or a serial, or when its
  * data cannot be looked into at all. A thumbnail is redacted when it carries EXIF, XMP or IPTC, or
- * cannot be decoded. Actions, hard bindings and ingredients are never redacted.
+ * cannot be decoded. Actions, hard bindings and ingredients are never redacted, and one that holds
+ * a value that is not text (a number, a flag) under a place or serial key makes the store
+ * "unusable": the byte check after signing can only look for text, so nothing else would catch it.
+ * The same goes for text the reader shows in a form that is not what the upload wrote (unseenByByteCheck).
  *
  * "none" for a file with no store, including one that only names a remote manifest, which is never
  * fetched. "unusable" for a store the library cannot read, a JPEG box that may be a damaged store, a
@@ -784,6 +789,9 @@ export async function cameraRecordOf(upload: Buffer): Promise<CameraRecordPlan> 
         }
       }
       if (neverRedacted(assertion.label)) {
+        if (found.opaque || found.values.some((value) => unseenByByteCheck(value, upload))) {
+          return unusable("an assertion that cannot be redacted holds a value that is not text under a place or serial key");
+        }
         continue;
       }
       const inspectable = assertion.data !== null && typeof assertion.data === "object";
@@ -910,12 +918,16 @@ function isCaptureMetadata(label: string): boolean {
 }
 
 /**
- * Whether any key in the data names a place or a serial, and every string held under such a key,
- * however deeply. Data nested past MAX_DATA_DEPTH counts as a hit, since it was not looked into.
+ * Whether any key in the data names a place or a serial, every string held under such a key,
+ * however deeply, and whether anything that is not text sits under one: a number, a flag. The byte
+ * check after signing searches for text only, so an `opaque` value is the one a caller must keep out
+ * of anything it cannot redact. Covers every scalar under such a key and says nothing about a number
+ * under an innocent key. Data nested past MAX_DATA_DEPTH counts as a hit, since it was not looked into.
  */
-function placesAndSerials(data: unknown): { hit: boolean; values: string[] } {
+function placesAndSerials(data: unknown): { hit: boolean; values: string[]; opaque: boolean } {
   const values: string[] = [];
   let hit = false;
+  let opaque = false;
   const visit = (node: unknown, under: boolean, depth: number): void => {
     if (depth > MAX_DATA_DEPTH) {
       hit = true;
@@ -929,10 +941,23 @@ function placesAndSerials(data: unknown): { hit: boolean; values: string[] } {
         hit ||= named;
         visit(value, under || named, depth + 1);
       }
+    } else if (under && node !== null && node !== undefined) {
+      opaque = true;
     }
   };
   visit(data, false, 0);
-  return { hit, values };
+  return { hit, values, opaque };
+}
+
+/**
+ * Whether a string the reader shows under a place or serial key is one the byte check after signing
+ * cannot find. The reader shows a list of numbers it cannot render as an empty string, and a list of
+ * whole numbers as base64, so neither is text written in the upload, and a camera's coordinates
+ * would pass the check unseen. A string shorter than MIN_SECRET_LENGTH is no secret by the same rule
+ * that keeps it out of the byte check.
+ */
+function unseenByByteCheck(value: string, upload: Buffer): boolean {
+  return value.length === 0 || (value.length >= MIN_SECRET_LENGTH && !upload.includes(Buffer.from(value, "utf8")));
 }
 
 type StoreManifest = NonNullable<ReturnType<Reader["getActive"]>>;

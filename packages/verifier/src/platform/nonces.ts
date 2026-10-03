@@ -94,7 +94,8 @@ export interface NonceMemory {
   /**
    * Remembers this PlatformPrepare, or says why it cannot be accepted: its nonce, or its picture,
    * was already accepted for this platform inside the window, the memory is closed after a file it
-   * could not believe, or it is full. Nothing awaits, so two requests cannot both pass one check.
+   * could not believe or because the nonce could not be saved, or it is full. Nothing awaits, so
+   * two requests cannot both pass one check.
    */
   accept: (seen: SeenPrepare, chainNow: bigint) => NonceVerdict;
 }
@@ -104,8 +105,10 @@ export interface NonceMemory {
  * make every nonce of the last ten minutes usable again.
  *
  * A saved file that cannot be believed is refused, and every prepare is refused for one window from
- * the boot, after which nothing it could have held is still inside a signature's window. A save that
- * fails keeps the memory in this process and says so once.
+ * the boot, after which nothing it could have held is still inside a signature's window. A prepare
+ * whose nonce cannot be saved is refused as "closed" and forgotten, and the failure is logged once:
+ * accepted and held in this process only, it would be forgotten by a restart inside its window and
+ * the same signed message accepted again.
  */
 export function nonceMemory(
   store: NonceStore,
@@ -122,15 +125,17 @@ export function nonceMemory(
   }
 
   let saveFailed = false;
-  const save = (): void => {
+  const save = (): boolean => {
     try {
       store.write(seen);
       saveFailed = false;
+      return true;
     } catch (error) {
       if (!saveFailed) {
-        log(`the platform nonce memory could not be saved, keeping it in memory only: ${safeReason(error)}`);
+        log(`the platform nonce memory could not be saved, so every platform prepare is refused until it can be: ${safeReason(error)}`);
         saveFailed = true;
       }
+      return false;
     }
   };
 
@@ -150,7 +155,10 @@ export function nonceMemory(
         return { ok: false, reason: "full" };
       }
       seen.push({ ...next });
-      save();
+      if (!save()) {
+        seen.pop();
+        return { ok: false, reason: "closed" };
+      }
       return { ok: true };
     },
   };

@@ -925,7 +925,8 @@ describe("proving a payment from the pay asset (pass 6, V43)", () => {
       getTransactionReceipt: vi.fn(async ({ hash }: { hash: Hex }) => {
         const receipt = state.receipts?.[hash];
         if (receipt === undefined) throw new Error("Transaction receipt with hash could not be found");
-        return receipt;
+        // After the block the payment was held at, as the real receipt's own block always is.
+        return { blockNumber: 1_100n, ...receipt };
       }),
     };
     return { chain, ranges, state };

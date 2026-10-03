@@ -21,6 +21,12 @@ export interface CameraPhotoOptions {
    * can never be redacted, so this is the record that cannot be cleaned and has to be dropped.
    */
   gpsInAction?: boolean;
+  /**
+   * Parameters of the c2pa.created action, written as the camera gave them, numbers included. A
+   * number is not text, so the check that looks for the record's place and serial text in the signed
+   * bytes cannot see one.
+   */
+  actionParameters?: Record<string, unknown>;
   /** The record's own thumbnail is a JPEG that carries the camera's EXIF, serial and GPS included. */
   exifThumbnail?: boolean;
   /** More assertions the camera signs, each as CBOR. */
@@ -60,6 +66,9 @@ export async function cameraPhoto(seed: number, options: CameraPhotoOptions = {}
   const created: Record<string, unknown> = { action: "c2pa.created", digitalSourceType: source };
   if (options.gpsInAction) {
     created.parameters = { "exif:GPSLatitude": CAMERA_SECRETS.latitude };
+  }
+  if (options.actionParameters !== undefined) {
+    created.parameters = options.actionParameters;
   }
   builder.addAssertion("c2pa.actions", { actions: [created] }, "Cbor");
   builder.addAssertion(

@@ -11,7 +11,10 @@ import { env } from "./env";
  * request's, and that is what makes a picture registered once and moved once (D2).
  */
 
-/** Past this many pictures the oldest is removed with its file. The site keeps pictures only for the demo. */
+/**
+ * Past this many pictures the oldest one that is not held for someone is removed with its file. The
+ * site keeps pictures only for the demo.
+ */
 export const MAX_PICTURES = 500;
 
 export const PICTURE_STATES = ["woven", "cosign-open", "cosign-signed", "registered", "moved", "failed"] as const;
@@ -169,15 +172,56 @@ function removePicture(record: PictureRecord): void {
 }
 
 /**
- * Stores a newly woven picture and its record, then removes the oldest pictures past MAX_PICTURES.
- * The id is 128 bits from the CSPRNG and is never the session.
+ * Whether Dreamloom is holding something for a visitor in this record: a passport registered in
+ * platform mode that still sits in Dreamloom's wallet, or an action running on it right now. Taking
+ * the record away would leave the passport with nobody who can ask for it, and /move would answer
+ * 404. A co-signed picture holds nothing: its passport went to the visitor's own wallet.
+ */
+function isHeld(record: PictureRecord): boolean {
+  return record.busy !== undefined || (record.state === "registered" && record.mode === "platform");
+}
+
+/**
+ * The oldest pictures to remove so one more fits under MAX_PICTURES, never a held one, or null when
+ * the pictures that may go are fewer than the room needed. `all` is oldest first, as listPictures
+ * returns it.
+ */
+function makeRoom(all: readonly PictureRecord[]): PictureRecord[] | null {
+  const needed = all.length + 1 - MAX_PICTURES;
+  if (needed <= 0) return [];
+  const removable = all.filter((record) => !isHeld(record)).slice(0, needed);
+  return removable.length === needed ? removable : null;
+}
+
+/** Thrown by createPicture when every picture on the shelf is held for someone, so none may be removed for a new one. */
+export class ShelfFull extends Error {
+  constructor() {
+    super(`Dreamloom holds ${MAX_PICTURES} pictures and every one is held for a visitor, so there is no room for another`);
+    this.name = "ShelfFull";
+  }
+}
+
+/** Whether a new picture would fit now, so a route can refuse before it spends anything on drawing one. */
+export function roomForAnotherPicture(): boolean {
+  return makeRoom(listPictures()) !== null;
+}
+
+/**
+ * Stores a newly woven picture and its record, then removes the oldest pictures past MAX_PICTURES
+ * that are not held for a visitor (isHeld). The id is 128 bits from the CSPRNG and is never the
+ * session.
  *
- * Throws when the bytes are not a PNG, JPEG or WebP, or when the folder cannot be written.
+ * Throws ShelfFull, before writing or removing anything, when no picture may be removed to make
+ * room. Throws when the bytes are not a PNG, JPEG or WebP, or when the folder cannot be written.
  */
 export function createPicture(input: { sessionHash: string; prompt: string; bytes: Uint8Array }): PictureRecord {
   const contentType = imageType(input.bytes);
   if (contentType === null) {
     throw new Error("the picture is not a PNG, JPEG or WebP");
+  }
+  const removable = makeRoom(listPictures());
+  if (removable === null) {
+    throw new ShelfFull();
   }
   const record: PictureRecord = {
     version: 1,
@@ -190,11 +234,7 @@ export function createPicture(input: { sessionHash: string; prompt: string; byte
   };
   writeAtomic(imagePath(record), input.bytes);
   writeRecord(record);
-
-  const all = listPictures();
-  for (const old of all.slice(0, Math.max(0, all.length - MAX_PICTURES))) {
-    if (old.id !== record.id) removePicture(old);
-  }
+  for (const old of removable) removePicture(old);
   return record;
 }
 

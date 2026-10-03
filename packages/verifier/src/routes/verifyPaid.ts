@@ -91,7 +91,8 @@ export const LOG_CHUNK_BLOCKS = 100n;
 /**
  * How far before the block read when the payment was held the log search starts. The block number
  * comes from whichever RPC endpoint answered, and a second endpoint can trail the first by a block
- * or two, so a transfer mined right at the hold is still inside the range.
+ * or two, so a transfer mined right at the hold is still inside the range. A transaction mined before
+ * that start is never this request's payment, whoever named it (see landed).
  */
 export const HOLD_LOOKBACK_BLOCKS = 5n;
 
@@ -110,8 +111,10 @@ export const LOG_SEARCH_MAX_CHUNKS = 50;
  * searched and no such transaction is there (a cancellation, or a use before this request). Undefined
  * when nobody can tell: a failed or unfinished read, or a transfer that may still land.
  *
- * `heldAt` is the block read when this payment was first settled, where the search starts. When
- * that read failed it is undefined, and the search starts from the authorisation's validAfter.
+ * `heldAt` is the block read when this payment was first settled, where the search starts, and
+ * the earliest block, less HOLD_LOOKBACK_BLOCKS, a transaction may be in to count: a settlement
+ * older than the request cannot pay for it, even one the facilitator names. When that read failed
+ * it is undefined, and the search starts from the authorisation's validAfter.
  */
 export type ChargedCheck = (
   payment: PaymentPayload,
@@ -135,7 +138,7 @@ export interface ChargeReader {
     functionName: "authorizationState";
     args: readonly [Hex, Hex];
   }) => Promise<unknown>;
-  getTransactionReceipt: (args: { hash: Hex }) => Promise<{ status: string; logs: readonly unknown[] }>;
+  getTransactionReceipt: (args: { hash: Hex }) => Promise<{ status: string; logs: readonly unknown[]; blockNumber?: bigint }>;
   getBlockNumber: () => Promise<bigint>;
   getBlock: (args: { blockNumber: bigint }) => Promise<{ timestamp: bigint }>;
   getLogs: (args: {
@@ -400,7 +403,7 @@ export function chainCharged(chain: ChargeReader = readClient() as unknown as Ch
     }
 
     for (const hash of new Set(transactions)) {
-      if (TRANSACTION_HASH.test(hash) && (await landed(chain, hash as Hex, terms)) === true) {
+      if (TRANSACTION_HASH.test(hash) && (await landed(chain, hash as Hex, terms, heldAt)) === true) {
         return true;
       }
     }
@@ -470,7 +473,7 @@ async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigi
       ) {
         continue;
       }
-      const proved = await landed(chain, hash as Hex, terms);
+      const proved = await landed(chain, hash as Hex, terms, heldAt);
       if (proved === true) {
         return true;
       }
@@ -552,15 +555,32 @@ async function firstBlockPast(chain: ChargeReader, time: bigint, head: bigint): 
   return low === high ? low : undefined;
 }
 
-/** Whether one transaction is this payment landing: true, false, or undefined when its receipt cannot be read. */
-async function landed(chain: ChargeReader, hash: Hex, terms: PaymentTerms): Promise<boolean | undefined> {
-  let receipt: { status: string; logs: readonly unknown[] };
+/**
+ * Whether one transaction is this payment landing: true, false, or undefined when its receipt cannot
+ * be read. With `since`, the block read before this payment's first settle, a receipt from before
+ * since less HOLD_LOOKBACK_BLOCKS is false: the transfer of an older settlement of the same
+ * authorisation would otherwise pay for a new file once the ledger entry that remembered it expired.
+ * A receipt that names no block cannot be placed against `since`, so it is undefined.
+ */
+async function landed(chain: ChargeReader, hash: Hex, terms: PaymentTerms, since?: bigint): Promise<boolean | undefined> {
+  let receipt: { status: string; logs: readonly unknown[]; blockNumber?: bigint };
   try {
     receipt = await chain.getTransactionReceipt({ hash });
   } catch {
     return undefined;
   }
-  return receipt.status === "success" && carriesPayment(receipt.logs, terms);
+  if (receipt.status !== "success") {
+    return false;
+  }
+  if (since !== undefined) {
+    if (typeof receipt.blockNumber !== "bigint") {
+      return undefined;
+    }
+    if (receipt.blockNumber < (since > HOLD_LOOKBACK_BLOCKS ? since - HOLD_LOOKBACK_BLOCKS : 0n)) {
+      return false;
+    }
+  }
+  return carriesPayment(receipt.logs, terms);
 }
 
 /** One receipt log as carriesPayment reads it. */

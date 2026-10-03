@@ -300,6 +300,58 @@ describe("item 7: what a kept record and a dropped one look like", () => {
   }, 60_000);
 });
 
+describe("WO-317: a place or serial written as a number where nothing can be redacted", () => {
+  // The byte check after signing looks for the record's place and serial as text, so a CBOR number
+  // under a GPS key passed it, was kept inside the actions, and was pinned publicly. These failed
+  // on the code before this order: the plan was "store" and the record was kept. The reader shows
+  // a list of numbers as an empty string or as base64, so the list shapes are the ones a check on
+  // the reader's numbers alone would still miss.
+  const shapes: [string, Record<string, unknown>][] = [
+    ["a GPS reading", { "exif:GPSLatitude": 12.9716 }],
+    ["a position as a list", { geoPoint: [12.9716, 77.5946] }],
+    ["a position as a list of whole numbers", { geoPoint: [12, 58] }],
+    ["a unit's serial", { "vendor:LensSerial": 48392011 }],
+    ["a position under a nested key", { shot: { gps: { lat: 12.9716, lon: 77.5946 } } }],
+  ];
+
+  for (const [index, [name, actionParameters]] of shapes.entries()) {
+    it(`drops the record for ${name} in the c2pa.created action`, async () => {
+      const plan = await cameraRecordOf(await cameraPhoto(120 + index, { actionParameters }));
+      expect(plan.kind).toBe("unusable");
+      expect(plan.kind === "unusable" && plan.why).toMatch(/cannot be redacted/);
+    }, 60_000);
+  }
+
+  it("signs the picture plain, public and sealed, and says why in the log", async () => {
+    const upload = await cameraPhoto(125, { actionParameters: { "exif:GPSLatitude": 12.9716 } });
+    const warnings: { details: Record<string, unknown>; message: string }[] = [];
+    const log = { warn: (details: Record<string, unknown>, message: string) => warnings.push({ details, message }) };
+
+    for (const result of [await prepareOrFallback(upload, { ...SETTINGS, log }), await prepareSealed(upload, { ...SETTINGS, log })]) {
+      expect(result.embedded).toBe(true);
+      expect(result.cameraRecord).toBe("dropped");
+      expect(Object.keys((await storeOf(result.bytes)).manifests ?? {})).toHaveLength(1);
+    }
+    expect(warnings.map((one) => one.message)).toEqual(["prepare: camera record dropped", "prepare: camera record dropped"]);
+    expect(String(warnings[0]?.details.reason)).toMatch(/cannot be redacted/);
+  }, 60_000);
+
+  it("keeps a record whose action holds numbers under keys that name no place or serial", async () => {
+    const plan = await cameraRecordOf(await cameraPhoto(126, { actionParameters: { "exif:ExposureTime": 0.008, "exif:ISOSpeedRatings": 200 } }));
+    expect(plan.kind).toBe("store");
+  }, 60_000);
+
+  it("keeps a record whose number sits in an assertion that is redacted whole", async () => {
+    const upload = await cameraPhoto(127, { extra: [{ label: "com.example.where", data: { geoPoint: [12.9716, 77.5946] } }] });
+    const plan = await cameraRecordOf(upload);
+    expect(plan.kind === "store" && plan.redactions).toHaveLength(2);
+
+    const prepared = await prepareOrFallback(upload, SETTINGS);
+    expect(prepared.cameraRecord).toBe("kept");
+    expect(await readManifest(prepared.bytes)).toMatchObject({ validation: "valid" });
+  }, 60_000);
+});
+
 async function storeOf(bytes: Buffer): Promise<ManifestStore> {
   const reader = await Reader.fromAsset({ buffer: bytes, mimeType: "image/jpeg" });
   if (reader === null) {

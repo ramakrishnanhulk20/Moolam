@@ -5,7 +5,8 @@
 // chain answers, searched from the authorisation's own time, and a repeat never moves that start
 // past the transfer. V84: a remembered payment sent with another file gets exactly what an unknown
 // payment gets, and a caller trickling an upload under the payer's public payment cannot hold the
-// payer's own repeat off.
+// payer's own repeat off. WO-317: a receipt from before the block read at the hold proves nothing,
+// so an old settlement cannot pay for a new file once the ledger entry that held it is gone.
 // The facilitator and the RPC are stubs, so no request leaves the machine. Does NOT cover a real
 // FiatToken receipt, a real RPC's block times, or two instances of the service.
 
@@ -16,7 +17,7 @@ import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { encodeAbiParameters, encodeEventTopics, parseAbi, type Hex } from "viem";
 import { describe, expect, it, vi } from "vitest";
 import { fingerprint } from "../src/fingerprint.js";
-import { chainCharged, verifyPaidRoutes, type ChargedCheck } from "../src/routes/verifyPaid.js";
+import { HOLD_LOOKBACK_BLOCKS, chainCharged, verifyPaidRoutes, type ChargedCheck } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
 import { paymentLedger } from "../src/x402/ledger.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
@@ -89,7 +90,7 @@ function assetChain(state: {
   used: boolean;
   latest: bigint;
   logs?: { nonce: Hex; block: bigint; hash: Hex }[];
-  receipts?: Record<string, { status: string; logs: unknown[] }>;
+  receipts?: Record<string, { status: string; logs: unknown[]; blockNumber?: bigint }>;
 }) {
   return {
     state,
@@ -179,7 +180,7 @@ describe("V81: one transfer proves one payment", () => {
 
   /** Which of N1, N2 and N3 the one transaction proves paid. */
   async function provenFrom(logs: unknown[]): Promise<boolean[]> {
-    const { chain } = assetChain({ used: true, latest: 1_400n, receipts: { [HASH]: { status: "success", logs } } });
+    const { chain } = assetChain({ used: true, latest: 1_400n, receipts: { [HASH]: { status: "success", logs, blockNumber: 1_100n } } });
     const charged = chainCharged(chain);
     const answers = await Promise.all([N1, N2, N3].map((nonce) => charged(paymentFor(nonce), requirements, [HASH], 1_000n)));
     return answers.map((answer) => answer === true);
@@ -335,6 +336,73 @@ describe("V84: the replay path confirms nothing about which file a payment was f
       trickle.end(payload.subarray(200));
       const ended = await slow;
       expect(ended.body).not.toContain(record.id);
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
+});
+
+describe("WO-317: an old settlement cannot pay for a new file", () => {
+  // Both of these failed on the code before this order: landed() read a receipt's status and logs
+  // and never its block, so the first payment's transaction proved the repeat once the ledger forgot it.
+  const nonce = `0x${"d4".repeat(32)}` as Hex;
+  const SINCE = 1_000n;
+  const logs = [usedLog(nonce, 3), transferLog(PRICE, 4)];
+
+  it("takes a receipt from the hold block or the lookback before it, and refuses one from earlier", async () => {
+    const answers: (boolean | undefined)[] = [];
+    for (const blockNumber of [SINCE, SINCE - HOLD_LOOKBACK_BLOCKS, SINCE - HOLD_LOOKBACK_BLOCKS - 1n, 500n]) {
+      const { chain } = assetChain({ used: true, latest: 1_400n, receipts: { [HASH]: { status: "success", logs, blockNumber } } });
+      answers.push(await chainCharged(chain)(paymentFor(nonce), requirements, [HASH], SINCE));
+    }
+    expect(answers.map((answer) => answer === true)).toEqual([true, true, false, false]);
+  });
+
+  it("does not take a receipt that names no block when the hold block is known", async () => {
+    const { chain } = assetChain({ used: true, latest: 1_400n, receipts: { [HASH]: { status: "success", logs } } });
+    expect(await chainCharged(chain)(paymentFor(nonce), requirements, [HASH], SINCE)).not.toBe(true);
+  });
+
+  it("answers no 200 to a new file when the facilitator names the first payment's transaction after the ledger entry is gone", async () => {
+    let head = 1_000n;
+    let facilitator: "settles" | "names-the-old-one" = "settles";
+    const asset = assetChain({
+      used: true,
+      latest: 1_400n,
+      receipts: { [HASH]: { status: "success", logs, blockNumber: 1_002n } },
+    });
+    const settle = vi.fn(async () =>
+      facilitator === "settles"
+        ? { success: true, transaction: HASH, network: "eip155:143", headers: {}, requirements: {} }
+        : {
+            success: false,
+            errorReason: "settlement failed",
+            transaction: HASH,
+            network: "eip155:143",
+            headers: {},
+            response: { status: 402, headers: {}, body: {} },
+          },
+    );
+    const { app, ledger, x, y, send } = await paidApp({
+      settle,
+      spent: () => false,
+      charged: chainCharged(asset.chain),
+      head: async () => head,
+      seed: 99,
+    });
+    const header = headerFor(nonce);
+
+    try {
+      expect((await send(header, x)).statusCode).toBe(200);
+
+      // Ten minutes on: the ledger entry has expired and the chain has moved well past the transfer.
+      ledger.forget(`${FROM.toLowerCase()}:${nonce}`);
+      head = 1_300n;
+      facilitator = "names-the-old-one";
+
+      const again = await send(header, y);
+      expect(again.statusCode).toBe(502);
+      expect(again.json().error).toBe("settlement-unknown");
     } finally {
       await app.close();
     }
