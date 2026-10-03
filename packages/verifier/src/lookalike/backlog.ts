@@ -6,20 +6,14 @@ import type { Hex, PassportRecord } from "../types.js";
 import { pinnedContentId, sealedStateOf, type DocumentReader } from "../unseal.js";
 import { lookalikeOrder } from "./search.js";
 
-/**
- * The receiver Chainlink's network writes its match verdicts to, 0x0d69, lower-cased the way the
- * index stores a receiver. It cannot change: a new verdict receiver means a new listing and a new
- * build of this service.
- */
-export const NETWORK_RECEIVER = "0x0d69055c43eacb3b1ca687ca2263a049bc7eff04" as Hex;
-
 /** The most passports one backlog answer names, the workflow's own ceiling per cron run. */
 export const MAX_BACKLOG = 7;
 
 /**
- * What the backlog judges against. `activation` is the unix second from which a verdict on 0x0d69
- * counts as the network's; `receiver` is MoolamLookalikes. Either may be unset, and the list then
- * says nothing about what that setting would have decided.
+ * What the backlog judges against. `activation` is the unix second from which a look-alike record
+ * counts as the network's; `receiver` is MoolamLookalikes. Both are needed: with either unset the
+ * backlog is off and answers "not-ready", never a list that says nothing about what the missing
+ * setting would have decided.
  */
 export interface BacklogSettings {
   activation?: number;
@@ -54,58 +48,97 @@ export type BacklogAnswer = { status: "ok"; passports: Hex[] } | { status: "not-
 const NOT_READY: BacklogAnswer = { status: "not-ready" };
 
 /**
- * What a passport still lacks, or "unknown" when the source behind the index cannot say whether
- * it has a network verdict. Only an original (no parent) gets a look-alike record; an edit skips
- * that step, as the workflow does (L9).
+ * What a passport still lacks, or "unknown" when the source behind the index cannot say whether it
+ * has a network verdict and what the newest one found. That comes only from the index's own
+ * Attestation.network flag (`networkVerdict` and `networkMatched`), never from a receiver and a
+ * time worked out here, so an index that does not serve the flag leaves every passport unknown.
+ *
+ * Only an original (no parent) gets a look-alike record; an edit skips that step, as the workflow
+ * does (L9). So does a passport whose newest network verdict says the fingerprints did not match:
+ * the workflow proves no look-alike for it, so the record it would wait for never comes.
  */
 export function missingOf(
   record: PassportRecord,
-  settings: BacklogSettings,
-  records: LookalikeRecordView | undefined,
+  records: LookalikeRecordView,
 ): { verdict: boolean; lookalike: boolean } | "unknown" {
-  let verdict = false;
-  if (settings.activation !== undefined) {
-    if (record.networkVerdict === undefined) return "unknown";
-    verdict = !record.networkVerdict;
-  }
-  const lookalike = records !== undefined && record.parentId === null && records.newestAt(record.id) === undefined;
-  return { verdict, lookalike };
+  if (record.networkVerdict === undefined) return "unknown";
+  if (record.networkVerdict && record.networkMatched === undefined) return "unknown";
+  const lookalike = record.parentId === null && record.networkMatched !== false && records.newestAt(record.id) === undefined;
+  return { verdict: !record.networkVerdict, lookalike };
 }
 
-/** The settings the look-alike half needs: both, since records before activation never count. */
+/** The settings the backlog needs: both, since records before activation never count. */
 export function lookalikeHalfOn(settings: BacklogSettings): boolean {
   return settings.receiver !== undefined && settings.activation !== undefined;
 }
 
 /**
+ * Why the backlog is off, in words /health and the boot log can carry, or undefined when both
+ * settings are set. It names the settings and never their values.
+ */
+export function backlogOffReason(settings: BacklogSettings): string | undefined {
+  const missing = [
+    ...(settings.activation === undefined ? ["NETWORK_ACTIVATION_TIME"] : []),
+    ...(settings.receiver === undefined ? ["LOOKALIKE_RECEIVER"] : []),
+  ];
+  return missing.length === 0
+    ? undefined
+    : `it needs NETWORK_ACTIVATION_TIME and LOOKALIKE_RECEIVER, and this host has no ${missing.join(" or ")}, so it answers not-ready`;
+}
+
+/**
+ * `n` entries of `list`, starting at `slot` modulo the list's length and wrapping round its end.
+ * The start moves one place with each slot, so over any `list.length` slots in a row every entry
+ * leads an answer once, and a leading entry is always the first one a run works on. A list no
+ * longer than `n` comes back whole, with its start moved the same way.
+ */
+export function rotated<T>(list: readonly T[], slot: number, n: number): T[] {
+  if (list.length === 0) return [];
+  const start = slot % list.length;
+  return Array.from({ length: Math.min(n, list.length) }, (_, place) => list[(start + place) % list.length] as T);
+}
+
+/**
  * Up to `n` passports registered strictly before `asOf` that still lack a network verdict or, for
  * an original, a look-alike record, and that the workflow can check: a public document naming its
- * picture. Oldest first by the shared rule, then id.
+ * picture. The whole waiting list is oldest first by the shared rule, then id; the answer is `n` of
+ * it starting `slot` places in and wrapping round (see `rotated`).
+ *
+ * The rotation is what stops a few passports the workflow can never finish, such as a picture it
+ * cannot measure, from sitting at the head of every answer and using up each run's reads. `slot` is
+ * the cron slot the workflow passes, so every node asking in one slot gets the same list.
  *
  * "not-ready" rather than a shorter list whenever any passport that could belong in it cannot be
- * judged yet: the look-alike scan has not caught up, the source cannot say whether a passport has
- * a verdict, or a passport's document has never been read. A document whose read failed is left
- * out until a later refresh reads it, so one dead address cannot hold the list for good.
+ * judged yet: the backlog is off for want of a setting, the look-alike scan has not caught up, the
+ * source cannot say whether a passport has a verdict, or a passport's document has never been read.
+ * A document whose read failed is left out until a later refresh reads it, so one dead address
+ * cannot hold the list for good.
  *
  * `ordered` must already be in the look-alike order (see `inLookalikeOrder`).
  */
-export function backlogOf(ordered: readonly PassportRecord[], asOf: number, n: number, view: BacklogView): BacklogAnswer {
-  if (view.records !== undefined && !view.records.ready) return NOT_READY;
+export function backlogOf(
+  ordered: readonly PassportRecord[],
+  asOf: number,
+  n: number,
+  slot: number,
+  view: BacklogView,
+): BacklogAnswer {
+  const records = view.records;
+  if (!lookalikeHalfOn(view.settings) || records === undefined || !records.ready) return NOT_READY;
   const limit = { registeredAt: BigInt(asOf) };
-  const passports: Hex[] = [];
+  const waiting: Hex[] = [];
   for (const record of ordered) {
-    if (passports.length >= n) break;
     if (!registeredBefore({ registeredAt: BigInt(record.registeredAt) }, limit)) break;
-    const missing = missingOf(record, view.settings, view.records);
+    const missing = missingOf(record, records);
     if (missing === "unknown") return NOT_READY;
     if (!missing.verdict && !missing.lookalike) continue;
     const picture = view.pictureOf(record.metadataURI);
     if (picture === undefined) return NOT_READY;
     if (picture !== "checkable") continue;
     if (!isPassportId(record.id)) continue;
-    passports.push(passportKey(record.id));
+    waiting.push(passportKey(record.id));
   }
-  return { status: "ok", passports };
+  return { status: "ok", passports: rotated(waiting, slot, n) };
 }
 
 const sortedCopies = new WeakMap<object, readonly PassportRecord[]>();

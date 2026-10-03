@@ -233,6 +233,9 @@ describe("V93: a leaf outside its validity window at boot", () => {
       logger: false,
       generate: {},
       edit: {},
+      // Neither look-alike setting, whatever the developer's own .env holds, so the backlog is off
+      // and /health lists it after the three signing routes.
+      lookalikes: { settings: {} },
       checks: { registry: async () => undefined },
     });
     await app.ready();
@@ -245,7 +248,7 @@ describe("V93: a leaf outside its validity window at boot", () => {
         off: { route: string; reason: string }[];
       };
       expect(health.routes).toContain("verify");
-      expect(health.off.map((off) => off.route)).toEqual(["POST /prepare", "POST /generate", "POST /edit"]);
+      expect(health.off.map((off) => off.route)).toEqual(["POST /prepare", "POST /generate", "POST /edit", "GET /lookalikes/backlog"]);
     } finally {
       await app.close();
     }

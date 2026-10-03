@@ -22,7 +22,7 @@ import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSw
 import { fairGate, type GoneCheck } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { defaultDayStore, globalDay, type GlobalDay } from "./limits/globalDay.js";
-import { NETWORK_RECEIVER, lookalikeHalfOn, type BacklogSettings } from "./lookalike/backlog.js";
+import { backlogOffReason, lookalikeHalfOn, type BacklogSettings } from "./lookalike/backlog.js";
 import { lookalikeKnowledge, type LookalikeKnowledge } from "./lookalike/knowledge.js";
 import { envioLookalikeReader, type LookalikeIndexReader } from "./lookalike/indexRecords.js";
 import type { LedgerChain } from "./lookalike/ledger.js";
@@ -500,14 +500,12 @@ export function sourceFromEnv(): PassportSource {
     throw new Error('PASSPORT_SOURCE "envio" needs ENVIO_GRAPHQL_URL');
   }
   const chain = env.NODE_ENV === "test" ? undefined : (readClient() as unknown as BlockReader);
-  const network =
-    env.NETWORK_ACTIVATION_TIME === undefined
-      ? undefined
-      : { receiver: NETWORK_RECEIVER, activation: env.NETWORK_ACTIVATION_TIME };
+  // The backlog needs both settings, so a host without them has no use for the index's network flag.
+  const network = env.NETWORK_ACTIVATION_TIME !== undefined && env.LOOKALIKE_RECEIVER !== undefined;
   return new EnvioSource({
     url: env.ENVIO_GRAPHQL_URL,
     ...(chain === undefined ? {} : { chain }),
-    ...(network === undefined ? {} : { network }),
+    network,
   });
 }
 
@@ -795,6 +793,7 @@ export async function buildServer(
         : envioLookalikeReader(env.ENVIO_GRAPHQL_URL)),
   });
   app.decorate("lookalikes", lookalikes);
+  const backlogOff = backlogOffReason(lookalikeSettings);
 
   // How many loads are running now. The timer skips its tick while one is, so loads never pile up
   // behind a slow indexer (review pass 11, V114).
@@ -1000,7 +999,7 @@ export async function buildServer(
         ...(mounts["verify/paid"] ? ["verify/paid"] : []),
         "mcp",
         "lookalikes/candidates",
-        "lookalikes/backlog",
+        ...(backlogOff === undefined ? ["lookalikes/backlog"] : []),
         "recheck",
         ...(mounts.prepare ? ["prepare"] : []),
         ...(generating ? ["generate"] : []),
@@ -1020,6 +1019,7 @@ export async function buildServer(
         ...signingOff,
         ...(unchecked === undefined ? [] : [{ route: "POST /generate", reason: unchecked }]),
         ...routesOff,
+        ...(backlogOff === undefined ? [] : [{ route: "GET /lookalikes/backlog", reason: backlogOff }]),
       ];
     },
   });
@@ -1243,8 +1243,8 @@ export async function buildServer(
   if (env.NODE_ENV !== "test") {
     void lookalikes.refresh(current.byId);
   }
-  if (lookalikeSettings.receiver !== undefined && lookalikeSettings.activation === undefined) {
-    app.log.warn("look-alike backlog: LOOKALIKE_RECEIVER is set without NETWORK_ACTIVATION_TIME, so look-alike records are not judged until both are set");
+  if (backlogOff !== undefined) {
+    app.log.warn(`look-alike backlog off: ${backlogOff}`);
   }
 
   app.log.info(

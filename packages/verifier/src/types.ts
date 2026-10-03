@@ -59,11 +59,17 @@ export interface PassportRecord {
   metadataURI: string;
   rechecks?: PassportRechecks;
   /**
-   * Whether Chainlink's network has written a verdict for this passport: an attestation from the
-   * network's receiver at or after the activation time. Left off by a source that was not asked or
-   * cannot say, which the backlog reads as "cannot tell", never as "no verdict".
+   * Whether Chainlink's network has written a verdict for this passport, as the index's own
+   * Attestation.network flag says it. Left off by a source that was not asked or cannot say, which
+   * the backlog reads as "cannot tell", never as "no verdict".
    */
   networkVerdict?: boolean;
+  /**
+   * What the newest network verdict says: whether the fingerprints the network recomputed matched.
+   * Set exactly when `networkVerdict` is true. A passport whose newest verdict says no never gets a
+   * look-alike record, so the backlog does not wait for one.
+   */
+  networkMatched?: boolean;
 }
 
 /**

@@ -27,6 +27,9 @@ import { makeImage, multipartBody } from "./helpers.js";
 type BuildOptions = NonNullable<Parameters<typeof buildServer>[0]>;
 
 const emptySource: PassportSource = { load: async () => [] };
+// Both look-alike settings, so the backlog is on and the lists of what is off below are about what
+// each case changes. A host without them has the backlog off, which test/lookalike-routes.test.ts covers.
+const BACKLOG_ON = { settings: { activation: 1, receiver: "0x7777777777777777777777777777777777777777" as Hex } };
 const PAY_TO = "0x1111111111111111111111111111111111111111";
 
 /**
@@ -41,7 +44,7 @@ async function serverWith(vars: Record<string, string>, options: BuildOptions = 
   }
   vi.resetModules();
   const fresh = await import("../src/server.js");
-  return await fresh.buildServer({ source: emptySource, logger: false, ...options });
+  return await fresh.buildServer({ source: emptySource, logger: false, lookalikes: BACKLOG_ON, ...options });
 }
 
 afterEach(() => {
@@ -169,6 +172,7 @@ async function serverCheckingRegistryAt(rpc: string, options: BuildOptions = {})
     source: emptySource,
     logger: false,
     generate: {},
+    lookalikes: BACKLOG_ON,
     ...options,
     checks: { registry: async () => await checks.checkRegistry(env), ...options.checks },
   });
@@ -266,6 +270,7 @@ describe("V76: a registry read that fails means not checked yet, not a dead serv
       source: emptySource,
       logger: false,
       generate: {},
+      lookalikes: BACKLOG_ON,
       checks: {
         registry: async () => {
           reads += 1;

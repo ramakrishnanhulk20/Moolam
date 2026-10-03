@@ -117,12 +117,17 @@ describe("the gas limit every report is sent with", () => {
   // node starves the receiver and the report is refused inside a transaction that still succeeds.
   // The real reports 0x085d8500... and 0xdc1834ea... were both sent with a limit of exactly
   // 1,000,000. The CLI's simulate command has no flag that changes it, and the runner adds none.
-  it.each(["moolam-verifier", "moolam-sealed-verifier"])("is written into %s as an explicit 1,000,000 on every write", (folder) => {
+  // Reads the workflow files rather than running them: the CRE SDK does not load under Node. It
+  // checks the value the verdict limit must have and that no write is left without a limit, however
+  // the call is spelled. What a run really sends is proven in
+  // packages/workflow/moolam-verifier/workflow.test.ts, which reads the gas off each write.
+  it.each(["moolam-verifier", "moolam-sealed-verifier"])("%s sets a gas limit of exactly 1,000,000 for its verdict and on every write", (folder) => {
     const source = fs.readFileSync(path.resolve(HERE, "../../workflow", folder, "workflow.ts"), "utf8");
-    expect(source).toContain('const GAS_LIMIT = "1000000";');
+    const verdictLimit = /const GAS_LIMIT = "?(\d+)"?;/.exec(source)?.[1];
+    expect(Number(verdictLimit)).toBe(1_000_000);
     const writes = source.split(".writeReport(").length - 1;
     expect(writes).toBeGreaterThan(0);
-    expect(source.split("gasConfig: { gasLimit: GAS_LIMIT }").length - 1).toBe(writes);
+    expect(source.match(/gasConfig:\s*\{\s*gasLimit\b/g)?.length ?? 0).toBe(writes);
   });
 
   it("is never replaced by anything on the command line the runner builds", () => {

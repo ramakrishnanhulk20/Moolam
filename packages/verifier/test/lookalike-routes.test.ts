@@ -5,11 +5,14 @@
 // same bytes; an index not loaded through asOf answers not-ready; anything malformed is refused
 // 400 before a scan (L16). The backlog lists the passports still waiting for a network verdict or,
 // for an original, a look-alike record, that the workflow can check, oldest first, and says
-// not-ready rather than a partial list; unset settings say nothing (L14's list side). Neither
+// not-ready rather than a partial list; with either setting unset it is off, says not-ready and
+// shows under `off` on /health with the boot log naming it (L14's list side). Its start moves by
+// the cron slot, so passports the workflow can never finish do not hold the head of every answer,
+// and a passport whose newest network verdict says "no match" is left out. Neither
 // route reads the chain or a gateway while a request waits, and both sit under the service's 60 a
 // minute per address and a ceiling of their own (L18). The look-alike records come from
 // LookalikeChecked events read by the background refresh, counted only at or after activation,
-// and the network verdict from the index's own attestation rows. Once the index serves its own
+// and the network verdict from the index's own Attestation.network flag. Once the index serves its own
 // Lookalike rows (WO-276) they replace the chain scan, which stands in only while the index has no
 // such entity and is asked again after ten minutes; an index that served them and then fails a read
 // leaves the backlog not-ready.
@@ -17,17 +20,18 @@
 // mock GraphQL server, the chain a stub, the documents a stub reader. The prepare warning is
 // test/lookalike-presign.test.ts, the rule file itself test/lookalike-rule.test.ts.
 
+import fs from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HammingIndex } from "../src/index.js";
-import { NETWORK_RECEIVER, type BacklogSettings } from "../src/lookalike/backlog.js";
+import type { BacklogSettings } from "../src/lookalike/backlog.js";
 import { INDEX_ABSENT_RETRY_MS, lookalikeKnowledge } from "../src/lookalike/knowledge.js";
 import { envioLookalikeReader, type IndexedLookalikes, type LookalikeIndexReader } from "../src/lookalike/indexRecords.js";
 import { LEDGER_CHUNK_BLOCKS, type LedgerChain, type LedgerLog } from "../src/lookalike/ledger.js";
 import { UnreachableTarget } from "../src/net/safeFetch.js";
 import { buildServer } from "../src/server.js";
-import { EnvioSource } from "../src/source/EnvioSource.js";
+import { EnvioSource, NETWORK_FLAG_RETRY_MS } from "../src/source/EnvioSource.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 import { blockhashWithBits, idFrom } from "./helpers.js";
@@ -65,6 +69,8 @@ function passport(byte: number, registeredAt: number, extra: Partial<PassportRec
     parentId: null,
     registeredAt,
     metadataURI: `ipfs://bafkdoc${byte}`,
+    // The index's flag always says what the newest network verdict found, so a verdict here does too.
+    ...(extra.networkVerdict === true ? { networkMatched: true } : {}),
     ...extra,
   };
 }
@@ -278,6 +284,43 @@ function documents(special: Record<string, unknown> = {}) {
   return { read, reads };
 }
 
+/**
+ * Everything the service logs while `work` runs, by both roads pino takes to the terminal: a plain
+ * node run writes through process.stdout, and under this runner pino writes to descriptor 1 through
+ * fs.write. The same capture claims-routes.test.ts uses.
+ */
+async function captureLog<T>(work: () => Promise<T>): Promise<{ result: T; logged: string }> {
+  const chunks: string[] = [];
+  const keep = (chunk: unknown): void => {
+    if (typeof chunk === "string") chunks.push(chunk);
+    else if (chunk instanceof Uint8Array) chunks.push(Buffer.from(chunk).toString("utf8"));
+  };
+  const stdout = vi.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
+    keep(chunk);
+    return true;
+  });
+  const realWrite = fs.write;
+  const realWriteSync = fs.writeSync;
+  const patched = fs as unknown as Record<string, unknown>;
+  patched.write = (...args: unknown[]): unknown => {
+    if (args[0] === 1) keep(args[1]);
+    return (realWrite as unknown as (...rest: unknown[]) => unknown)(...args);
+  };
+  patched.writeSync = (...args: unknown[]): unknown => {
+    if (args[0] === 1) keep(args[1]);
+    return (realWriteSync as unknown as (...rest: unknown[]) => unknown)(...args);
+  };
+  try {
+    const result = await work();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return { result, logged: chunks.join("") };
+  } finally {
+    patched.write = realWrite;
+    patched.writeSync = realWriteSync;
+    stdout.mockRestore();
+  }
+}
+
 describe("GET /lookalikes/backlog", () => {
   const BOTH: BacklogSettings = { activation: ACTIVATION, receiver: RECEIVER };
 
@@ -354,48 +397,219 @@ describe("GET /lookalikes/backlog", () => {
 
   it("says not-ready while the index is not loaded through asOf, or cannot say whether a verdict landed", async () => {
     const docs = documents(SPECIAL);
-    const late = await serve(waitingRoom(), { through: 400, settings: { activation: ACTIVATION }, readDocument: docs.read });
+    const late = await serve(waitingRoom(), { through: 400, settings: BOTH, readDocument: docs.read, chain: ledgerChain(RECORDS).chain });
     await late.lookalikes.refresh(late.verifier.snapshot().passports);
     expect((await backlog(late, "asOf=401&n=7")).json).toEqual({ status: "not-ready" });
-    expect((await backlog(late, "asOf=400&n=7")).json).toEqual({ status: "ok", passports: [idFrom(1), idFrom(0x0b)] });
+    expect((await backlog(late, "asOf=400&n=7")).json).toEqual({
+      status: "ok",
+      passports: [idFrom(1), idFrom(0x0b), idFrom(0x0e), idFrom(9)],
+    });
     await late.close();
 
-    const unknown = await serve([passport(1, 100)], { settings: { activation: ACTIVATION }, readDocument: docs.read });
+    // A passport the index says nothing about is "cannot tell", never "no verdict".
+    const unknown = await serve([passport(1, 100)], { settings: BOTH, readDocument: docs.read, chain: ledgerChain([]).chain });
     await unknown.lookalikes.refresh(unknown.verifier.snapshot().passports);
     expect((await backlog(unknown, "asOf=500&n=7")).json).toEqual({ status: "not-ready" });
-  });
+    await unknown.close();
 
-  it("uses only the settings that are set, and with neither set lists nothing", async () => {
-    const docs = documents(SPECIAL);
-    const verdictsOnly = await serve(waitingRoom(), { settings: { activation: ACTIVATION }, readDocument: docs.read });
-    await verdictsOnly.lookalikes.refresh(verdictsOnly.verifier.snapshot().passports);
-    expect((await backlog(verdictsOnly, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [idFrom(1), idFrom(0x0b)] });
-    await verdictsOnly.close();
-
-    const neither = await serve(waitingRoom(), { settings: {}, readDocument: docs.read });
-    await neither.lookalikes.refresh(neither.verifier.snapshot().passports);
-    expect((await backlog(neither, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [] });
-    await neither.close();
-
-    const receiverOnly = await serve(waitingRoom(), { settings: { receiver: RECEIVER }, readDocument: docs.read });
-    await receiverOnly.lookalikes.refresh(receiverOnly.verifier.snapshot().passports);
-    expect((await backlog(receiverOnly, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [] });
+    // A verdict whose index row does not say what it found is "cannot tell" too.
+    const unsaid = await serve([passport(1, 100, { networkVerdict: true, networkMatched: undefined })], {
+      settings: BOTH,
+      readDocument: docs.read,
+      chain: ledgerChain([]).chain,
+    });
+    await unsaid.lookalikes.refresh(unsaid.verifier.snapshot().passports);
+    expect((await backlog(unsaid, "asOf=500&n=7")).json).toEqual({ status: "not-ready" });
   });
 
   it("leaves out a passport whose document read failed and reads it again on a later refresh", async () => {
     const docs = documents({ ...SPECIAL, "ipfs://bafkdoc1": new UnreachableTarget("gateway answered 504") });
-    const server = await serve(waitingRoom(), { settings: { activation: ACTIVATION }, readDocument: docs.read });
+    const server = await serve(waitingRoom(), { settings: BOTH, readDocument: docs.read, chain: ledgerChain(RECORDS).chain });
     await server.lookalikes.refresh(server.verifier.snapshot().passports);
 
-    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [idFrom(0x0b)] });
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({
+      status: "ok",
+      passports: [idFrom(0x0b), idFrom(0x0e), idFrom(9)],
+    });
     expect(docs.reads.filter((uri) => uri === "ipfs://bafkdoc1")).toHaveLength(1);
   });
 
   it("refuses a malformed query with 400", async () => {
-    const server = await serve(waitingRoom(), { settings: { activation: ACTIVATION } });
-    for (const query of ["asOf=500", "n=3", "asOf=500&n=0", "asOf=500&n=8", "asOf=abc&n=1", "asOf=500&n=1&x=1", "asOf=500&asOf=501&n=1", `asOf=${NOW + 61}&n=1`]) {
+    const server = await serve(waitingRoom(), { settings: BOTH });
+    const queries = [
+      "asOf=500",
+      "n=3",
+      "asOf=500&n=0",
+      "asOf=500&n=8",
+      "asOf=abc&n=1",
+      "asOf=500&n=1&x=1",
+      "asOf=500&asOf=501&n=1",
+      `asOf=${NOW + 61}&n=1`,
+      "asOf=500&n=1&slot=-1",
+      "asOf=500&n=1&slot=abc",
+      "asOf=500&n=1&slot=12345678901",
+      "asOf=500&n=1&slot=1&slot=2",
+      "asOf=500&n=1&slot=",
+    ];
+    for (const query of queries) {
       expect((await backlog(server, query)).status, query).toBe(400);
     }
+  });
+});
+
+describe("GET /lookalikes/backlog when a setting is unset", () => {
+  const settingsLeft: [string, BacklogSettings, string][] = [
+    ["neither", {}, "NETWORK_ACTIVATION_TIME or LOOKALIKE_RECEIVER"],
+    ["the activation time only", { activation: ACTIVATION }, "LOOKALIKE_RECEIVER"],
+    ["the receiver only", { receiver: RECEIVER }, "NETWORK_ACTIVATION_TIME"],
+  ];
+
+  it.each(settingsLeft)("answers not-ready with %s set, reads nothing, and /health lists it under off with the reason", async (_name, settings, missing) => {
+    const docs = documents();
+    const { chain, calls } = ledgerChain([]);
+    const server = await serve([passport(1, 100, { networkVerdict: false })], { settings, readDocument: docs.read, chain });
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+
+    // The same shape the candidates route answers when it cannot judge yet.
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "not-ready" });
+    expect(docs.reads).toEqual([]);
+    expect(calls.logs).toEqual([]);
+
+    const health = (await server.inject({ method: "GET", url: "/health" })).json() as {
+      routes: string[];
+      off: { route: string; reason: string }[];
+    };
+    expect(health.routes).not.toContain("lookalikes/backlog");
+    expect(health.routes).toContain("lookalikes/candidates");
+    expect(health.off).toContainEqual({ route: "GET /lookalikes/backlog", reason: expect.stringContaining(`has no ${missing}`) });
+    expect(JSON.stringify(health.off)).not.toContain(RECEIVER);
+  });
+
+  it("is on, and not under off, once both are set", async () => {
+    const server = await serve([passport(1, 100, { networkVerdict: false })], {
+      settings: { activation: ACTIVATION, receiver: RECEIVER },
+      readDocument: documents().read,
+      chain: ledgerChain([]).chain,
+    });
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [idFrom(1)] });
+    const health = (await server.inject({ method: "GET", url: "/health" })).json() as {
+      routes: string[];
+      off: { route: string }[];
+    };
+    expect(health.routes).toContain("lookalikes/backlog");
+    expect(health.off.map((off) => off.route)).not.toContain("GET /lookalikes/backlog");
+  });
+
+  it("says so in the boot log, naming the settings and no value", async () => {
+    const { logged } = await captureLog(async () => {
+      const server = await buildServer({
+        source: indexedThrough([]),
+        logger: true,
+        index: { refreshMs: 0, clock: () => NOW * 1000 },
+        lookalikes: { settings: { receiver: RECEIVER }, clock: () => NOW * 1000 },
+      });
+      await server.ready();
+      app = server;
+      return server;
+    });
+
+    expect(logged).toContain("look-alike backlog off: it needs NETWORK_ACTIVATION_TIME and LOOKALIKE_RECEIVER");
+    expect(logged).toContain("has no NETWORK_ACTIVATION_TIME");
+    expect(logged).not.toContain(RECEIVER);
+  });
+});
+
+describe("GET /lookalikes/backlog: the start rotates by the cron slot", () => {
+  // Two passports whose newest network verdict says "no match" and four whose picture the
+  // workflow cannot measure (a PNG, too many bytes) sit at the head of the oldest-first order,
+  // ahead of six passports it can finish. The service sees the first two in the index's flag and
+  // leaves them out; it cannot see the other four, so they stay in the list and the rotation is
+  // what gets the six past them.
+  const BOTH_SET: BacklogSettings = { activation: ACTIVATION, receiver: RECEIVER };
+  const wrongPrints = [1, 2];
+  const unmeasurable = [3, 4, 5, 6];
+  const finishable = [7, 8, 9, 10, 11, 12];
+  const waiting = [...unmeasurable, ...finishable];
+  const index = (): PassportRecord[] => [
+    ...wrongPrints.map((byte) => passport(byte, 100 + byte, { networkVerdict: true, networkMatched: false })),
+    ...waiting.map((byte) => passport(byte, 100 + byte, { networkVerdict: false })),
+  ];
+
+  async function node(records = index()): Promise<FastifyInstance> {
+    const server = await serve(records, { settings: BOTH_SET, readDocument: documents().read, chain: ledgerChain([]).chain });
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+    return server;
+  }
+
+  async function slots(server: FastifyInstance, n: number, count: number, from = 0): Promise<Hex[][]> {
+    const lists: Hex[][] = [];
+    for (let slot = from; slot < from + count; slot += 1) {
+      const answer = (await backlog(server, `asOf=500&n=${n}&slot=${slot}`, `198.51.100.${slot % 200}`)).json;
+      expect(answer.status).toBe("ok");
+      lists.push(answer.passports as Hex[]);
+    }
+    return lists;
+  }
+
+  it("leaves out a passport whose newest network verdict says no match, and starts the others at the head with no slot", async () => {
+    const server = await node();
+    const named = (await backlog(server, "asOf=500&n=7")).json.passports as Hex[];
+    expect(named).toEqual(waiting.slice(0, 7).map(idFrom));
+    expect(named).not.toContain(idFrom(1));
+    expect(named).not.toContain(idFrom(2));
+  });
+
+  it("offers every waiting passport, the six it can finish included, within as many slots as the list is long", async () => {
+    const server = await node();
+    const lists = await slots(server, 3, waiting.length);
+
+    // With no rotation the answer is always slot 0's, three passports it can never finish.
+    expect(lists[0]).toEqual([3, 4, 5].map(idFrom));
+    const offered = new Set(lists.flat());
+    for (const byte of finishable) expect(offered.has(idFrom(byte)), `passport ${byte}`).toBe(true);
+    // Each one leads an answer exactly once in a lap, so a run that works its first entry first reaches it.
+    expect(lists.map((list) => list[0])).toEqual(waiting.map(idFrom));
+    expect(lists[4]).toEqual([7, 8, 9].map(idFrom));
+    expect(lists[8]).toEqual([11, 12, 3].map(idFrom));
+    // The lap repeats.
+    expect((await slots(server, 3, 3, waiting.length)).map((list) => list[0])).toEqual([3, 4, 5].map(idFrom));
+  });
+
+  it("gives the same list for the same slot on every node, and the next place for the next slot", async () => {
+    const first = await node();
+    const second = await node(index());
+    const asked = await slots(first, 4, 3, 100);
+    expect(await slots(second, 4, 3, 100)).toEqual(asked);
+    expect(await slots(first, 4, 3, 100)).toEqual(asked);
+    expect(asked[1]?.[0]).toBe(asked[0]?.[1]);
+    // A slot far out is the same as its place in the lap.
+    const huge = (await backlog(first, "asOf=500&n=2&slot=9999999999")).json.passports as Hex[];
+    const place = 9_999_999_999 % waiting.length;
+    expect(huge).toEqual([waiting[place], waiting[(place + 1) % waiting.length]].map((byte) => idFrom(byte as number)));
+  });
+
+  it("moves the start of a list shorter than the answer too, so a leading passport is never first for good", async () => {
+    const server = await node([passport(3, 103, { networkVerdict: false }), passport(4, 104, { networkVerdict: false })]);
+    const lists = await slots(server, 7, 3);
+    expect(lists.map((list) => list.length)).toEqual([2, 2, 2]);
+    expect(lists.map((list) => list[0])).toEqual([3, 4, 3].map(idFrom));
+  });
+});
+
+describe("GET /lookalikes/backlog: a verdict that found no match", () => {
+  it("never waits for a look-alike record the workflow does not write for it, but still waits for a missing verdict", async () => {
+    const server = await serve(
+      [
+        passport(1, 100, { networkVerdict: true, networkMatched: false }),
+        passport(2, 101, { networkVerdict: true, networkMatched: true }),
+        passport(3, 102, { networkVerdict: false }),
+      ],
+      { settings: { activation: ACTIVATION, receiver: RECEIVER }, readDocument: documents().read, chain: ledgerChain([]).chain },
+    );
+    await server.lookalikes.refresh(server.verifier.snapshot().passports);
+    expect((await backlog(server, "asOf=500&n=7")).json).toEqual({ status: "ok", passports: [idFrom(2), idFrom(3)] });
   });
 });
 
@@ -427,7 +641,7 @@ describe("L18: the look-alike routes are bounded", () => {
 });
 
 describe("the backlog's two sources of knowledge", () => {
-  it("reads whether the network wrote a verdict from the index's attestation rows from 0x0d69 at or after activation", async () => {
+  it("reads whether the network wrote a verdict, and what it found, from the index's own Attestation.network flag", async () => {
     const asked: string[] = [];
     const server = createServer((request, reply) => {
       const chunks: Buffer[] = [];
@@ -443,7 +657,11 @@ describe("the backlog's two sources of knowledge", () => {
           metadataURI: "ipfs://bafkdoc",
           ...(network === undefined ? {} : { network }),
         });
-        const body = { data: { Passport: [row(1, [{ at: String(ACTIVATION) }]), row(2, []), row(3), row(4, "junk")] } };
+        const body = {
+          data: {
+            Passport: [row(1, [{ matched: true }]), row(2, [{ matched: false }]), row(3, []), row(4), row(5, "junk"), row(6, [{ at: "1" }])],
+          },
+        };
         reply.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(body));
       });
     });
@@ -451,12 +669,87 @@ describe("the backlog's two sources of knowledge", () => {
     running = server;
     const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1/graphql`;
 
-    const records = await new EnvioSource({ url, network: { receiver: NETWORK_RECEIVER, activation: ACTIVATION } }).load();
-    expect(records.map((record) => record.networkVerdict)).toEqual([true, false, undefined, undefined]);
-    expect(asked[0]).toContain(`network: attestations(where: { receiver: { _eq: "${NETWORK_RECEIVER}" }, at: { _gte: "${ACTIVATION}" } }, limit: 1)`);
+    const records = await new EnvioSource({ url, network: true }).load();
+    expect(records.map((record) => [record.networkVerdict, record.networkMatched])).toEqual([
+      [true, true],
+      [true, false],
+      [false, undefined],
+      [undefined, undefined],
+      [undefined, undefined],
+      [undefined, undefined],
+    ]);
+    expect(asked[0]).toContain("network: attestations(where: { network: { _eq: true } }, order_by: { at: desc }, limit: 1)");
+    // No receiver or time of the service's own goes into the query: the flag is the one rule.
+    expect(asked[0]).not.toContain(RECEIVER);
+    expect(asked[0]).not.toContain(String(ACTIVATION));
 
     await new EnvioSource({ url }).load();
     expect(asked[1]).not.toContain("network:");
+  });
+
+  it("loads an index that does not serve the flag without it, so every passport reads cannot-tell, and asks again after ten minutes", async () => {
+    const asked: string[] = [];
+    let serves = false;
+    const server = createServer((request, reply) => {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        const query = (JSON.parse(Buffer.concat(chunks).toString("utf8")) as { query: string }).query;
+        asked.push(query);
+        const missingField = query.includes("network:") && !serves;
+        const body = missingField
+          ? {
+              errors: [
+                { message: "field 'network' not found in type: 'Attestation_bool_exp'", extensions: { code: "validation-failed" } },
+              ],
+            }
+          : {
+              data: {
+                Passport: [
+                  {
+                    id: idFrom(1),
+                    phash: "0",
+                    blockhash: ZERO_BLOCKHASH,
+                    creator: { id: OTHER },
+                    registeredAt: "100",
+                    metadataURI: "ipfs://bafkdoc",
+                    ...(query.includes("network:") ? { network: [{ matched: true }] } : {}),
+                  },
+                ],
+              },
+            };
+        reply.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(body));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    running = server;
+    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1/graphql`;
+    let now = NOW * 1000;
+    const source = new EnvioSource({ url, network: true, clock: () => now });
+
+    const without = await source.load();
+    expect(without.map((record) => record.networkVerdict)).toEqual([undefined]);
+    expect(asked.filter((query) => query.includes("network:"))).toHaveLength(1);
+
+    await source.load();
+    expect(asked.filter((query) => query.includes("network:"))).toHaveLength(1);
+
+    serves = true;
+    now += NETWORK_FLAG_RETRY_MS;
+    expect((await source.load()).map((record) => record.networkVerdict)).toEqual([true]);
+  });
+
+  it("still fails the load on any other GraphQL error", async () => {
+    const server = createServer((request, reply) => {
+      request.resume();
+      request.on("end", () => {
+        reply.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ errors: [{ message: "the database is down" }] }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    running = server;
+    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1/graphql`;
+    await expect(new EnvioSource({ url, network: true }).load()).rejects.toThrow(/the database is down/);
   });
 
   it("counts a LookalikeChecked record only from this receiver, not removed, and at or after activation", async () => {

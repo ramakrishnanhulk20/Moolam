@@ -3,7 +3,7 @@ import { FETCH_TIMEOUT_MS } from "../env.js";
 import { rechecksFrom } from "../recheck.js";
 import type { IndexedRecord } from "../index.js";
 import { MONAD_CHAIN_ID } from "../reputation/registry.js";
-import type { Hex, IndexerProgress } from "../types.js";
+import type { IndexerProgress } from "../types.js";
 import { hex } from "./hex.js";
 import type { PassportSource, SourceLoad } from "./PassportSource.js";
 
@@ -13,7 +13,7 @@ import type { PassportSource, SourceLoad } from "./PassportSource.js";
  * with an ascending sort: no offset, which would drift while the index is still
  * syncing and could skip or repeat rows.
  */
-function passportPage(network: NetworkVerdicts | undefined): string {
+function passportPage(network: boolean): string {
   return `Passport(where: { id: { _gt: $after } }, order_by: { id: asc }, limit: $limit) {
     id
     phash
@@ -31,36 +31,25 @@ function passportPage(network: NetworkVerdicts | undefined): string {
       matched
       distance
       at
-    }${network === undefined ? "" : networkSelection(network)}
+    }${network ? networkSelection() : ""}
   }`;
 }
 
 /**
- * Which receiver's attestations count as Chainlink's network verdict, and from what unix second.
- * Both go into the query as literals: the receiver is checked as an address and the time as a
- * whole number before they get here, so nothing a caller sends can reach the query text.
+ * The newest attestation the index itself marks as Chainlink's network speaking (its
+ * Attestation.network flag: written through the forwarder, from the right receiver, at or after
+ * the network went live). The newest attestation above cannot answer this, because a later test
+ * run on another receiver would hide a network verdict that landed first. The service keeps no
+ * rule of its own for what counts as the network's, so it can never disagree with the index.
  */
-export interface NetworkVerdicts {
-  receiver: Hex;
-  activation: number;
-}
-
-/**
- * At most one attestation from the network's receiver at or after activation. The newest
- * attestation above cannot answer this, because a later test run on another receiver would hide
- * a network verdict that landed first.
- */
-function networkSelection(network: NetworkVerdicts): string {
-  if (!/^0x[0-9a-f]{40}$/.test(network.receiver) || !Number.isSafeInteger(network.activation) || network.activation < 0) {
-    throw new Error("the network verdict settings must be a lower-case address and a whole number of seconds");
-  }
+function networkSelection(): string {
   return `
-    network: attestations(where: { receiver: { _eq: "${network.receiver}" }, at: { _gte: "${network.activation}" } }, limit: 1) {
-      at
+    network: attestations(where: { network: { _eq: true } }, order_by: { at: desc }, limit: 1) {
+      matched
     }`;
 }
 
-function passportQuery(network: NetworkVerdicts | undefined): string {
+function passportQuery(network: boolean): string {
   return `query MoolamPassports($limit: Int!, $after: String!) {
   ${passportPage(network)}
 }`;
@@ -74,7 +63,7 @@ function passportQuery(network: NetworkVerdicts | undefined): string {
  * timestamp_caught_up_to_head_or_endblock stays null until it has caught up with the chain once,
  * which is where a redeployed indexer replaying from its start block shows.
  */
-function firstPageQuery(network: NetworkVerdicts | undefined): string {
+function firstPageQuery(network: boolean): string {
   return `query MoolamPassportsAndProgress($limit: Int!, $after: String!) {
   chain_metadata {
     chain_id
@@ -139,7 +128,7 @@ const rowSchema = z.object({
 });
 
 const responseSchema = z.object({
-  errors: z.array(z.object({ message: z.string() })).optional(),
+  errors: z.array(z.object({ message: z.string(), extensions: z.object({ code: z.string().optional() }).loose().optional() })).optional(),
   // Read on its own in progressFrom, so a progress row the index serves badly costs this load its
   // word on freshness, which then reads stale, and never the passports themselves.
   data: z.object({ Passport: z.array(rowSchema), chain_metadata: z.unknown().optional() }).optional(),
@@ -180,10 +169,36 @@ function progressFrom(metadata: unknown, chainId: number): IndexerSays | null {
   return null;
 }
 
-/** The network verdict field of one row: present when the index answered a list, left off otherwise. */
-function networkVerdictOf(field: unknown): { networkVerdict?: boolean } {
-  return Array.isArray(field) ? { networkVerdict: field.length > 0 } : {};
+const networkRowSchema = z.object({ matched: z.boolean() });
+
+/**
+ * The network verdict fields of one row: an empty list is "no verdict yet", a row with a boolean
+ * `matched` is the newest verdict, and anything else (a field the index did not serve, a list of
+ * something else) leaves both off, which the backlog reads as "cannot tell", never as a guess.
+ */
+function networkVerdictOf(field: unknown): { networkVerdict?: boolean; networkMatched?: boolean } {
+  if (!Array.isArray(field)) return {};
+  if (field.length === 0) return { networkVerdict: false };
+  const newest = networkRowSchema.safeParse(field[0]);
+  return newest.success ? { networkVerdict: true, networkMatched: newest.data.matched } : {};
 }
+
+/**
+ * Whether every error says the index has no `network` field on its attestations, which is an index
+ * older than the one this service reads. Anything else is a real failure and still stops the load.
+ */
+function lacksNetworkFlag(errors: readonly { message: string; extensions?: { code?: string | undefined } | undefined }[]): boolean {
+  return (
+    errors.length > 0 &&
+    errors.every(
+      (error) =>
+        /network/i.test(error.message) && (error.extensions?.code === "validation-failed" || /not found in type/i.test(error.message)),
+    )
+  );
+}
+
+/** An index that lacked the network flag is asked for it again after this long. */
+export const NETWORK_FLAG_RETRY_MS = 10 * 60 * 1000;
 
 /** The one chain read this source makes: a block's time, the newest block's when no number is given. A viem public client has it. */
 export interface BlockReader {
@@ -227,8 +242,11 @@ async function progressOf(says: IndexerSays | null, times: BlockTimes | undefine
  * so a verify answer can say what the Chainlink workflow found without a lookup
  * of its own per verification.
  *
- * Given `network`, each row also says whether Chainlink's network has written a verdict for it, so
- * the look-alike backlog knows which passports still wait for one without a read of its own.
+ * Given `network`, each row also says whether Chainlink's network has written a verdict for it and
+ * what the newest one found, from the index's own Attestation.network flag, so the look-alike
+ * backlog knows which passports still wait without a read of its own. An index that does not
+ * serve the flag is loaded without it and every row then says "cannot tell"; it is asked again
+ * every NETWORK_FLAG_RETRY_MS.
  *
  * Each load also reads how far the indexer has got from Envio's chain_metadata, and asks the chain
  * for two block times, the indexer's newest block and the chain head, so the service can tell an
@@ -240,10 +258,11 @@ export class EnvioSource implements PassportSource {
   private readonly pageSize: number;
   private readonly chain: BlockReader | undefined;
   private readonly chainId: number;
-  private readonly network: NetworkVerdicts | undefined;
-  private readonly queries: { first: string; rest: string };
+  private readonly network: boolean;
+  private readonly clock: () => number;
+  private networkFlagMissingAt: number | undefined;
 
-  constructor(opts: { url: string; pageSize?: number; chain?: BlockReader; chainId?: number; network?: NetworkVerdicts }) {
+  constructor(opts: { url: string; pageSize?: number; chain?: BlockReader; chainId?: number; network?: boolean; clock?: () => number }) {
     const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
     if (!Number.isInteger(pageSize) || pageSize < 1) {
       throw new Error("EnvioSource pageSize must be a whole number of at least 1");
@@ -252,9 +271,14 @@ export class EnvioSource implements PassportSource {
     this.pageSize = pageSize;
     this.chain = opts.chain;
     this.chainId = opts.chainId ?? MONAD_CHAIN_ID;
-    this.network = opts.network;
-    // Built once, so a bad setting fails the boot here rather than the first load.
-    this.queries = { first: firstPageQuery(this.network), rest: passportQuery(this.network) };
+    this.network = opts.network ?? false;
+    this.clock = opts.clock ?? Date.now;
+  }
+
+  /** Whether the next page asks for the network flag: wanted, and not known missing from this index lately. */
+  private asksForNetwork(): boolean {
+    if (!this.network) return false;
+    return this.networkFlagMissingAt === undefined || this.clock() - this.networkFlagMissingAt >= NETWORK_FLAG_RETRY_MS;
   }
 
   /** Every passport, read exactly as loadWithProgress reads them. */
@@ -299,7 +323,7 @@ export class EnvioSource implements PassportSource {
           ...(row.registeredBlock === undefined ? {} : { registeredBlock: Number(row.registeredBlock) }),
           metadataURI: row.metadataURI,
           rechecks: rechecksFrom(row),
-          ...(this.network === undefined ? {} : networkVerdictOf(row.network)),
+          ...(this.network ? networkVerdictOf(row.network) : {}),
         });
       }
 
@@ -326,7 +350,7 @@ export class EnvioSource implements PassportSource {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          query: withProgress ? this.queries.first : this.queries.rest,
+          query: withProgress ? firstPageQuery(this.asksForNetwork()) : passportQuery(this.asksForNetwork()),
           variables: { limit: this.pageSize, after },
         }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -356,6 +380,10 @@ export class EnvioSource implements PassportSource {
       throw new Error(`ENVIO_GRAPHQL_URL ${this.url} returned a bad passport page: ${detail}`);
     }
     if (parsed.data.errors !== undefined && parsed.data.errors.length > 0) {
+      if (this.asksForNetwork() && lacksNetworkFlag(parsed.data.errors)) {
+        this.networkFlagMissingAt = this.clock();
+        return await this.fetchPage(after, withProgress);
+      }
       const detail = parsed.data.errors.map((entry) => entry.message).join("; ");
       throw new Error(`ENVIO_GRAPHQL_URL ${this.url} answered with GraphQL errors: ${detail}`);
     }

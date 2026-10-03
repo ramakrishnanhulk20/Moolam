@@ -190,7 +190,12 @@ const triggerLog = (): EVMLog => {
 	return { topics: topics.map((topic) => hexToBytes(topic)), data: hexToBytes(data) } as unknown as EVMLog;
 };
 
-const run = (world: World, trigger: "log" | "cron", runConfig: typeof config = config) => {
+const run = (
+	world: World,
+	trigger: "log" | "cron",
+	runConfig: typeof config = config,
+	cronPayload: Parameters<typeof onBacklogCron>[1] = {} as never,
+) => {
 	const network = getNetwork({ chainFamily: "evm", chainSelectorName: runConfig.chain });
 	if (!network) throw new Error(`network not found: ${runConfig.chain}`);
 	const evm = EvmMock.testInstance(network.chainSelector.selector);
@@ -199,6 +204,7 @@ const run = (world: World, trigger: "log" | "cron", runConfig: typeof config = c
 		reads: [] as string[],
 		verdicts: [] as ReturnType<typeof decodeVerdict>[],
 		lookalikes: [] as ReturnType<typeof decodeLookalike>[],
+		gas: { verdict: [] as string[], lookalike: [] as string[] },
 		candidateRequests: [] as { fingerprints: { phash: string; blockhash: string }[]; asOf: number }[],
 	};
 
@@ -217,6 +223,7 @@ const run = (world: World, trigger: "log" | "cron", runConfig: typeof config = c
 		return world.verdictFloor?.[String(passportId).toLowerCase()] ?? 0n;
 	};
 	verdictReceiver.writeReport = (input) => {
+		seen.gas.verdict.push(String(input.gasConfig?.gasLimit));
 		seen.verdicts.push(decodeVerdict(bytesToHex(input.report.rawReport.slice(REPORT_METADATA_HEADER_LENGTH))));
 		return { ...(world.verdictReply ?? LANDED), txHash: TX_HASH_BASE64 };
 	};
@@ -234,6 +241,7 @@ const run = (world: World, trigger: "log" | "cron", runConfig: typeof config = c
 		};
 	};
 	lookalikes.writeReport = (input) => {
+		seen.gas.lookalike.push(String(input.gasConfig?.gasLimit));
 		seen.lookalikes.push(decodeLookalike(bytesToHex(input.report.rawReport.slice(REPORT_METADATA_HEADER_LENGTH))));
 		return { ...(world.lookalikeReply ?? LANDED), txHash: TX_HASH_BASE64 };
 	};
@@ -265,7 +273,7 @@ const run = (world: World, trigger: "log" | "cron", runConfig: typeof config = c
 	let outcome: { result: string } | { error: string };
 	try {
 		outcome = {
-			result: trigger === "log" ? onPassportRegistered(runtime, triggerLog()) : onBacklogCron(runtime, {} as never),
+			result: trigger === "log" ? onPassportRegistered(runtime, triggerLog()) : onBacklogCron(runtime, cronPayload),
 		};
 	} catch (error) {
 		outcome = { error: error instanceof Error ? error.message : String(error) };
@@ -595,11 +603,56 @@ test("L13: a refused write in the catch-up fails the run with the passport named
 });
 
 test("L15 and L17: a backlog that gives no answer writes nothing and fails the run", () => {
-	for (const backlog of [{ status: 503, body: "" }, answer({ status: "not-ready" }), answer({ status: "ok", passports: "x" })]) {
+	for (const backlog of [{ status: 503, body: "" }, answer({ status: "ok", passports: "x" }), answer({ status: "later" })]) {
 		const { outcome, seen } = run(backlogWorld([], { backlog }), "cron");
 		expect(seen.verdicts).toHaveLength(0);
 		expect(outcome).toMatchObject({ error: expect.stringContaining("so nothing was written") });
 	}
+});
+
+test("L15: a backlog the service calls not-ready skips the run with a log line, reads nothing and writes nothing", () => {
+	const waiting = id("d1");
+	const { outcome, logs, seen } = run(backlogWorld([waiting], { backlog: answer({ status: "not-ready" }) }), "cron");
+	expect(outcome).toEqual({ result: "catch-up skipped: the verify service says the backlog is not ready" });
+	expect(logs).toContain("catch-up skipped: the verify service says the backlog is not ready, so it waits for the next run");
+	expect(seen.http).toHaveLength(1);
+	expect(seen.reads).toHaveLength(0);
+	expect(seen.verdicts).toHaveLength(0);
+	expect(seen.lookalikes).toHaveLength(0);
+});
+
+test("L15: the backlog is asked for the cron slot, from the scheduled time every node is handed", () => {
+	const slotSeconds = 600;
+	const scheduled = 1_700_090_400n;
+	const asked = run(backlogWorld([]), "cron", config, { scheduledExecutionTime: { seconds: scheduled, nanos: 0 } } as never);
+	const url = asked.seen.http.find((line) => line.includes("/lookalikes/backlog?"));
+	expect(url).toContain(`&slot=${Number(scheduled) / slotSeconds}`);
+	expect(asked.logs).toContain(`slot ${Number(scheduled) / slotSeconds}:`);
+
+	// A trigger with no scheduled time falls back to the run's own time, here ACTIVATION plus a day.
+	const unscheduled = run(backlogWorld([]), "cron");
+	expect(unscheduled.seen.http.find((line) => line.includes("/lookalikes/backlog?"))).toContain(
+		`&slot=${Math.floor((ACTIVATION + 86_400) / slotSeconds)}`,
+	);
+
+	// Two runs in one slot ask for the same list, and the next slot asks for the next place.
+	const sameSlot = run(backlogWorld([]), "cron", config, { scheduledExecutionTime: { seconds: scheduled + 599n, nanos: 0 } } as never);
+	expect(sameSlot.seen.http.find((line) => line.includes("/lookalikes/backlog?"))).toBe(url);
+	const nextSlot = run(backlogWorld([]), "cron", config, { scheduledExecutionTime: { seconds: scheduled + 600n, nanos: 0 } } as never);
+	expect(nextSlot.seen.http.find((line) => line.includes("/lookalikes/backlog?"))).toContain(
+		`&slot=${Number(scheduled) / slotSeconds + 1}`,
+	);
+});
+
+test("every report goes out with an explicit gas limit: 1,000,000 for a verdict, 400,000 for a look-alike", () => {
+	// The mock forwarder hands the receiver whatever gas is left, so a limit the node estimates
+	// starves it. This is what the recheck runner's simulate test relies on.
+	const { seen } = run(lookalikeWorld(), "log");
+	expect(seen.gas).toEqual({ verdict: ["1000000"], lookalike: ["400000"] });
+
+	const missing = id("d2");
+	const catchUp = run(backlogWorld([missing]), "cron");
+	expect(catchUp.seen.gas).toEqual({ verdict: ["1000000"], lookalike: ["400000"] });
 });
 
 test("L15: the read budget holds at 15 HTTP calls and 15 reads with seven passports all missing", () => {

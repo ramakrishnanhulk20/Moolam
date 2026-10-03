@@ -42,6 +42,8 @@ const candidatesSchema = z.strictObject({
 const backlogSchema = z.strictObject({
   asOf: z.string().regex(/^[1-9][0-9]{0,9}$/, "asOf must be a whole number of unix seconds"),
   n: z.string().regex(new RegExp(`^[1-${MAX_BACKLOG}]$`), `n must be a whole number from 1 to ${MAX_BACKLOG}`),
+  // Left off by a workflow older than the rotation, which then always gets the head of the list.
+  slot: z.string().regex(/^[0-9]{1,10}$/, "slot must be a whole number").optional(),
 });
 
 export interface LookalikeRouteOptions {
@@ -130,17 +132,20 @@ export async function lookalikeRoutes(app: FastifyInstance, options: LookalikeRo
   });
 
   /**
-   * GET /lookalikes/backlog?asOf=&n=: up to n passports registered before `asOf` that still lack a
-   * network verdict or, for an original, a look-alike record, and that the workflow can check.
+   * GET /lookalikes/backlog?asOf=&n=&slot=: up to n passports registered before `asOf` that still
+   * lack a network verdict or, for an original, a look-alike record, and that the workflow can
+   * check, starting `slot` places into the waiting list and wrapping round it. Answers not-ready
+   * while either look-alike setting is unset.
    */
   app.get("/lookalikes/backlog", async (request: FastifyRequest, reply: FastifyReply) => {
     if (!backlogRoom()) return overCeiling(request, reply);
     const parsed = backlogSchema.safeParse(request.query);
     if (!parsed.success) {
-      return refuse(request, reply, 400, `send ?asOf=<unix seconds>&n=<1 to ${MAX_BACKLOG}>`);
+      return refuse(request, reply, 400, `send ?asOf=<unix seconds>&n=<1 to ${MAX_BACKLOG}>&slot=<whole number>`);
     }
     const asOf = Number(parsed.data.asOf);
     const n = Number(parsed.data.n);
+    const slot = Number(parsed.data.slot ?? "0");
     if (asOf > nowSeconds() + AS_OF_SKEW_S) {
       return refuse(request, reply, 400, "asOf is in the future");
     }
@@ -149,6 +154,6 @@ export async function lookalikeRoutes(app: FastifyInstance, options: LookalikeRo
     if (copy.state().stale || !copy.covers(asOf)) {
       return reply.header("cache-control", "no-store").send({ status: "not-ready" });
     }
-    return reply.header("cache-control", "no-store").send(backlogOf(inLookalikeOrder(copy.passports), asOf, n, options.view()));
+    return reply.header("cache-control", "no-store").send(backlogOf(inLookalikeOrder(copy.passports), asOf, n, slot, options.view()));
   });
 }

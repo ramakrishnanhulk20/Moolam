@@ -40,7 +40,15 @@ describe("GET /health", () => {
 
   beforeAll(async () => {
     // The platform routes are mounted through options, with the bundled list, for the same reason.
-    app = await buildServer({ source: emptySource, logger: false, prepare: {}, edit: {}, platform: {} });
+    app = await buildServer({
+      source: emptySource,
+      logger: false,
+      prepare: {},
+      edit: {},
+      platform: {},
+      // Both look-alike settings, so the backlog is on and the list below does not depend on the .env.
+      lookalikes: { settings: { activation: 1, receiver: "0x7777777777777777777777777777777777777777" } },
+    });
     await app.ready();
   });
 

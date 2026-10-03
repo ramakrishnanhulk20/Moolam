@@ -67,13 +67,19 @@ export const TICKET_LIFETIME_SECONDS = 180 * 24 * 60 * 60;
 export const KEEP_CLOSED_SECONDS = 30 * 24 * 60 * 60;
 
 /**
- * The caps on what the store holds (P38). A thousand waiting tickets is ten days of one key's full
+ * The caps on what the store holds (P38). A thousand tickets for one key is ten days of its full
  * prepare quota; twenty tickets for one address from one platform inside a ticket's lifetime is
  * more than a real user makes before claiming, and is what stops a platform burying one address
  * under offers. The record caps keep a read of the whole file to a few megabytes.
  */
 export interface ClaimCaps {
-  waitingPerKey: number;
+  /**
+   * Tickets one key may hold inside a ticket's lifetime, whatever state each is in. Counting only
+   * the pending and open ones would let a refusal free a slot, and a platform that watched its
+   * room come back after a ticket for one address would learn that address is a Moolam user's
+   * (P30).
+   */
+  perKey: number;
   /**
    * Tickets one key may write for one address inside a ticket's lifetime, whatever state each is in:
    * a count that a refusal or a mute could lower would tell the platform the address is a Moolam
@@ -90,7 +96,7 @@ export interface ClaimCaps {
 }
 
 export const DEFAULT_CLAIM_CAPS: ClaimCaps = {
-  waitingPerKey: 1_000,
+  perKey: 1_000,
   perEmailAndKey: 20,
   tickets: 20_000,
   standing: 20_000,
@@ -489,18 +495,23 @@ function tallyOf(state: ClaimState, keyHash: string): KeyTally {
   return tally;
 }
 
-/** Why a key may not write a ticket for this email hash now: "closed" after too many refusals, "full" at a cap, or null. */
+/**
+ * Why a key may not write a ticket for this email hash now: "closed" after too many refusals, "full"
+ * at a cap, or null. Both caps count every ticket the key wrote inside a ticket's lifetime, in any
+ * state, and a closed ticket is not pruned before that lifetime ends, so nothing a person does can
+ * lower either count (P30).
+ */
 export function writeProblem(state: ClaimState, keyHash: string, emailHash: string, caps: ClaimCaps, now: number): "closed" | "full" | null {
   if (state.keys.some((tally) => tally.keyHash === keyHash && tally.closedAt !== null)) return "closed";
   if (state.tickets.length >= caps.tickets) return "full";
-  let waiting = 0;
+  let held = 0;
   let forAddress = 0;
   for (const ticket of state.tickets) {
-    if (ticket.keyHash !== keyHash) continue;
-    if (ticket.state === "pending" || ticket.state === "open") waiting += 1;
-    if (ticket.emailHash === emailHash && ticket.expiresAt > now) forAddress += 1;
+    if (ticket.keyHash !== keyHash || ticket.expiresAt <= now) continue;
+    held += 1;
+    if (ticket.emailHash === emailHash) forAddress += 1;
   }
-  return waiting >= caps.waitingPerKey || forAddress >= caps.perEmailAndKey ? "full" : null;
+  return held >= caps.perKey || forAddress >= caps.perEmailAndKey ? "full" : null;
 }
 
 export interface NewTicket {

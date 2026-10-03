@@ -107,7 +107,7 @@ const measurementSchema = z.object({
 type Measurement = z.infer<typeof measurementSchema>;
 
 const answerSchema = z.object({
-	kind: z.enum(["ok", "no-answer"]),
+	kind: z.enum(["ok", "no-answer", "not-ready"]),
 	ids: z.array(z.string()),
 	reason: z.string(),
 });
@@ -175,6 +175,13 @@ const PICTURE_CALLS = 3;
 
 /** The catch-up looks only at passports registered at least this long before the run. */
 const BACKLOG_LAG_SECONDS = 600;
+
+/**
+ * How long one cron slot is: the gap in the catch-up's schedule in initWorkflow. The service moves
+ * the start of the backlog it names by one place for each slot, so a few passports that can never
+ * be finished do not sit at the head of every run.
+ */
+const BACKLOG_SLOT_SECONDS = 600;
 
 /**
  * Both look-alike routes answer the same bytes to the same request, so nodes may share one answer
@@ -377,14 +384,35 @@ const askCandidates = (
 	return flat(readServiceAnswer("candidates", response.statusCode, response.body, "candidates", MAX_CANDIDATES));
 };
 
-/** One GET to the backlog route for up to `n` passports registered before `asOf`, oldest first. */
-const askBacklog = (nodeRuntime: NodeRuntime<Config>, asOf: number, n: number): FlatAnswer => {
+/**
+ * Whether a 200 body is the service's plain "not-ready": it has nothing to act on yet, which is a
+ * reason to skip this run's catch-up and not a fault in the service.
+ */
+const saysNotReady = (body: Uint8Array): boolean => {
+	try {
+		const parsed: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+		return (
+			typeof parsed === "object" &&
+			parsed !== null &&
+			!Array.isArray(parsed) &&
+			(parsed as Record<string, unknown>).status === "not-ready"
+		);
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * One GET to the backlog route for up to `n` passports registered before `asOf`, oldest first,
+ * starting `slot` places into the waiting list.
+ */
+const askBacklog = (nodeRuntime: NodeRuntime<Config>, asOf: number, n: number, slot: number): FlatAnswer => {
 	const base = nodeRuntime.config.verifierUrl.replace(/\/+$/, "");
 	let response: { statusCode: number; body: Uint8Array };
 	try {
 		response = httpClient
 			.sendRequest(nodeRuntime, {
-				url: `${base}/lookalikes/backlog?asOf=${asOf}&n=${n}`,
+				url: `${base}/lookalikes/backlog?asOf=${asOf}&n=${n}&slot=${slot}`,
 				method: "GET",
 				timeout: "10s",
 				cacheSettings: SHARED_ANSWER,
@@ -392,6 +420,9 @@ const askBacklog = (nodeRuntime: NodeRuntime<Config>, asOf: number, n: number): 
 			.result();
 	} catch {
 		return flat({ kind: "no-answer", reason: "the backlog route did not answer" });
+	}
+	if (response.statusCode === 200 && saysNotReady(response.body)) {
+		return { kind: "not-ready", ids: [], reason: "the verify service says the backlog is not ready" };
 	}
 	return flat(readServiceAnswer("backlog", response.statusCode, response.body, "passports", n));
 };
@@ -491,6 +522,18 @@ const writeTo = (runtime: Runtime<Config>, chain: Chain, receiver: string, paylo
 };
 
 const nowSeconds = (runtime: Runtime<Config>): number => Math.floor(runtime.now().getTime() / 1000);
+
+/**
+ * The cron slot this run belongs to, in whole ten-minute steps since 1970. It comes from the time
+ * the cron trigger was scheduled for, which the trigger hands every node alike, so every node asks
+ * the service for the same list. Only a payload with no scheduled time falls back to the run's own
+ * time, which the runtime reads the same on every node of a run.
+ */
+const backlogSlot = (runtime: Runtime<Config>, payload: CronPayload): number => {
+	const scheduled = payload.scheduledExecutionTime;
+	const seconds = scheduled === undefined ? nowSeconds(runtime) : Number(scheduled.seconds);
+	return Math.max(0, Math.floor(seconds / BACKLOG_SLOT_SECONDS));
+};
 
 /**
  * Chainlink's guidance for a state changing write: a signed report can be sent again after a first
@@ -775,8 +818,12 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
  * least two fit in 15 and 15; one that needs only its verdict is 3 calls and 2 reads, so four fit.
  * A passport is started only when its worst case still fits, and the rest wait for the next run,
  * which the backlog offers again because their floors are still missing.
+ *
+ * The service starts its list at the cron slot, so passports this run cannot finish (a picture it
+ * cannot measure, fingerprints that do not match) take the head only in their own turn and the
+ * rest are reached in later runs. A backlog the service calls not-ready skips the run, logged.
  */
-export const onBacklogCron = (runtime: Runtime<Config>, _payload: CronPayload): string => {
+export const onBacklogCron = (runtime: Runtime<Config>, payload: CronPayload): string => {
 	const config = runtime.config;
 	const activationTime = config.activationTime ?? 0;
 	if (activationTime === 0) {
@@ -788,18 +835,24 @@ export const onBacklogCron = (runtime: Runtime<Config>, _payload: CronPayload): 
 	const chain = evmClientFor(config);
 	const now = nowSeconds(runtime);
 	const asOf = now - BACKLOG_LAG_SECONDS;
+	const slot = backlogSlot(runtime, payload);
 
 	budget.spend(1, 0);
 	const backlog = runtime
 		.runInNodeMode(askBacklog, consensusIdenticalAggregation<FlatAnswer>(), { schema: answerSchema })(
 			asOf,
 			config.backlogPerRun,
+			slot,
 		)
 		.result();
+	if (backlog.kind === "not-ready") {
+		runtime.log(`catch-up skipped: ${backlog.reason}, so it waits for the next run`);
+		return "catch-up skipped: the verify service says the backlog is not ready";
+	}
 	if (backlog.kind !== "ok") {
 		throw new Error(`${backlog.reason}, so nothing was written`);
 	}
-	runtime.log(`backlog as of ${asOf}: ${backlog.ids.length === 0 ? "empty" : backlog.ids.join(", ")}`);
+	runtime.log(`backlog as of ${asOf} slot ${slot}: ${backlog.ids.length === 0 ? "empty" : backlog.ids.join(", ")}`);
 
 	const sw = lookalikeSwitch(config);
 	const lookalikesOn = sw.on && !sw.dryRun;
@@ -931,6 +984,7 @@ export const initWorkflow = (config: Config) => {
 	}
 	return [
 		onRegistration,
+		// Every ten minutes: BACKLOG_SLOT_SECONDS is this gap.
 		cre.handler(new cre.capabilities.CronCapability().trigger({ schedule: "0 */10 * * * *" }), onBacklogCron),
 	];
 };

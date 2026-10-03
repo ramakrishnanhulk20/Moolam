@@ -93,11 +93,14 @@ export function lookalikeKnowledge(options: {
 
   let running: Promise<void> | undefined;
   const run = async (passports: ReadonlyMap<Hex, PassportRecord>): Promise<void> => {
+    // A backlog that is off answers "not-ready" whatever is read, so nothing is read for it.
+    if (!half) return;
     await readRecords();
     const view = records();
+    if (view === undefined) return;
     const waiting: string[] = [];
     for (const record of inLookalikeOrder(passports)) {
-      const missing = missingOf(record, settings, view);
+      const missing = missingOf(record, view);
       if (missing !== "unknown" && (missing.verdict || missing.lookalike) && book.wants(record.metadataURI)) {
         waiting.push(record.metadataURI);
       }

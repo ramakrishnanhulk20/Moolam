@@ -20,6 +20,7 @@ import {
   ClaimStoreClosed,
   DEFAULT_CLAIM_CAPS,
   PENDING_WINDOW_SECONDS,
+  TICKET_LIFETIME_SECONDS,
   acceptTickets,
   claimStore,
   refuseTickets,
@@ -235,7 +236,7 @@ describe("the ticket store (P32, P33)", () => {
 
 describe("the caps and the refusal share (P38)", () => {
   it("stops one person's tickets from one platform at the cap, and the key's waiting tickets at its own", () => {
-    const caps = { ...DEFAULT_CLAIM_CAPS, perEmailAndKey: 2, waitingPerKey: 3 };
+    const caps = { ...DEFAULT_CLAIM_CAPS, perEmailAndKey: 2, perKey: 3 };
     const at = (email: string) =>
       writeTicket(store, { passportId: passportId(), keyHash: KEY_HASH, platformName: "Acme Images", creatorWallet: PLATFORM_WALLET, verifiedBy: "platform", emailHash: hashOf(email), standing: undefined }, NOW, caps);
     expect(at("a@example.com").ok).toBe(true);
@@ -256,6 +257,21 @@ describe("the caps and the refusal share (P38)", () => {
       caps,
     );
     expect(again).toEqual({ ok: false, reason: "full" });
+  });
+
+  it("P30: never lets a refusal free a slot in the key's own cap either, until the ticket's lifetime ends", async () => {
+    const caps = { ...DEFAULT_CLAIM_CAPS, perKey: 1 };
+    const at = (email: string, when: number) =>
+      writeTicket(store, { passportId: passportId(), keyHash: KEY_HASH, platformName: "Acme Images", creatorWallet: PLATFORM_WALLET, verifiedBy: "platform", emailHash: hashOf(email), standing: undefined }, when, caps);
+    const first = await openTicket("a@example.com");
+    expect(at("b@example.com", NOW)).toEqual({ ok: false, reason: "full" });
+
+    expect(refuseTickets(store, { ticketIds: [first.ticketId], emailHashes: new Set([hashOf("a@example.com")]), now: NOW }, caps).ok).toBe(true);
+    expect(store.read().tickets.find((one) => one.ticketId === first.ticketId)?.state).toBe("refused");
+    expect(at("b@example.com", NOW)).toEqual({ ok: false, reason: "full" });
+    expect(at("c@example.com", NOW + TICKET_LIFETIME_SECONDS - 1)).toEqual({ ok: false, reason: "full" });
+
+    expect(at("c@example.com", first.expiresAt + 1).ok).toBe(true);
   });
 
   it("closes a key's ticket writing once more than one in four of at least ten tickets were refused", async () => {

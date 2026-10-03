@@ -1543,33 +1543,47 @@ as "none".
 Which passports still wait for Chainlink's network. The workflow's ten-minute run asks it to catch
 up on runs that were dropped and on passports registered before the network run went live.
 
-**Request.** `GET /lookalikes/backlog?asOf=<unix seconds>&n=<1 to 7>`, nothing else in the query.
-`asOf` may be at most 60 seconds ahead of this host's clock.
+**Request.** `GET /lookalikes/backlog?asOf=<unix seconds>&n=<1 to 7>&slot=<whole number>`, nothing else
+in the query. `asOf` may be at most 60 seconds ahead of this host's clock. `slot` is the workflow's cron
+slot, its scheduled time in whole ten-minute steps since 1970; it may be left off, and then it is 0.
 
 **Response.** `200` with one of:
 
 ```ts
-{ status: "ok", passports: `0x${string}`[] }    // 0 to n passport ids, lower case, oldest first
+{ status: "ok", passports: `0x${string}`[] }    // 0 to n passport ids, lower case
 { status: "not-ready" }
 ```
 
-A passport is listed when it was registered strictly before `asOf`, its metadata document is public
+A passport is waiting when it was registered strictly before `asOf`, its metadata document is public
 and names its picture as pinned content (so the workflow can check it), and it still lacks one of:
 
-- a network verdict: an attestation from receiver `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` at or
-  after `NETWORK_ACTIVATION_TIME`, read from the index;
+- a network verdict: an attestation the index itself marks as Chainlink's network speaking, its
+  `Attestation.network` flag. The service holds no rule of its own for this, so it can never
+  disagree with the index;
 - for an original, a look-alike record: a `LookalikeChecked` event from `LOOKALIKE_RECEIVER` whose
   `executedAt` is at or after `NETWORK_ACTIVATION_TIME`. Until the index carries these records, the
   service reads the events itself in the background, after each index refresh.
 
-With `NETWORK_ACTIVATION_TIME` unset the list says nothing about either. With it set and
-`LOOKALIKE_RECEIVER` unset, it says nothing about look-alike records. The order is `registeredAt`,
-then id.
+A passport whose newest network verdict says its fingerprints did not match is not waiting for a
+look-alike record: the workflow proves no look-alike for it, so none ever comes.
+
+The waiting passports are in the order `registeredAt`, then id. The answer is `n` of them, starting
+`slot` places into that list (`slot` modulo its length) and wrapping round its end, so over any run of
+as many slots as the list is long every waiting passport leads an answer once. That is what stops a
+few passports the workflow can never finish, such as a picture it cannot measure, from sitting at
+the head of every run and using up its reads. The same slot, `asOf` and index give the same list on
+every node.
+
+With either `NETWORK_ACTIVATION_TIME` or `LOOKALIKE_RECEIVER` unset the route is off: it answers
+`not-ready`, `/health` lists it under `off` with the reason, and the boot log says so.
 
 `not-ready` comes instead of a shorter list whenever a passport that could belong in it cannot be
 judged yet: the index is stale or not loaded through `asOf`, the index cannot say whether a verdict
-landed, the look-alike events have not been read up to the chain head, or a document has never been
-read. A document whose read failed is left out and read again ten minutes later.
+landed or what it found (an index that does not serve `Attestation.network` is loaded without it),
+the look-alike events have not been read up to the chain head, or a document has never been read
+(every waiting passport's document, not only the first `n`). A document whose read failed is left
+out and read again ten minutes later. The workflow skips its catch-up for that run when it hears
+`not-ready`.
 
 Neither look-alike route reads the chain, Pinata or the gateway while the request waits: the
 documents and the events are read in the background, and the answer comes from memory.
@@ -1577,7 +1591,7 @@ documents and the events are read in the background, and the answer comes from m
 | Code | When |
 | --- | --- |
 | `200` | `ok` or `not-ready` |
-| `400` | A missing or extra query parameter, an `n` outside 1 to 7, or an `asOf` that is not a whole number or is more than 60 seconds ahead |
+| `400` | A missing or extra query parameter, an `n` outside 1 to 7, a `slot` that is not a whole number of at most 10 digits, or an `asOf` that is not a whole number or is more than 60 seconds ahead |
 | `429` | Over the service's 60 a minute per address, or `{ "error": "route-limit" }` once every caller together has asked 120 times this minute, with `retry-after` |
 
 ## GET /recheck/status/:passportId
