@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { pinnedUri } from "@/components/passport/art";
+import { networkCanFetch } from "@/components/mark/networkFetch";
 import { plateMarkState } from "@/components/mark/plate";
 import type { MarkPicture } from "@/components/mark/mark";
 import { recordUnread } from "@/components/passport/unread";
@@ -86,7 +86,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
 
 /** What a plate's document says it points at, for its mark; null when the document could not be read. */
 function pictureOf(metadataURI: string, art: Awaited<ReturnType<typeof heldArt>> | null): MarkPicture | null {
-  if (metadataURI === "" || pinnedUri(metadataURI) === undefined) {
+  if (metadataURI === "" || !networkCanFetch(metadataURI)) {
     return "none";
   }
   if (art === null || recordUnread(art)) {
