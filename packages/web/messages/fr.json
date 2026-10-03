@@ -1722,7 +1722,8 @@
       "privateChainUnreachable": "Moolam n'a pas pu joindre Monad pour vérifier que cette image est nouvelle, donc aucune copie privée n'a été gardée et rien n'a été enregistré. Réessayez dans un instant.",
       "privateThumbnailTooLarge": "Cette image ne peut pas être réduite à une vignette assez petite pour que le contrôle de Chainlink la récupère, donc son passeport ne pourrait jamais être contrôlé, et un passeport scellé ne pourrait jamais être publié plus tard. Rien n'a été épinglé.",
       "fingerprintUnstable": "Cette image change trop peu d'un côté à l'autre pour une empreinte qui résiste aux copies : même sa propre petite copie se lit comme une autre image, donc le contrôle de Chainlink et toute recherche de ses copies la manqueraient. Rien n'a été épinglé ni enregistré. Une image avec plus de détails sur sa largeur sera enregistrée.",
-      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute."
+      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute.",
+      "agentOff": "Le dessin par l’agent est désactivé sur ce service pour le moment. Téléversez plutôt une image que vous avez déjà faite."
     },
     "actions": {
       "signIn": "Se reconnecter",

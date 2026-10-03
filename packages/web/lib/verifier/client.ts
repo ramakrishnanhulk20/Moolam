@@ -1121,6 +1121,70 @@ export async function forgetPrivateCopy(options: {
   });
 }
 
+/**
+ * What GET /health says about the routes this host serves.
+ *
+ * Only the two lists that tell whether the agent can draw are read. `off` is
+ * optional because a service that predates it still lists what it serves in
+ * `routes`, and a malformed `off` must not hide that.
+ */
+const healthRoutesSchema = z.object({
+  routes: z.array(z.string()),
+  off: z
+    .array(z.object({ route: z.string() }))
+    .optional()
+    .catch(undefined),
+});
+
+/**
+ * Whether the service can draw pictures right now, as its own /health answers.
+ *
+ * "unknown" is every way the service or the network failed to say. It is never
+ * read as "off": a studio that could not ask must offer the agent as it always
+ * did, and the refusal at the press still says what is wrong.
+ */
+export type GenerateService = { state: "on" } | { state: "off" } | { state: "unknown"; reason: string };
+
+/**
+ * Asks the verify service whether its /generate route is served.
+ *
+ * The route list is read on every call by the service, so "generate" appears in
+ * it only once the host has the keys and its registry check has passed. A route
+ * that is missing from the list, or named under `off`, answers 404 or 503 to a
+ * prompt, so the studio says so before one is typed. It never throws.
+ */
+export async function readGenerateService(options: { signal?: AbortSignal } = {}): Promise<GenerateService> {
+  const path = "/health";
+  const timeout = AbortSignal.timeout(LOOKUP_TIMEOUT_MS);
+  const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
+
+  let response: Response;
+  try {
+    response = await fetch(verifierUrl(path), { method: "GET", signal });
+  } catch {
+    return { state: "unknown", reason: `the verify service at ${verifierUrl(path)} did not answer` };
+  }
+
+  if (!response.ok) {
+    return { state: "unknown", reason: `the verify service answered ${response.status}` };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { state: "unknown", reason: "the verify service answered with something that is not JSON" };
+  }
+
+  const parsed = healthRoutesSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { state: "unknown", reason: "the verify service answered in a shape this app does not know" };
+  }
+
+  const closed = (parsed.data.off ?? []).some((entry) => entry.route === "POST /generate");
+  return parsed.data.routes.includes("generate") && !closed ? { state: "on" } : { state: "off" };
+}
+
 /** Matches an image against the registry. No sign in: anyone may check a picture. */
 export async function verify(options: { file: File; signal?: AbortSignal }): Promise<VerifyResponse> {
   const body = new FormData();

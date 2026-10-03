@@ -208,6 +208,23 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
 }
 
 /**
+ * What the agent path says about a failed call to /generate.
+ *
+ * A host that cannot draw either does not serve the route at all, which is a 404 for any
+ * path it does not have, or serves it closed while its registry check has not passed, which is
+ * a 503 named `generator-unchecked`. Neither is a shape this page misread, and neither is
+ * worth the service's own words under the sentence: they name a missing key or a path.
+ * The route has no 404 of its own, so the status alone is enough. Everything else is the
+ * upload path's mapping, unchanged.
+ */
+export function describeGenerateFailure(error: unknown): Failure {
+  if (error instanceof VerifierError && (error.status === 404 || error.serviceCode === "generator-unchecked")) {
+    return { key: "agentOff" };
+  }
+  return describeFailure(error, "prepare");
+}
+
+/**
  * The digest read and the passkey ceremony share a phase, and they fail in
  * completely different ways. Anything viem raised came from the chain read, so
  * it is a network problem with nothing signed behind it. Everything else in

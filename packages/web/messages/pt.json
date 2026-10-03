@@ -1732,7 +1732,8 @@
       "privateChainUnreachable": "A Moolam não conseguiu alcançar a Monad para conferir se esta imagem é nova, então não guardou cópia privada e não registrou nada. Tente de novo daqui a pouco.",
       "privateThumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para a conferência da Chainlink baixar, então o passaporte dela nunca poderia ser conferido, e um passaporte lacrado nunca poderia ser publicado depois. Nada foi fixado.",
       "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão que sobreviva às cópias: até a própria cópia pequena parece outra imagem, então a conferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem registrado. Uma imagem com mais detalhes na largura será registrada.",
-      "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto."
+      "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto.",
+      "agentOff": "O desenho feito pelo agente está desligado neste serviço por enquanto. Envie uma imagem sua no lugar."
     },
     "actions": {
       "signIn": "Entrar de novo",

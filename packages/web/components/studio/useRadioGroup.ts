@@ -44,6 +44,11 @@ export function useRadioGroup<T extends string>(options: readonly T[], value: T,
     }
     event.preventDefault();
     const option = options[next];
+    // A group with one choice left has nowhere to go, and asking for the same
+    // choice again would clear whatever the form holds.
+    if (option === value) {
+      return;
+    }
     onChange(option);
     items.current.get(option)?.focus();
   }

@@ -38,7 +38,7 @@ import {
   type Step,
 } from "./flow";
 import { checkPrompt } from "./generate";
-import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
+import { AuthCheckFailed, describeFailure, describeGenerateFailure, isResendable, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
 import { usePasskeyBinding, type Binding } from "./usePasskeyBinding";
 import { needsGoAhead } from "./warning";
@@ -898,7 +898,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     } catch (error) {
       dispatchRegister({
         type: "failed",
-        failure: describeFailure(error, "prepare"),
+        failure: describeGenerateFailure(error),
         quota: error instanceof VerifierError ? error.quota : undefined,
         stage: "prepare",
       });

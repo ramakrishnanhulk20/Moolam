@@ -1730,7 +1730,8 @@
       "privateChainUnreachable": "Moolam no pudo llegar a Monad para comprobar que esta imagen es nueva, así que no guardó ninguna copia privada ni registró nada. Inténtalo de nuevo en un momento.",
       "privateThumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que la comprobación de Chainlink la descargue, así que su pasaporte nunca podría comprobarse, y uno sellado nunca podría publicarse más adelante. No se fijó nada.",
       "fingerprintUnstable": "Esta imagen cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias: hasta su propia copia pequeña parece otra imagen, así que la comprobación de Chainlink y cualquier búsqueda de sus copias fallarían. No se fijó ni se registró nada. Una imagen con más detalle a lo ancho se registrará.",
-      "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto."
+      "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto.",
+      "agentOff": "Dibujar con el agente está desactivado en este servicio por ahora. Sube una imagen tuya en su lugar."
     },
     "actions": {
       "signIn": "Entrar otra vez",

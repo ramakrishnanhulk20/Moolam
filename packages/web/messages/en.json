@@ -1710,7 +1710,8 @@
       "privateChainUnreachable": "Moolam could not reach Monad to check this picture is new, so it kept no private copy and registered nothing. Try again in a moment.",
       "privateThumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's check to fetch, so its passport could never be checked, and a sealed one could never be published later. Nothing was pinned.",
       "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so Chainlink's check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register.",
-      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
+      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute.",
+      "agentOff": "The agent's picture maker is switched off on this service right now. Upload a picture of your own instead."
     },
     "actions": {
       "signIn": "Sign in again",

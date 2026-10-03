@@ -1710,7 +1710,8 @@
       "privateChainUnreachable": "Moolam hat Monad nicht erreicht, um zu prüfen, ob dieses Bild neu ist, deshalb wurde keine private Kopie behalten und nichts eingetragen. Versuch es gleich noch einmal.",
       "privateThumbnailTooLarge": "Aus diesem Bild lässt sich kein Vorschaubild machen, das klein genug ist, damit die Prüfung durch Chainlink es holen kann. Sein Pass könnte also nie geprüft werden, und ein versiegelter ließe sich später nie veröffentlichen. Nichts wurde gepinnt.",
       "fingerprintUnstable": "Dieses Bild ändert sich von links nach rechts zu wenig für einen Fingerabdruck, der das Kopieren übersteht: Schon seine eigene kleine Kopie liest sich wie ein anderes Bild, also würden die Prüfung durch Chainlink und jede Suche nach Kopien es verfehlen. Nichts wurde gepinnt und nichts eingetragen. Ein Bild mit mehr Details in der Breite wird eingetragen.",
-      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal."
+      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal.",
+      "agentOff": "Das Zeichnen durch den Agenten ist auf diesem Dienst gerade abgeschaltet. Lade stattdessen ein eigenes Bild hoch."
     },
     "actions": {
       "signIn": "Neu anmelden",

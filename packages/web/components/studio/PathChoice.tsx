@@ -10,6 +10,7 @@ import { useWide } from "./layout";
 import { useRadioGroup } from "./useRadioGroup";
 
 const PATHS: readonly Mode[] = ["upload", "generate"];
+const UPLOAD_ONLY: readonly Mode[] = ["upload"];
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
@@ -21,6 +22,7 @@ export function PathChoice({
   mode,
   busy,
   running = false,
+  generateOff = false,
   onMode,
 }: {
   mode: Mode;
@@ -28,6 +30,8 @@ export function PathChoice({
   busy: boolean;
   /** The form has folded into the run: the phone's fork steps aside, the laptop's switch stays, quiet. */
   running?: boolean;
+  /** The verify service says it cannot draw pictures, so the agent's half is shown switched off. */
+  generateOff?: boolean;
   onMode: (mode: Mode) => void;
 }) {
   const wide = useWide();
@@ -39,7 +43,7 @@ export function PathChoice({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: EASE }}
     >
-      <PathSwitch mode={mode} busy={busy} onMode={onMode} seat="column" />
+      <PathSwitch mode={mode} busy={busy} generateOff={generateOff} onMode={onMode} seat="column" />
     </motion.div>
   );
 
@@ -58,7 +62,7 @@ export function PathChoice({
   return (
     <>
       {running ? null : <div className="lg:hidden">{choice}</div>}
-      {createPortal(<CompactSwitch mode={mode} busy={busy} onMode={onMode} />, slot)}
+      {createPortal(<CompactSwitch mode={mode} busy={busy} generateOff={generateOff} onMode={onMode} />, slot)}
     </>
   );
 }
@@ -89,7 +93,17 @@ function unwatched(): () => void {
  * each name on one line at 1280 and up, so the switch ends level with the
  * title block and Register keeps its place in the first screen at 900 px.
  */
-export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: (mode: Mode) => void }) {
+export function CompactSwitch({
+  mode,
+  busy,
+  generateOff = false,
+  onMode,
+}: {
+  mode: Mode;
+  busy: boolean;
+  generateOff?: boolean;
+  onMode: (mode: Mode) => void;
+}) {
   return (
     <motion.div
       data-path-compact
@@ -97,7 +111,7 @@ export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolea
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: EASE }}
     >
-      <PathSwitch mode={mode} busy={busy} onMode={onMode} seat="slot" />
+      <PathSwitch mode={mode} busy={busy} generateOff={generateOff} onMode={onMode} seat="slot" />
     </motion.div>
   );
 }
@@ -134,6 +148,10 @@ const SEAT = {
  * jumps when the choice changes. Each half is described by its sentence, so a
  * screen reader hears it with the name.
  *
+ * When the verify service says it cannot draw, the agent's half is dimmed and
+ * cannot be chosen, and one line under the notes says so and points at the
+ * upload path. That half is described by the line rather than by its own note.
+ *
  * The frame clips its corners, so a half draws its focus ring inside its own
  * edge, marked important because the site's one focus rule sits outside
  * Tailwind's layers. On the pink block the ring takes the ink colour, since a
@@ -142,21 +160,26 @@ const SEAT = {
 export function PathSwitch({
   mode,
   busy,
+  generateOff = false,
   onMode,
   seat,
 }: {
   mode: Mode;
   busy: boolean;
+  generateOff?: boolean;
   onMode: (mode: Mode) => void;
   seat: keyof typeof SEAT;
 }) {
   const t = useTranslations("studio.choice");
+  const failure = useTranslations("studio.failure");
   const reduced = useIsReducedMotion();
   // Tamil letters carry marks above and below the line, which the display
   // face's tight Latin leading would clip.
   const leading = useLocale() === "ta" ? "leading-[1.2]" : "leading-[0.95]";
   const id = useId();
-  const { group, item } = useRadioGroup(PATHS, mode, onMode, busy);
+  // With the agent switched off the keys have one place to land, so the group is
+  // told of the upload path alone.
+  const { group, item } = useRadioGroup(generateOff ? UPLOAD_ONLY : PATHS, mode, onMode, busy);
   const size = SEAT[seat];
 
   return (
@@ -175,16 +198,19 @@ export function PathSwitch({
       >
         {PATHS.map((path, at) => {
           const chosen = path === mode;
+          const off = generateOff && path === "generate";
           return (
             <button
               key={path}
               type="button"
-              disabled={busy}
-              aria-describedby={`${id}-${path}`}
+              disabled={busy || off}
+              // A half that is off is described by the line that says why, which
+              // is the one sentence a screen reader needs with its name.
+              aria-describedby={off ? `${id}-off` : `${id}-${path}`}
               {...item(path)}
               className={`group relative flex min-w-0 flex-col justify-center rounded-[6px] text-start transition-colors duration-200 focus-visible:-outline-offset-4! disabled:cursor-not-allowed ${size.half} ${
                 chosen ? "text-accent-ink focus-visible:outline-accent-ink!" : "text-text-muted enabled:hover:bg-accent-soft enabled:hover:text-text"
-              }`}
+              }${off ? " opacity-55" : ""}`}
             >
               {chosen ? (
                 <motion.span
@@ -235,6 +261,20 @@ export function PathSwitch({
           );
         })}
       </div>
+
+      {generateOff ? (
+        <motion.p
+          id={`${id}-off`}
+          data-switch-off
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduced ? { duration: 0 } : { duration: 0.4, delay: 0.1, ease: EASE }}
+          className={`flex items-start gap-3 text-base leading-relaxed text-text-muted ${size.note}`}
+        >
+          <span aria-hidden className="mt-[0.55em] h-[7px] w-[7px] shrink-0 border border-text-muted" />
+          <span className="max-w-[60ch]">{failure("agentOff")}</span>
+        </motion.p>
+      ) : null}
     </div>
   );
 }

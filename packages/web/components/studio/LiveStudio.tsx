@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { withoutReason } from "@/lib/i18n/reason";
+import { useGenerateService } from "@/lib/studio/useGenerateService";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
@@ -62,6 +63,19 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
 
   // The only copy of a sealed picture lives in this tab until it is saved.
   useUnsavedFileWarning(holdsUnsavedFile(studio.register));
+
+  // Asked once, while the sign in and the passkey read are still under way, so
+  // the answer is in hand before anyone reaches the two ways in.
+  const generateOff = useGenerateService() === "off";
+  const { mode } = studio.register;
+  const { setMode } = studio.actions;
+  // A link that opens on the agent lands on the upload form when the agent
+  // cannot draw. A run already under way is never moved.
+  useEffect(() => {
+    if (generateOff && mode === "generate" && !folded) {
+      setMode("upload");
+    }
+  }, [generateOff, mode, folded, setMode]);
 
   // Once someone has signed in, the cards they are about to walk through are
   // fetched together while the chain is asked about their passkey, which takes
@@ -190,6 +204,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
                   mode={studio.register.mode}
                   busy={folded || isBusy(studio.register)}
                   running={folded}
+                  generateOff={generateOff}
                   onMode={studio.actions.setMode}
                 />
               )}
