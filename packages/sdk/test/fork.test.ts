@@ -17,7 +17,7 @@
 // a browser, Monad's own P-256 precompile (anvil runs the fork), or mainnet gas prices. Nothing here
 // sends a transaction to Monad mainnet: every write goes to the local fork.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -61,7 +61,20 @@ import { sha256Hex } from "../src/prepare.js";
 import { MockVerifyService } from "./support/mock-service.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const PICTURE = readFileSync(join(HERE, "..", "..", "verifier", "test-assets", "original.jpg"));
+const PICTURE_PATH = join(HERE, "..", "..", "verifier", "test-assets", "original.jpg");
+let PICTURE: Buffer;
+
+// A fresh clone has neither input: the picture is made by `npm run spike:verifier` and the RPC
+// address lives in a root .env that is never committed. Without them the suite is skipped.
+const missing = [
+  ...(process.env.MONAD_MAINNET_RPC_URL ? [] : ["set MONAD_MAINNET_RPC_URL in the repo root .env"]),
+  ...(existsSync(PICTURE_PATH) ? [] : ["run `npm run spike:verifier` to make packages/verifier/test-assets/original.jpg"]),
+];
+const skipReason = missing.length > 0 ? missing.join(" and ") : undefined;
+const forkSuite = describe.skipIf(skipReason !== undefined);
+
+if (skipReason !== undefined) it.skip(`skipped: to enable, ${skipReason}`, () => {});
+
 const RP_ID = "images.example-platform.com";
 const PLATFORM_KEY = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
 const TERMS: AiUseTerms = { aiTraining: "notAllowed", aiInference: "constrained", constraintInfo: "Ask licensing@example-platform.com" };
@@ -156,6 +169,8 @@ async function nonceOf(address: Address): Promise<number> {
 }
 
 beforeAll(async () => {
+  if (skipReason !== undefined) return;
+  PICTURE = readFileSync(PICTURE_PATH);
   const realFetch = globalThis.fetch;
   fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
@@ -170,9 +185,7 @@ beforeAll(async () => {
   });
   consoleSpies = (["log", "info", "warn", "error", "debug"] as const).map((method) => vi.spyOn(console, method));
 
-  const rpcUrl = process.env.MONAD_MAINNET_RPC_URL;
-  if (!rpcUrl) throw new Error("MONAD_MAINNET_RPC_URL is not set in the repo root .env, so there is no Monad mainnet to fork.");
-  fork = await startAnvilFork(rpcUrl);
+  fork = await startAnvilFork(process.env.MONAD_MAINNET_RPC_URL as string);
   chain = defineChain({
     id: 143,
     name: "Monad mainnet fork",
@@ -214,7 +227,7 @@ afterAll(async () => {
   }
 });
 
-describe("setupPlatform", () => {
+forkSuite("setupPlatform", () => {
   it("refuses Moolam's hostname and localhost before touching the chain", async () => {
     await expect(setupPlatform({ walletClient: platformWallet, rpId: "moolam.vercel.app" })).rejects.toMatchObject({ code: "invalid-rp-id" });
     await expect(setupPlatform({ walletClient: platformWallet, rpId: "localhost" })).rejects.toMatchObject({ code: "invalid-rp-id" });
@@ -239,7 +252,7 @@ describe("setupPlatform", () => {
   });
 });
 
-describe("registerAsPlatform", () => {
+forkSuite("registerAsPlatform", () => {
   it("registers a picture in platform mode against the live registry and states the same terms", async () => {
     const result = await registerAsPlatform(PICTURE, {
       verifyUrl: service.base,
@@ -325,7 +338,7 @@ async function personRegisters(handle: CosignHandle, digest: Hex): Promise<void>
   expect((await reader.waitForTransactionReceipt({ hash: registered })).status).toBe("success");
 }
 
-describe("co-sign", () => {
+forkSuite("co-sign", () => {
   it("registers a picture the person co-signs with their own passkey", async () => {
     const handle = await startCosign(PICTURE, {
       verifyUrl: service.base,
@@ -384,7 +397,7 @@ describe("co-sign", () => {
   });
 });
 
-describe("transferPassport", () => {
+forkSuite("transferPassport", () => {
   it("refuses the zero address, the platform's own wallet, the registry and a bad address, sending nothing", async () => {
     const before = await nonceOf(platformAccount.address);
     const refused: [string, string][] = [
@@ -412,7 +425,7 @@ describe("transferPassport", () => {
   });
 });
 
-describe("rotate on a wallet with no key bound", () => {
+forkSuite("rotate on a wallet with no key bound", () => {
   it("is refused when the wallet holds a passport, since there is no key to rotate", async () => {
     const holder = privateKeyToAccount(generatePrivateKey());
     const holderWallet = createWalletClient({ account: holder, chain, transport: http(fork.rpc) });
@@ -436,7 +449,7 @@ async function holderOf(passportId: Hex): Promise<Address> {
   return await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "ownerOf", args: [BigInt(passportId)] });
 }
 
-describe("claim with your email", () => {
+forkSuite("claim with your email", () => {
   const options = () => ({
     verifyUrl: service.base,
     platformKey: PLATFORM_KEY,
@@ -523,7 +536,7 @@ describe("claim with your email", () => {
   });
 });
 
-describe("what left the process", () => {
+forkSuite("what left the process", () => {
   it("never sent the passkey's private key anywhere, and sent the platform key only in the service's Authorization header", () => {
     const privateHexes = [setup, rotated].map((one) => one.passkeyPrivateKey.slice(2).toLowerCase());
     expect(sent.length).toBeGreaterThan(20);

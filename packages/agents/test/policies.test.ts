@@ -4,9 +4,17 @@
 // proofs/agent-transcript.txt, where a policy violation came back as a refusal with no
 // transaction signed. This file is the guard against the rules being loosened by accident.
 
+import { env } from "@moolam/verifier/src/env.js";
 import { describe, expect, it } from "vitest";
 import { MONAD_MAINNET } from "../src/chain/addresses.js";
 import { generatorPolicy, policyAddresses, sessionSignerPolicy } from "../src/privy/policies.js";
+
+// Building a policy names its owner, and the owner's public half comes from the authorization key
+// in the root .env. A fresh clone has no .env, so the suite is skipped there.
+const skipReason = env.PRIVY_AUTHORIZATION_KEY === undefined ? "set PRIVY_AUTHORIZATION_KEY in the repo root .env" : undefined;
+const policySuite = describe.skipIf(skipReason !== undefined);
+
+if (skipReason !== undefined) it.skip(`skipped: to enable, ${skipReason}`, () => {});
 
 const REGISTRY = "0x1cE43b76D0A4a1F1D1FEA9F2a8b32BE1c1f9F0aE";
 const REDEPLOYED_REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
@@ -20,7 +28,7 @@ function conditionsOf(rules: { method: string; conditions: readonly unknown[] }[
   return (rule?.conditions ?? []) as Condition[];
 }
 
-describe("generator agent policy", () => {
+policySuite("generator agent policy", () => {
   it("allows only a register call to the Moolam registry on Monad, carrying no MON", () => {
     const policy = generatorPolicy(REGISTRY, CHAIN_ID);
     const conditions = conditionsOf(policy.rules, "eth_sendTransaction");
@@ -81,7 +89,7 @@ describe("generator agent policy", () => {
   });
 });
 
-describe("session signer policy", () => {
+policySuite("session signer policy", () => {
   it("allows one thing only: appending an edit to the same registry, with no MON attached", () => {
     const policy = sessionSignerPolicy(REGISTRY, CHAIN_ID);
 
@@ -109,7 +117,7 @@ describe("session signer policy", () => {
   });
 });
 
-describe("a policy built after a registry redeploy", () => {
+policySuite("a policy built after a registry redeploy", () => {
   it("carries the new address in every rule of both policies and mentions the old one nowhere", () => {
     const generator = generatorPolicy(REDEPLOYED_REGISTRY, CHAIN_ID);
     const session = sessionSignerPolicy(REDEPLOYED_REGISTRY, CHAIN_ID);

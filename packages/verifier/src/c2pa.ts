@@ -95,6 +95,12 @@ const OPENED_ACTION = "c2pa.opened";
 const packageRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const devCertDir = path.join(packageRoot, "test-assets", "certs");
 
+/**
+ * The development leaf is valid from this fixed past moment, not from the day it is made, so a
+ * clock set back by a test (or a host with a slow clock) still finds it inside its window.
+ */
+const DEV_LEAF_VALID_FROM = "20200101000000Z";
+
 /** The answer for a file whose manifest, or whose container, the reader could not parse. */
 export function manifestUnreadable(): ManifestSummary {
   return { present: false, validation: "unreadable" };
@@ -1340,9 +1346,33 @@ function generateDevSigningIdentity(): void {
   const signerCert = path.join(devCertDir, "signer.cert.pem");
   const chainCert = path.join(devCertDir, "chain.cert.pem");
 
+  // The signing database openssl ca keeps: relative names, so the config holds no Windows path.
+  const caConfigPath = path.join(devCertDir, "openssl-ca.cnf");
+  writeFileSync(
+    caConfigPath,
+    [
+      "[ca]",
+      "default_ca = dev_ca",
+      "[dev_ca]",
+      "database = index.txt",
+      "new_certs_dir = .",
+      "serial = serial.txt",
+      "default_md = sha256",
+      "policy = dev_policy",
+      "unique_subject = no",
+      "[dev_policy]",
+      "commonName = supplied",
+      "organizationName = supplied",
+      "countryName = supplied",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(path.join(devCertDir, "index.txt"), "");
+  writeFileSync(path.join(devCertDir, "serial.txt"), "01\n");
+
   const openssl = (args: string[]): void => {
     try {
-      execFileSync("openssl", args, { stdio: "pipe" });
+      execFileSync("openssl", args, { stdio: "pipe", cwd: devCertDir });
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new SignerUnavailable(`openssl is needed to make the development signing certificate: ${detail}`);
@@ -1356,9 +1386,12 @@ function generateDevSigningIdentity(): void {
   ]);
   openssl(["genpkey", "-algorithm", "EC", "-pkeyopt", "ec_paramgen_curve:P-256", "-out", signerKey]);
   openssl(["req", "-new", "-key", signerKey, "-out", signerCsr, "-config", leafConfigPath]);
+  // openssl ca, not x509 -req: x509 can only start a certificate now before OpenSSL 3.4, and the
+  // container ships 3.0. The end stays a year from now, as before.
   openssl([
-    "x509", "-req", "-in", signerCsr, "-CA", rootCert, "-CAkey", rootKey, "-CAcreateserial",
-    "-out", signerCert, "-days", "365", "-sha256", "-extfile", configPath, "-extensions", "v3_leaf",
+    "ca", "-batch", "-notext", "-config", caConfigPath, "-cert", rootCert, "-keyfile", rootKey,
+    "-in", signerCsr, "-out", signerCert, "-startdate", DEV_LEAF_VALID_FROM, "-days", "365",
+    "-extfile", configPath, "-extensions", "v3_leaf",
   ]);
 
   writeFileSync(chainCert, Buffer.concat([readFileSync(signerCert), readFileSync(rootCert)]));

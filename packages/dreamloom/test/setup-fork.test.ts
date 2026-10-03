@@ -51,6 +51,17 @@ vi.setConfig({ testTimeout: 180_000, hookTimeout: 240_000 });
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..", "..");
 const TSX_CLI = path.join(REPO, "node_modules", "tsx", "dist", "cli.mjs");
+
+// Only the RPC address is taken from the repo's root .env; nothing else in it enters this process.
+// A fresh clone has no root .env, and then the suite is skipped.
+const ROOT_ENV = path.join(REPO, ".env");
+const rpcUrl = existsSync(ROOT_ENV)
+  ? (parseEnv(readFileSync(ROOT_ENV, "utf8")) as Record<string, string>).MONAD_MAINNET_RPC_URL
+  : undefined;
+const skipReason = rpcUrl ? undefined : "create the repo root .env with MONAD_MAINNET_RPC_URL set";
+
+if (skipReason !== undefined) it.skip(`skipped: to enable, ${skipReason}`, () => {});
+
 const RP_ID = "dreamloom.example.com";
 const PLATFORM_KEY = randomBytes(32).toString("hex");
 
@@ -283,9 +294,7 @@ async function nonce(): Promise<number> {
 
 beforeAll(async () => {
   consoleSpies = (["log", "info", "warn", "error", "debug"] as const).map((method) => vi.spyOn(console, method));
-  // Only the RPC address is taken from the repo's root .env; nothing else in it enters this process.
-  const rpcUrl = (parseEnv(readFileSync(path.join(REPO, ".env"), "utf8")) as Record<string, string>).MONAD_MAINNET_RPC_URL;
-  if (!rpcUrl) throw new Error("MONAD_MAINNET_RPC_URL is not set in the repo root .env, so there is no Monad mainnet to fork.");
+  if (!rpcUrl) return;
   fork = await startFork(rpcUrl);
   reader = createPublicClient({ chain: monad, transport: http(fork.rpc) }) as PublicClient;
   workDir = mkdtempSync(path.join(tmpdir(), "dreamloom-setup-"));
@@ -301,7 +310,7 @@ afterAll(async () => {
   if (workDir !== undefined) rmSync(workDir, { recursive: true, force: true });
 });
 
-describe("Dreamloom's setup, step by step on a fork", () => {
+describe.skipIf(skipReason !== undefined)("Dreamloom's setup, step by step on a fork", () => {
   it("wallet.ts writes a fresh key into the env file and hands back only its address", async () => {
     ({ address: wallet } = createWallet({ envFile }));
     walletKey = envValues().DREAMLOOM_WALLET_KEY as string;

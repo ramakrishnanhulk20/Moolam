@@ -48,6 +48,8 @@ const APP_ID = vi.hoisted(() => {
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
   process.env.GENERATE_PER_DAY = "2";
   process.env.GENERATOR_AGENT_ID = "10249";
+  process.env.PRIVY_APP_SECRET = "test-app-secret-not-a-real-one";
+  process.env.PRIVY_AUTHORIZATION_KEY = "test-authorization-key-not-a-real-one";
   return id;
 });
 

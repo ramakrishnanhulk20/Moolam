@@ -30,6 +30,14 @@ import { RegistryClient } from "../src/chain/registry.js";
 
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
 
+// The fork needs a Monad mainnet RPC address, which lives in the root .env a fresh clone does not
+// have. Without it the suite is skipped.
+const rpcUrl = process.env.MONAD_MAINNET_RPC_URL;
+const skipReason = rpcUrl ? undefined : "set MONAD_MAINNET_RPC_URL in the repo root .env";
+const forkSuite = describe.skipIf(skipReason !== undefined);
+
+if (skipReason !== undefined) it.skip(`skipped: to enable, ${skipReason}`, () => {});
+
 // Real fingerprints of packages/verifier/test-assets, measured by the verifier spike and recorded
 // in proofs/spike.txt. Using the measured numbers keeps the digests honest.
 const ORIGINAL_SHA256 = "0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c" as Hex;
@@ -78,10 +86,7 @@ function input(overrides: Partial<PassportInput> = {}): PassportInput {
 }
 
 beforeAll(async () => {
-  const rpcUrl = process.env.MONAD_MAINNET_RPC_URL;
-  if (!rpcUrl) {
-    throw new Error("MONAD_MAINNET_RPC_URL is not set, so there is no Monad mainnet to fork.");
-  }
+  if (!rpcUrl) return;
 
   fork = await startAnvilFork(rpcUrl);
   addresses = await deployToFork(fork.rpc, anvilPrivateKey(0));
@@ -108,7 +113,7 @@ afterAll(async () => {
   await fork?.stop();
 });
 
-describe("digests", () => {
+forkSuite("digests", () => {
   it("builds the same passport digest the contract does", async () => {
     const cases: PassportInput[] = [
       input(),
@@ -139,7 +144,7 @@ describe("digests", () => {
   }, 60_000);
 });
 
-describe("writing passports", () => {
+forkSuite("writing passports", () => {
   it("binds a passkey and registers a Captured passport to the creator", async () => {
     const bindHash = await creator.bindPasskey(passkey);
     expect(bindHash).toMatch(/^0x[0-9a-f]{64}$/);
@@ -207,7 +212,7 @@ describe("writing passports", () => {
   }, 120_000);
 });
 
-describe("refusals", () => {
+forkSuite("refusals", () => {
   const fresh = (seed: string): Hex => keccak256(toHex(seed));
 
   it("refuses a tampered passkey assertion", async () => {

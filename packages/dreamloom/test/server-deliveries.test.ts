@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MoolamPlatformError } from "@moolam/platform";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => ({ runDeliveries: vi.fn(), resumeCosign: vi.fn() }));
 
@@ -55,6 +55,14 @@ function ourListeners(): number {
 async function settle(): Promise<void> {
   for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setImmediate(resolve));
 }
+
+// The first import of the server modules reads their whole dependency graph, and on a machine that
+// has not run them yet that took 8 seconds, past the 5 a test is given. It is paid here, once,
+// where the limit is generous, so each test times only its own work.
+beforeAll(async () => {
+  await import("@/lib/server/boot");
+  await import("@/lib/server/delivery-worker");
+}, 120_000);
 
 beforeEach(() => {
   dataDir = mkdtempSync(path.join(tmpdir(), "dreamloom-deliveries-"));
