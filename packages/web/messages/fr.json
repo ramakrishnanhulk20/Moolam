@@ -1928,13 +1928,6 @@
       "showHidden": "{count, plural, one {Afficher # image masquée} many {Afficher # d'images masquées} other {Afficher # images masquées}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials : ouvrir l’enregistrement de cette image",
-    "line": "Ce fichier porte des Content Credentials : un enregistrement signé de son origine, qui correspond toujours au fichier.",
-    "inspect": "L’ouvrir dans l’outil d’inspection officiel de Content Credentials",
-    "untrustedSigner": "L’identité du signataire ne peut pas être vérifiée : la clé qui a signé cet enregistrement ne figure pas sur la C2PA Trust List."
-  },
   "cosign": {
     "metaTitle": "Cosigner une image",
     "metaDescription": "Signez en tant que créateur d'une image qu'un site d'images par IA a faite pour vous, avec votre propre clé d'accès.",

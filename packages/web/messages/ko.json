@@ -1927,13 +1927,6 @@
       "showHidden": "{count, plural, other {숨긴 이미지 #장 보기}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials: 이 이미지의 기록 열기",
-    "line": "이 파일에는 Content Credentials가 있습니다. 파일이 어디서 왔는지 적은 서명된 기록이고, 그 기록은 지금도 파일과 일치합니다.",
-    "inspect": "공식 Content Credentials 검사 도구에서 열기",
-    "untrustedSigner": "서명자의 신원을 확인할 수 없습니다. 이 기록에 서명한 키가 C2PA Trust List에 없습니다."
-  },
   "cosign": {
     "metaTitle": "이미지 공동 서명",
     "metaDescription": "AI 이미지 사이트가 나를 위해 만든 이미지에 내 패스키로 제작자로서 서명합니다.",

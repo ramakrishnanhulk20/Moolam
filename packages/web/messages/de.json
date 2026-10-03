@@ -1916,13 +1916,6 @@
       "showHidden": "{count, plural, one {# ausgeblendetes Bild anzeigen} other {# ausgeblendete Bilder anzeigen}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials: Eintrag dieses Bildes öffnen",
-    "line": "Diese Datei trägt Content Credentials: einen signierten Eintrag über ihre Herkunft, der noch mit der Datei übereinstimmt.",
-    "inspect": "Im offiziellen Inspect-Tool von Content Credentials öffnen",
-    "untrustedSigner": "Die Identität des Unterzeichners lässt sich nicht bestätigen: Der Schlüssel, der diesen Eintrag signiert hat, steht nicht auf der C2PA Trust List."
-  },
   "cosign": {
     "metaTitle": "Ein Bild mitsignieren",
     "metaDescription": "Signiere mit deinem eigenen Passkey als Urheber eines Bildes, das dir eine Website für KI-Bilder gemacht hat.",

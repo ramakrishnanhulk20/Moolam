@@ -1930,13 +1930,6 @@
       "showHidden": "{count, plural, other {非表示にした画像 # 件を表示}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials: この画像の記録を開く",
-    "line": "このファイルには Content Credentials が付いています。出どころを示す署名済みの記録で、その記録は今もファイルと一致しています。",
-    "inspect": "公式の Content Credentials 検査ツールで開く",
-    "untrustedSigner": "署名者の身元を確認できません。この記録に署名した鍵が C2PA Trust List に載っていないためです。"
-  },
   "cosign": {
     "metaTitle": "画像に共同署名する",
     "metaDescription": "AI 画像サイトがあなたのために作った画像に、あなた自身のパスキーで制作者として署名します。",

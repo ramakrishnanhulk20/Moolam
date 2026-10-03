@@ -1916,13 +1916,6 @@
       "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials: open this picture's record",
-    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
-    "inspect": "Open it in the official Content Credentials inspect tool",
-    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
-  },
   "cosign": {
     "metaTitle": "Co-sign a picture",
     "metaDescription": "Sign as the creator of a picture an AI image site made for you, with your own passkey.",

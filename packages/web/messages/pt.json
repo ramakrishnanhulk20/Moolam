@@ -1938,13 +1938,6 @@
       "showHidden": "{count, plural, one {Mostrar # imagem oculta} many {Mostrar # imagens ocultas} other {Mostrar # imagens ocultas}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials: abrir o registro desta imagem",
-    "line": "Este arquivo traz Content Credentials: um registro assinado de onde ele veio, e esse registro ainda bate com o arquivo.",
-    "inspect": "Abrir na ferramenta oficial de inspeção das Content Credentials",
-    "untrustedSigner": "A identidade do signatário não pode ser verificada: a chave que assinou este registro não está na C2PA Trust List."
-  },
   "cosign": {
     "metaTitle": "Coassinar uma imagem",
     "metaDescription": "Assine como criador de uma imagem que um site de imagens de IA fez para você, com a sua própria chave de acesso.",

@@ -1937,13 +1937,6 @@
       "showHidden": "{count, plural, other {显示 # 张已隐藏的图片}}"
     }
   },
-  "crMark": {
-    "name": "Content Credentials",
-    "alt": "Content Credentials：打开这张图片的记录",
-    "line": "这个文件带有 Content Credentials：一份说明它来处的签名记录，而且这份记录与文件仍然相符。",
-    "inspect": "在 Content Credentials 官方查验工具中打开",
-    "untrustedSigner": "无法验证签名者的身份：签署这份记录的密钥不在 C2PA Trust List 上。"
-  },
   "cosign": {
     "metaTitle": "为图片共同签名",
     "metaDescription": "AI 图片网站为你生成了一张图片：用你自己的通行密钥，以创作者的身份为它签名。",
