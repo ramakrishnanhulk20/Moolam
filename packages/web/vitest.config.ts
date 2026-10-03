@@ -20,5 +20,7 @@ export default defineConfig({
     // take about a second; beside 240 other files on this machine they passed
     // the default five seconds and failed the whole run for no fault of theirs.
     testTimeout: 20_000,
+    // The same holds for setup hooks: a fresh clone under load timed out a beforeAll at ten seconds.
+    hookTimeout: 20_000,
   },
 });
