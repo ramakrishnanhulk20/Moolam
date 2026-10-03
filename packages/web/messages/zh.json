@@ -320,7 +320,7 @@
       "bodyNoBlock": "大约一秒就写成一条记录，谁也改不了。",
       "readout": "护照 {passport}，登记于 {date}",
       "unread": "这本护照无法从登记处读出。",
-      "readoutSworn": "签名时的声明：这张图片是我做的，或者我有权登记它。"
+      "readoutSworn": "这条记录带有创作者的宣誓声明：这张图片是我做的，或者我有权登记它。"
     },
     "stated": {
       "kicker": "条款",

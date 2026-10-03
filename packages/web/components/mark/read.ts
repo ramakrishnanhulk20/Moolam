@@ -1,6 +1,5 @@
 import { formatEther, type Hex } from "viem";
 import type { Art } from "@/components/passport/art";
-import { pinnedUri } from "@/components/passport/art";
 import { heldIndexedVerdictRows, transactionFor, type IndexedAttestation } from "@/components/passport/indexed";
 import { recordUnread } from "@/components/passport/unread";
 import { addresses } from "@/lib/chain/client";
@@ -11,6 +10,7 @@ import { heldReportDelivery } from "@/lib/chain/reports";
 import { heldLookalikeFacts, markSchema, type LookalikeFacts } from "@/lib/data/marks";
 import { heldArt } from "@/lib/data/passports";
 import { issueMark, lightsLookalike, type Mark, type MarkDispute, type MarkPicture, type MarkVerdict } from "./mark";
+import { networkCanFetch } from "./networkFetch";
 import { ANSWER_DAYS, DAY_SECONDS, MARK_PHASH_LIMIT } from "./rule";
 import { heldSearchedEarlier } from "./search";
 
@@ -81,10 +81,12 @@ export function markDispute(passport: Pick<Passport, "disputed">, dispute: Dispu
 /**
  * What a passport's document says it points at, for the mark. The registry
  * takes any string as the document address, and Chainlink's workflow fetches
- * only a pinned one, so anything else names no picture it can check.
+ * only a bare ipfs://<cid> one. A file under the id or Moolam's own gateway
+ * link draws on this site and is never checked by the network, so those name
+ * no picture it can check and never read "waiting".
  */
 export function markPicture(passport: Pick<Passport, "metadataURI">, art: Art | null): MarkPicture | null {
-  if (passport.metadataURI === "" || pinnedUri(passport.metadataURI) === undefined) {
+  if (passport.metadataURI === "" || !networkCanFetch(passport.metadataURI)) {
     return "none";
   }
   if (art === null || recordUnread(art)) {

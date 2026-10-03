@@ -299,7 +299,7 @@
       "bodyNoBlock": "One record in about a second, and nobody can edit it.",
       "readout": "Passport {passport}, registered {date}",
       "unread": "This passport could not be read from the registry.",
-      "readoutSworn": "Signed under: I made this picture, or I hold the rights to register it."
+      "readoutSworn": "Its record carries its creator's sworn statement: I made this picture, or I hold the rights to register it."
     },
     "stated": {
       "kicker": "Terms",

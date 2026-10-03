@@ -106,26 +106,30 @@ export function parseTally(transcript: string): AttackTally | null {
 }
 
 /**
- * The two places the transcript can sit: under the directory the app runs
- * from when that is the repo root, and two levels up when it is this package.
- * Written out rather than found by a walk so the server's file tracing can see
- * the paths, and nothing here throws when neither exists: the docs' own finder
- * does, which would take the whole page down with a missing file.
+ * The transcript from the two places it can sit: under the directory the app
+ * runs from when that is the repo root, and two levels up when it is this
+ * package. Each path is written out at its own read, never taken from a list,
+ * so the build's file tracing sees one named file and does not pull the whole
+ * project into the server output. Nothing here throws when neither exists: the
+ * docs' own finder does, which would take the whole page down with a missing file.
  */
-const TRANSCRIPT = [
-  path.join(process.cwd(), "proofs", "attacks", "pass-kit.txt"),
-  path.join(process.cwd(), "..", "..", "proofs", "attacks", "pass-kit.txt"),
-];
-
-export async function attackTally(): Promise<AttackTally | null> {
-  for (const file of TRANSCRIPT) {
-    try {
-      return parseTally(await readFile(file, "utf8"));
-    } catch {
-      // The next place is tried, and a page with neither says it could not read the pass.
-    }
+async function transcriptText(): Promise<string | null> {
+  try {
+    return await readFile(path.join(process.cwd(), "proofs", "attacks", "pass-kit.txt"), "utf8");
+  } catch {
+    // Not here: the repo root two levels up is tried next.
   }
-  return null;
+  try {
+    return await readFile(path.join(process.cwd(), "..", "..", "proofs", "attacks", "pass-kit.txt"), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/** The attack pass's tally, or null when no transcript can be read, which the page says in words. */
+export async function attackTally(): Promise<AttackTally | null> {
+  const transcript = await transcriptText();
+  return transcript === null ? null : parseTally(transcript);
 }
 
 async function highlight(code: string, lang: "ts" | "bash"): Promise<CodeLines> {

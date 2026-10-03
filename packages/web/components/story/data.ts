@@ -23,7 +23,7 @@ import { activeSource, envioUrl } from "@/lib/data/source";
 import type { PlatformList } from "@/lib/platforms/platforms";
 import { statementsOf } from "@/components/passport/art";
 import { heldIndexedVerdictRows, transactionFor } from "@/components/passport/indexed";
-import degrade from "@/public/hero/degrade.json";
+import { measurement } from "@/components/story/measurements";
 
 const METADATA_TIMEOUT_MS = 8_000;
 const INDEX_TIMEOUT_MS = 10_000;
@@ -493,12 +493,14 @@ export async function creditOf(row: IndexRow, list: PlatformList): Promise<Story
 /**
  * Which form the checked beat may play this verdict in.
  *
- * The index's own network flag decides where it serves one; otherwise the
- * forwarder that carried the report does, as the passport page's mark reads
- * it. A verdict whose delivery could not be told plays in the plain form, which
- * says what was done and claims neither.
+ * The index's own network flag decides where it serves one, as the passport
+ * page's mark reads it: a flag that says false is never turned into the network
+ * form by the forwarder, which may only tell a test run from any other write
+ * then. Where the index serves no flag the forwarder that carried the report
+ * decides. A verdict whose delivery could not be told plays in the plain form,
+ * which says what was done and claims neither.
  */
-async function focalCheck(attestation: StoryAttestation): Promise<StoryCheck> {
+export async function focalCheck(attestation: StoryAttestation): Promise<StoryCheck> {
   const base = { matched: attestation.matched, distance: attestation.distance, at: attestation.at };
   const rows = await heldIndexedVerdictRows(attestation.passportId).catch(() => null);
   if (rows === null) {
@@ -519,6 +521,9 @@ async function focalCheck(attestation: StoryAttestation): Promise<StoryCheck> {
     return { ...base, form: "plain" };
   }
   const delivery = await heldReportDelivery(txHash).catch(() => "unknown" as const);
+  if (row?.network === false) {
+    return { ...base, form: delivery === "simulation" ? "test" : "plain" };
+  }
   return { ...base, form: delivery === "network" ? "network" : delivery === "simulation" ? "test" : "plain" };
 }
 
@@ -977,7 +982,7 @@ export function focalFrom(row: IndexRow, picture: string, reason: FocalReason): 
     manifest: carriesManifest(row.manifestHash),
     attestations: row.attestations,
     why: reason,
-    measured: row.id.toLowerCase() === degrade.passportId.toLowerCase(),
+    measured: row.id.toLowerCase() === measurement.passportId.toLowerCase(),
   };
 }
 

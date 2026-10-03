@@ -321,7 +321,7 @@
       "bodyNoBlock": "Um registro em cerca de um segundo, e ninguém pode editá-lo.",
       "readout": "Passaporte {passport}, registrado em {date}",
       "unread": "Este passaporte não pôde ser lido no registro.",
-      "readoutSworn": "Assinada sob a frase: Eu fiz esta imagem, ou tenho os direitos para registrá-la."
+      "readoutSworn": "O registro traz a declaração jurada do autor: Eu fiz esta imagem, ou tenho os direitos para registrá-la."
     },
     "stated": {
       "kicker": "Termos",

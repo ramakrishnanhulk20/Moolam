@@ -247,28 +247,39 @@ describe("rows 5 and 9: the origin line under the claim rests on chain facts", (
   const copied: Pick<Art, "statements"> = { statements: { sworn: false } };
 
   it("reads a raw write that copies the document format as outside after the sworn line went live, and before it as before", () => {
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false, swornSince: SINCE })).toBe("outside");
-    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platformKit: false, swornSince: SINCE })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platform: null, swornSince: SINCE })).toBe("outside");
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platform: null, swornSince: SINCE })).toBe("beforeSworn");
     // A data: document is an address the service never pins: outside after the line, before it before.
-    const raw = { metadataURI: 'data:application/json,{"name":"signed.jpg"}', art: { missing: true } as Art, platformKit: false, swornSince: SINCE };
+    const raw = { metadataURI: 'data:application/json,{"name":"signed.jpg"}', art: { missing: true } as Art, platform: null, swornSince: SINCE };
     expect(claimOrigin({ ...raw, registeredAt: AFTER })).toBe("outside");
     expect(claimOrigin({ ...raw, registeredAt: BEFORE })).toBe("beforeSworn");
   });
 
   it("reads a listed platform's kit passport as kit either way, and a statement as none of the lines", () => {
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: true, swornSince: SINCE })).toBe("kit");
-    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platformKit: true, swornSince: SINCE })).toBe("kit");
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: { sworn: true } }, platformKit: false, swornSince: SINCE })).toBe("stated");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platform: { status: "kit" }, swornSince: SINCE })).toBe("kit");
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: copied, platform: { status: "kit" }, swornSince: SINCE })).toBe("kit");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: { sworn: true } }, platform: null, swornSince: SINCE })).toBe("stated");
     expect(
-      claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: { sworn: false, platformStatement: "Drawn on Dreamloom." } }, platformKit: true, swornSince: SINCE }),
+      claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: { sworn: false, platformStatement: "Drawn on Dreamloom." } }, platform: { status: "kit" }, swornSince: SINCE }),
     ).toBe("stated");
   });
 
+  it("counts a platform's statement only from a creator Moolam's list names, since any registrant can write the field", () => {
+    const statement: Pick<Art, "statements"> = { statements: { sworn: false, platformStatement: "Drawn on Dreamloom." } };
+    const listed = { registeredAt: AFTER, metadataURI: pinned, art: statement, swornSince: SINCE };
+    expect(claimOrigin({ ...listed, platform: { status: "kit" } })).toBe("stated");
+    expect(claimOrigin({ ...listed, platform: { status: "outsideKit" } })).toBe("stated");
+    expect(claimOrigin({ ...listed, platform: null })).toBe("outside");
+    expect(claimOrigin({ ...listed, platform: null, registeredAt: BEFORE })).toBe("beforeSworn");
+    // The sworn line is not gated by the creator: it is the registrant's own words by design.
+    expect(claimOrigin({ ...listed, platform: null, art: { statements: { sworn: true } } })).toBe("stated");
+  });
+
   it("reads every passport without a statement as before while SWORN_SINCE is null, and says nothing for an unread pinned document after it", () => {
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false, swornSince: null })).toBe("beforeSworn");
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platformKit: false })).toBe("beforeSworn");
-    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: undefined }, platformKit: false, swornSince: SINCE })).toBeNull();
-    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: undefined }, platformKit: false, swornSince: SINCE })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platform: null, swornSince: null })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: copied, platform: null })).toBe("beforeSworn");
+    expect(claimOrigin({ registeredAt: AFTER, metadataURI: pinned, art: { statements: undefined }, platform: null, swornSince: SINCE })).toBeNull();
+    expect(claimOrigin({ registeredAt: BEFORE, metadataURI: pinned, art: { statements: undefined }, platform: null, swornSince: SINCE })).toBe("beforeSworn");
     expect(en.claim.beforeSworn).not.toContain("Moolam");
   });
 

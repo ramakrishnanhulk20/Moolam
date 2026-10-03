@@ -60,7 +60,9 @@ export function claimOf(input: ClaimInput): ClaimLine {
  * field in the document, which anyone writing straight on chain can copy (L25).
  *
  * "stated": the sworn line, or a platform's statement in its place, is in the
- * document. "kit": the signed platform list says a listed platform registered
+ * document. A platform's statement counts only when the creator is a platform
+ * Moolam's list names, since any other registrant can write the same field.
+ * "kit": the signed platform list says a listed platform registered
  * it in its own name, and it sent no statement. "beforeSworn": the registry's
  * own time puts it before the sworn line went live, so it could not carry one,
  * whoever prepared it. "outside": registered after the line went live with no
@@ -76,16 +78,23 @@ export function claimOrigin(input: {
   registeredAt: number;
   metadataURI: string;
   art: Pick<Art, "statements">;
-  /** True when the platform label says the passport was registered through the kit in the platform's own name. */
-  platformKit: boolean;
+  /**
+   * The platform label: null unless the creator is a platform Moolam's list
+   * names, "kit" when the passport was registered through the kit in that
+   * platform's own name.
+   */
+  platform: { status: "kit" | "outsideKit" } | null;
   /** When the sworn line went live, for a test; the product reads SWORN_SINCE. */
   swornSince?: number | null;
 }): ClaimOrigin | null {
   const statements = input.art.statements;
-  if (statements !== undefined && (statements.sworn || statements.platformStatement !== undefined)) {
+  if (
+    statements !== undefined &&
+    (statements.sworn || (input.platform !== null && statements.platformStatement !== undefined))
+  ) {
     return "stated";
   }
-  if (input.platformKit) {
+  if (input.platform?.status === "kit") {
     return "kit";
   }
   const since = input.swornSince === undefined ? SWORN_SINCE : input.swornSince;

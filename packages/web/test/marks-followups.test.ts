@@ -126,16 +126,23 @@ describe("the registrant's statements, worded", () => {
     expect(markup.indexOf(`href="/passport/${EARLIER}"`)).toBeGreaterThan(sentence);
   });
 
-  it("labels a platform's statement with the listed platform's name, and leaves an unlisted one unlabelled", async () => {
+  it("draws a platform's statement under the listed platform's name, and draws none for a creator the list does not name", async () => {
     const statement = { sworn: false, platformStatement: "Drawn on Dreamloom by the person signed in." };
     const listed = render(
       ClaimLines({ copy: await claimCopy({ passport, art: { ...art, statements: statement }, platform: { status: "kit", name: "Dreamloom" } }) }),
     );
     expect(listed).toContain(shown("Dreamloom's statement"));
     expect(listed).toContain(statement.platformStatement);
+    const outside = render(
+      ClaimLines({ copy: await claimCopy({ passport, art: { ...art, statements: statement }, platform: { status: "outsideKit", name: "Dreamloom" } }) }),
+    );
+    expect(outside).toContain(shown("Dreamloom's statement"));
+    expect(outside).toContain(statement.platformStatement);
     const unlisted = render(ClaimLines({ copy: await claimCopy({ passport, art: { ...art, statements: statement }, platform: null }) }));
-    expect(unlisted).toContain(statement.platformStatement);
+    expect(unlisted).not.toContain(statement.platformStatement);
+    expect(unlisted).not.toContain("data-claim-platform-statement");
     expect(unlisted).not.toContain("figcaption");
+    expect(unlisted).not.toContain("blockquote");
   });
 });
 

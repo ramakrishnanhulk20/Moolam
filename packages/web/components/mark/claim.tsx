@@ -19,7 +19,7 @@ export interface ClaimCopy {
   origin: { kind: Exclude<ClaimOrigin, "stated">; line: string } | null;
   /** The registrant's own statements, each drawn as theirs and never as a chain fact (L21). */
   sworn: string | null;
-  platformStatement: { label: string | null; text: string } | null;
+  platformStatement: { label: string; text: string } | null;
   seenOnline: { line: string; pages: string[]; more: string | null } | null;
   /** The earlier passport the registrant was shown: a link only for a passport id, plain text otherwise. */
   seenEarlier: { line: string; href: string | null; text: string; label: string } | null;
@@ -73,7 +73,7 @@ export async function claimCopy({
     registeredAt: Number(passport.registeredAt),
     metadataURI: passport.metadataURI,
     art,
-    platformKit: platform?.status === "kit",
+    platform,
   });
   const originLine =
     origin === null || origin === "stated"
@@ -93,14 +93,13 @@ export async function claimCopy({
     strength,
     origin: originLine,
     sworn: statements?.sworn === true ? t("story.sealed.readoutSworn") : null,
-    // Named after the platform only where Moolam's list names it; otherwise the words stand alone.
+    // Drawn only where Moolam's list names the creator as a platform. Any other
+    // registrant can write the same field, and unlabelled it would read as a
+    // statement of the passport's own.
     platformStatement:
-      statements?.platformStatement === undefined
+      statements?.platformStatement === undefined || platform === null
         ? null
-        : {
-            label: platform === null ? null : t("claim.platformStatement", { platform: platform.name }),
-            text: statements.platformStatement,
-          },
+        : { label: t("claim.platformStatement", { platform: platform.name }), text: statements.platformStatement },
     seenOnline:
       seen === undefined
         ? null
@@ -157,11 +156,9 @@ export function ClaimLines({ copy }: { copy: ClaimCopy }) {
           )}
           {copy.platformStatement === null ? null : (
             <figure data-claim-platform-statement>
-              {copy.platformStatement.label === null ? null : (
-                <figcaption className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-                  {copy.platformStatement.label}
-                </figcaption>
-              )}
+              <figcaption className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                {copy.platformStatement.label}
+              </figcaption>
               <blockquote className="mt-1.5 text-base leading-relaxed text-text">{copy.platformStatement.text}</blockquote>
             </figure>
           )}

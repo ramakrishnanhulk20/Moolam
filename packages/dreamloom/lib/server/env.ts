@@ -135,7 +135,9 @@ export function parseEnv(source: Record<string, string | undefined>): ServerEnv 
   return {
     ...rest,
     production,
-    dataDir: path.resolve(DATA_DIR ?? ".dreamloom-data"),
+    // A folder the app writes to at run time, not a file it ships: without the
+    // marker the build traces the whole project for it and warns.
+    dataDir: path.resolve(/* turbopackIgnore: true */ DATA_DIR ?? ".dreamloom-data"),
     origin: canonicalOrigin(DREAMLOOM_ORIGIN ?? LOCAL_ORIGIN) as string,
   };
 }

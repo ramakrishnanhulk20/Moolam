@@ -311,7 +311,7 @@
       "bodyNoBlock": "Un enregistrement en une seconde environ, et personne ne peut le modifier.",
       "readout": "Passeport {passport}, enregistré le {date}",
       "unread": "Ce passeport n’a pas pu être lu dans le registre.",
-      "readoutSworn": "Signée sous la déclaration : j’ai fait cette image, ou je détiens les droits pour l’enregistrer."
+      "readoutSworn": "Son enregistrement porte la déclaration sur l’honneur de son auteur : j’ai fait cette image, ou je détiens les droits pour l’enregistrer."
     },
     "stated": {
       "kicker": "Déclaration",

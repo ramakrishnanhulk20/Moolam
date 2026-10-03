@@ -66,7 +66,7 @@ vi.mock("@/components/mark/search", () => ({ heldSearchedEarlier: reads.searched
 
 const { issueMark, MARK_STATES } = await import("@/components/mark/mark");
 const { MARK_PHASH_LIMIT } = await import("@/components/mark/rule");
-const { networkVerdicts, passportMarkFacts } = await import("@/components/mark/read");
+const { markPicture, networkVerdicts, passportMarkFacts } = await import("@/components/mark/read");
 const { markCopy } = await import("@/components/mark/copy");
 const { MarkBand } = await import("@/components/mark/MarkBand");
 const { claimCopy, ClaimLines } = await import("@/components/mark/claim");
@@ -75,6 +75,7 @@ const { plateMarkState } = await import("@/components/mark/plate");
 const { statementsOf, SWORN_TEXT } = await import("@/components/passport/art");
 const { addresses } = await import("@/lib/chain/client");
 const marks = await import("@/lib/data/marks");
+const { PICTURE_HOSTS } = await import("@/lib/images");
 
 const ID = `0x${"7c".repeat(32)}` as Hex;
 const EARLIER = `0x${"e1".repeat(32)}` as Hex;
@@ -515,13 +516,14 @@ describe("L21: the sworn line, seenEarlier and seenOnline are the registrant's o
 });
 
 describe("L25: a registration from outside the studio is labelled, never clean", () => {
-  const strength = async (statements: Art["statements"], generatorAgentId = 0n) =>
+  const LISTED = { status: "kit" as const, name: "Dreamloom" };
+  const strength = async (statements: Art["statements"], generatorAgentId = 0n, platform: typeof LISTED | null = null) =>
     render(
       ClaimLines({
         copy: await claimCopy({
           passport: { ...passport, generatorAgentId },
           art: { ...art, statements },
-          platform: null,
+          platform,
           now: REGISTERED,
         }),
       }),
@@ -538,7 +540,7 @@ describe("L25: a registration from outside the studio is labelled, never clean",
 
   it("says nothing of the kind for a sworn document, a platform's statement, or a document nobody could read", async () => {
     expect(await strength({ sworn: true })).not.toContain("data-claim-origin");
-    expect(await strength({ sworn: false, platformStatement: "Drawn on Dreamloom by its user." })).not.toContain("data-claim-origin");
+    expect(await strength({ sworn: false, platformStatement: "Drawn on Dreamloom by its user." }, 0n, LISTED)).not.toContain("data-claim-origin");
     // While SWORN_SINCE is null no passport can carry the line, so a document nobody could
     // read still reads "before": the line claims nothing the registry's time does not prove.
     expect(await strength(undefined)).toContain('data-claim-origin="beforeSworn"');
@@ -551,5 +553,36 @@ describe("L25: a registration from outside the studio is labelled, never clean",
     expect(claimOf({ ...at, platform: { status: "outsideKit", name: "Dreamloom" } }).key).toBe("self");
     expect(claimOf({ ...at, now: REGISTERED + 30 * 86_400 }).key).toBe("self");
     expect(claimOf({ ...at, now: REGISTERED + 30 * 86_400 + 1 }).key).toBe("selfLater");
+  });
+});
+
+describe("WO-314: a passport the network will not fetch never reads waiting", () => {
+  const never = [
+    "ipfs://bafkreidocument/x.json",
+    "ipfs://bafkreidocument/",
+    `https://${PICTURE_HOSTS[0]}/ipfs/bafkreidocument`,
+    "ipfs://",
+    "IPFS://bafkreidocument",
+    "data:application/json,{}",
+    "",
+  ];
+
+  it("gives the picture none for every address the workflow refuses, and public for the bare one it fetches", () => {
+    for (const metadataURI of never) {
+      expect(markPicture({ metadataURI }, art), JSON.stringify(metadataURI)).toBe("none");
+    }
+    expect(markPicture({ metadataURI: "ipfs://bafkreidocument" }, art)).toBe("public");
+  });
+
+  it("reads the state the site already uses for a passport the network will not check", async () => {
+    for (const metadataURI of never) {
+      const facts = await passportMarkFacts({ ...passport, metadataURI }, art);
+      expect(facts.mark.state, JSON.stringify(metadataURI)).toBe("nothing");
+    }
+    expect((await passportMarkFacts(passport, art)).mark.state).toBe("waiting");
+  });
+
+  it("still says nothing before the document is read, for an address the network would fetch", () => {
+    expect(markPicture({ metadataURI: "ipfs://bafkreidocument" }, null)).toBeNull();
   });
 });

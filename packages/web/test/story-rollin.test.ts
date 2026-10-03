@@ -73,6 +73,9 @@ function render(node: ReactElement): string {
   return renderToStaticMarkup(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, node));
 }
 
+/** The words as static markup writes them, with the apostrophe escaped. */
+const shown = (line: string): string => line.replace(/'/g, "&#x27;");
+
 const MANIFEST = `0x${"a7".repeat(32)}` as Hex;
 const PINNED = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex;
 const MARINA = "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e" as Hex;
@@ -375,10 +378,10 @@ describe("gating by data", () => {
 
   it("writes the sworn line only when the passport's own document carries it", () => {
     const without = render(createElement(LandingStory, { data: day(), variant: "chapter" as const }));
-    expect(without).not.toContain(en.story.sealed.readoutSworn);
+    expect(without).not.toContain(shown(en.story.sealed.readoutSworn));
     const focal = { ...day().focal!, sworn: true };
     const sworn = render(createElement(LandingStory, { data: day({ focal }), variant: "chapter" as const }));
-    expect(sworn).toContain(en.story.sealed.readoutSworn);
+    expect(sworn).toContain(shown(en.story.sealed.readoutSworn));
   });
 
   it("plays sign it yourself only when its picked print passed, and never calls a chosen print the newest", () => {

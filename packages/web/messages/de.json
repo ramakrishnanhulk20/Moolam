@@ -299,7 +299,7 @@
       "bodyNoBlock": "Ein Eintrag in etwa einer Sekunde, und niemand kann ihn ändern.",
       "readout": "Pass {passport}, eingetragen am {date}",
       "unread": "Dieser Pass konnte aus dem Register nicht gelesen werden.",
-      "readoutSworn": "Signiert unter: Ich habe dieses Bild gemacht oder besitze die Rechte, es einzutragen."
+      "readoutSworn": "Der Eintrag trägt die Erklärung seines Urhebers unter Eid: Ich habe dieses Bild gemacht oder besitze die Rechte, es einzutragen."
     },
     "stated": {
       "kicker": "Erklärung",
