@@ -17,7 +17,7 @@ import {
   type PlatformRegistration,
   type PlatformWalletClient,
 } from "@moolam/platform";
-import { createPublicClient, createWalletClient, getAddress, http, isAddress, zeroAddress, type Hex } from "viem";
+import { createPublicClient, createWalletClient, getAddress, http, isAddress, parseAbi, zeroAddress, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { monad } from "viem/chains";
 import { EnvError, env } from "./env";
@@ -143,6 +143,26 @@ export async function openDeliveries(intervalMs: number): Promise<DeliveryWorker
     publicClient: k.publicClient,
     intervalMs,
   });
+}
+
+const OWNER_OF = parseAbi(["function ownerOf(uint256 tokenId) view returns (address)"]);
+
+/**
+ * Whether Dreamloom's own wallet holds the passport now, from the registry's ownerOf. The kit's
+ * delivery worker reports nothing when it hands a passport over, so this is how Dreamloom learns it
+ * no longer holds one. The wallet's address is derived here and never leaves this file (D3).
+ *
+ * Throws when the read fails, so a caller can tell "not held" from "could not tell".
+ */
+export async function heldByDreamloom(passportId: Hex): Promise<boolean> {
+  const k = ready();
+  const owner = await k.publicClient.readContract({
+    address: MOOLAM_REGISTRY,
+    abi: OWNER_OF,
+    functionName: "ownerOf",
+    args: [BigInt(passportId)],
+  });
+  return getAddress(owner) === getAddress(k.account.address);
 }
 
 /** Co-sign mode: the verify service freezes the picture and the kit returns the link for the visitor. */

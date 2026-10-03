@@ -2,7 +2,7 @@
 // tests here, which server-routes.test.ts drives through the routes, or two processes sharing one
 // data folder. Pictures are seeded as records on the volume, since filling a shelf of 500 through
 // 500 weaves proves nothing more about the eviction rule and takes minutes.
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -118,9 +118,10 @@ describe("WO-317: the shelf of pictures", () => {
     expect(store.roomForAnotherPicture()).toBe(false);
   }, 60_000);
 
-  it("answers POST /api/weave with 503 and a log line that names the cause, never a 500, when there is no room", async () => {
+  it("answers POST /api/weave with 503 busy, never a 500, before the image model is called or the weave count moves, when there is no room", async () => {
     const { store, weave } = await boot();
     for (let n = 0; n < store.MAX_PICTURES; n += 1) seed(n, held);
+    const before = readdirSync(path.join(dataDir, "pictures")).sort();
 
     const response = await weave.POST(
       new Request("http://localhost:3300/api/weave", {
@@ -132,6 +133,29 @@ describe("WO-317: the shelf of pictures", () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "busy" });
-    expect(vi.mocked(console.error).mock.calls.flat().join("\n")).toContain("dreamloom: request failed: ShelfFull");
+    expect(openai.generate).not.toHaveBeenCalled();
+    // The counters file is written by the first count taken, so its absence is a weave count that never moved.
+    expect(existsSync(path.join(dataDir, "counters.json"))).toBe(false);
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(readdirSync(path.join(dataDir, "pictures")).sort()).toEqual(before);
+    expect(vi.mocked(console.error).mock.calls.flat().join("\n")).toContain("dreamloom: weave: the shelf is full");
+  }, 60_000);
+
+  it("still draws and counts a weave when one picture on the shelf can go", async () => {
+    const { store, weave } = await boot();
+    for (let n = 0; n < store.MAX_PICTURES - 1; n += 1) seed(n, held);
+    seed(store.MAX_PICTURES - 1);
+
+    const response = await weave.POST(
+      new Request("http://localhost:3300/api/weave", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "http://localhost:3300" },
+        body: JSON.stringify({ prompt: "a lighthouse with one place left" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(openai.generate).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(readFileSync(path.join(dataDir, "counters.json"), "utf8")).weave).toBe(1);
   }, 60_000);
 });

@@ -1,14 +1,27 @@
 // What this file does not cover: the kit's worker itself (its polls, ownerOf reads, simulations and
 // failure reports), which the kit's own tests prove. runDeliveries is stood in for, so this file
 // proves that Dreamloom starts exactly one worker per process with its own settings, retries a start
-// that failed, stops it on shutdown, and logs fixed words only.
-import { mkdtempSync, rmSync } from "node:fs";
+// that failed, stops it on shutdown, and logs fixed words only. It also proves the sweep that frees a
+// picture once its passport has left Dreamloom's wallet (WO-318); the chain read under it is stood
+// in for, so what a real ownerOf answers on Monad is not covered here.
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MoolamPlatformError } from "@moolam/platform";
+import { privateKeyToAccount } from "viem/accounts";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => ({ runDeliveries: vi.fn(), resumeCosign: vi.fn() }));
+const chain = vi.hoisted(() => ({ readContract: vi.fn() }));
+
+vi.mock("viem", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("viem")>();
+  return {
+    ...actual,
+    createPublicClient: (config: Parameters<typeof actual.createPublicClient>[0]) =>
+      Object.assign(actual.createPublicClient(config), { readContract: chain.readContract }),
+  };
+});
 
 vi.mock("@moolam/platform", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@moolam/platform")>();
@@ -45,6 +58,8 @@ async function fresh(overrides: Record<string, string> = {}) {
   return {
     boot: await import("@/lib/server/boot"),
     deliveries: await import("@/lib/server/delivery-worker"),
+    store: await import("@/lib/server/store"),
+    kit: await import("@/lib/server/kit"),
   };
 }
 
@@ -66,6 +81,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   dataDir = mkdtempSync(path.join(tmpdir(), "dreamloom-deliveries-"));
+  mkdirSync(path.join(dataDir, "pictures"), { recursive: true });
   vi.resetAllMocks();
   logged = [];
   for (const method of ["log", "info", "warn", "error", "debug"] as const) {
@@ -176,5 +192,125 @@ describe("the delivery worker", () => {
       expect(line).not.toContain("marker");
       expect(line).toMatch(/^dreamloom: deliveries: [a-z ,-]+$/);
     }
+  });
+});
+
+const WALLET = privateKeyToAccount(`0x${"5ec1".repeat(16)}`).address;
+const ELSEWHERE = `0x${"12".repeat(20)}`;
+const START = Date.parse("2026-10-01T00:00:00Z");
+const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 7)]);
+
+const idOf = (n: number): string => n.toString(16).padStart(32, "0");
+const passportOf = (n: number): string => `0x${n.toString(16).padStart(64, "0")}`;
+
+/** A picture registered for a signed-in visitor, whose passport waits at Moolam, written as the volume holds it. */
+function seed(n: number, fields: Record<string, unknown> = {}): string {
+  const record = {
+    version: 1,
+    id: idOf(n),
+    sessionHash: "ab".repeat(32),
+    prompt: "a lighthouse seeded for the sweep",
+    createdAt: new Date(START + n * 1000).toISOString(),
+    contentType: "image/png",
+    state: "registered",
+    title: "Lighthouse",
+    mode: "platform",
+    passportId: passportOf(n),
+    registerTx: `0x${"b2".repeat(32)}`,
+    delivery: { kind: "waiting", to: "r***@example.com" },
+    ...fields,
+  };
+  writeFileSync(path.join(dataDir, "pictures", `${idOf(n)}.json`), `${JSON.stringify(record)}\n`);
+  return idOf(n);
+}
+
+/** Makes the registry say who holds each passport: Dreamloom's wallet unless the id is listed as handed over. */
+function handedOver(...ns: number[]): void {
+  const gone = new Set(ns.map((n) => BigInt(passportOf(n))));
+  chain.readContract.mockImplementation(async (call: { args: [bigint] }) => (gone.has(call.args[0]) ? ELSEWHERE : WALLET));
+}
+
+describe("WO-318: the shelf frees what Dreamloom has handed over", () => {
+  it("frees a picture once its passport left Dreamloom's wallet, on the worker's own interval, and keeps one still waiting", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    sdk.runDeliveries.mockResolvedValue({ stop: async () => {} });
+    const { deliveries, store } = await fresh();
+    for (let n = 0; n < store.MAX_PICTURES; n += 1) seed(n);
+    handedOver(0);
+    expect(store.roomForAnotherPicture()).toBe(false);
+
+    deliveries.startDeliveries();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.roomForAnotherPicture()).toBe(false);
+    await vi.advanceTimersByTimeAsync(deliveries.DELIVERY_INTERVAL_MS);
+    await settle();
+
+    expect(store.readPicture(idOf(0))?.state).toBe("moved");
+    expect(store.readPicture(idOf(1))?.state).toBe("registered");
+    expect(store.roomForAnotherPicture()).toBe(true);
+    store.createPicture({ sessionHash: "ab".repeat(32), prompt: "one more lighthouse", bytes: PNG });
+    expect(store.readPicture(idOf(0))).toBeNull();
+    expect(store.readPicture(idOf(1))?.state).toBe("registered");
+    expect(store.listPictures()).toHaveLength(store.MAX_PICTURES);
+    expect(logged).toEqual(["dreamloom: deliveries: started"]);
+  }, 60_000);
+
+  it("keeps a picture whose ownership read failed, and frees it once the read answers", async () => {
+    const { deliveries, store } = await fresh();
+    const id = seed(1);
+    chain.readContract.mockRejectedValue(new Error(`rpc down at ${RPC}`));
+
+    await deliveries.freeHandedOver();
+    expect(store.readPicture(id)?.state).toBe("registered");
+    expect(logged.join("\n")).not.toContain("marker");
+
+    handedOver(1);
+    await deliveries.freeHandedOver();
+    expect(store.readPicture(id)?.state).toBe("moved");
+  });
+
+  it("reads only pictures waiting at Moolam that nothing is acting on", async () => {
+    const { deliveries, store } = await fresh();
+    seed(1, { delivery: undefined });
+    seed(2, { busy: "move", busyAt: new Date(START).toISOString() });
+    seed(3, { state: "woven", mode: undefined, passportId: undefined, registerTx: undefined, delivery: undefined, title: undefined });
+    seed(4, { state: "moved", delivery: { kind: "straight", to: "r***@example.com" }, moveTx: `0x${"c3".repeat(32)}`, movedTo: ELSEWHERE });
+    seed(5, { mode: "cosign", delivery: undefined });
+    handedOver(1, 2, 3, 4, 5);
+
+    await deliveries.freeHandedOver();
+
+    expect(chain.readContract).not.toHaveBeenCalled();
+    expect(store.readPicture(idOf(2))?.busy).toBe("move");
+    expect(store.readPicture(idOf(1))?.state).toBe("registered");
+  });
+
+  it("does not write over a move that claimed the picture while its ownership was being read", async () => {
+    const { deliveries, store } = await fresh();
+    const id = seed(1);
+    chain.readContract.mockImplementation(async () => {
+      store.claimPicture(id, ["registered"], "move");
+      return ELSEWHERE;
+    });
+
+    await deliveries.freeHandedOver();
+
+    const record = store.readPicture(id);
+    expect(record?.state).toBe("registered");
+    expect(record?.busy).toBe("move");
+  });
+
+  it("asks the registry who holds the passport and says held only for Dreamloom's own wallet, however the address is cased", async () => {
+    const { kit } = await fresh();
+    const id = passportOf(7) as `0x${string}`;
+    chain.readContract.mockResolvedValue(WALLET.toLowerCase());
+    expect(await kit.heldByDreamloom(id)).toBe(true);
+    const call = chain.readContract.mock.calls[0]![0] as { functionName: string; args: bigint[] };
+    expect(call.functionName).toBe("ownerOf");
+    expect(call.args).toEqual([7n]);
+    chain.readContract.mockResolvedValue(ELSEWHERE);
+    expect(await kit.heldByDreamloom(id)).toBe(false);
+    chain.readContract.mockRejectedValue(new Error("boom"));
+    await expect(kit.heldByDreamloom(id)).rejects.toThrow("boom");
   });
 });

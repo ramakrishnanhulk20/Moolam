@@ -21,6 +21,7 @@ import {
   readSessionRecord,
   releasePicture,
   rememberAddress,
+  roomForAnotherPicture,
   sessionHasPictures,
   type Busy,
   type PictureRecord,
@@ -113,6 +114,11 @@ export function weave(request: Request): Promise<Response> {
     }
     if (isClosed("weave") || env().OPENAI_API_KEY === undefined) {
       return refuse(503, "closed");
+    }
+    // Refused before the image is drawn and counted: a billed picture with no shelf to keep it on is a loss.
+    if (!roomForAnotherPicture()) {
+      logLine("weave", "the shelf is full");
+      return refuse(503, "busy");
     }
     const taken = take("weave", callerAddress(request));
     if (!taken.ok) return capRefusal(taken);
