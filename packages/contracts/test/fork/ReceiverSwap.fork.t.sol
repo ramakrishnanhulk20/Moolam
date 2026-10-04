@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// Does NOT cover: any report or listing. It only reads the latest block for the receiver swap of 2026-09-26.
+// Does NOT cover: any report or listing. It only reads the latest block for the receiver swap of 2026-09-26 and the 2 October listing of 0x0d69 as the network receiver.
 
 import {Test, console2} from "forge-std/Test.sol";
 
 import {SimulationReceiver} from "../../src/SimulationReceiver.sol";
 import {VerifierPolicy} from "../../src/VerifierPolicy.sol";
+import {ReceiverTemplate} from "../../src/vendor/chainlink/ReceiverTemplate.sol";
 
 contract ReceiverSwapForkTest is Test {
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
@@ -14,6 +15,8 @@ contract ReceiverSwapForkTest is Test {
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
     address internal constant MOCK_FORWARDER = 0x9eF6468C5f37b976E57d52054c693269479A784d;
     address internal constant CRE_WALLET = 0xC79620AF233a4434b03f6B57239F8A9E71B3C178;
+    address internal constant NETWORK_FORWARDER = 0x76c9cf548b4179F8901cda1f8623568b58215E62;
+    address internal constant CRE_ORG_OWNER = 0xf072a8c620bFc818875736E3f2d3A2A339c06584;
 
     address internal constant OLD_PUBLIC = 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04;
     address internal constant OLD_SEALED = 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A;
@@ -39,9 +42,16 @@ contract ReceiverSwapForkTest is Test {
         assertEq(block.chainid, MONAD_MAINNET_CHAIN_ID, "the RPC is not Monad mainnet");
     }
 
-    function test_theOldReceiversAreOffThePolicy() public view {
-        assertFalse(policy.isReceiver(OLD_PUBLIC));
+    function test_theOldSealedReceiverIsOffThePolicy() public view {
         assertFalse(policy.isReceiver(OLD_SEALED));
+    }
+
+    // 0x0d69 left the policy in this swap and was listed again on 2 October as the receiver
+    // Chainlink's network writes to, behind the real forwarder and Moolam's Chainlink account.
+    function test_0x0d69IsListedAsTheNetworkReceiver() public view {
+        assertTrue(policy.isReceiver(OLD_PUBLIC));
+        assertEq(ReceiverTemplate(OLD_PUBLIC).getForwarderAddress(), NETWORK_FORWARDER);
+        assertEq(ReceiverTemplate(OLD_PUBLIC).getExpectedAuthor(), CRE_ORG_OWNER);
     }
 
     function test_theNewReceiversAreQueuedOrListed() public view {

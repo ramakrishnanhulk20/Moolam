@@ -48,6 +48,11 @@ Foundry needs `-n monad` on anything that touches Monad. Without it, `vm.createS
 with "cannot create a monad fork with an EVM instantiated for ethereum", and the local EVM prices
 gas as Ethereum rather than as the chain we ship on.
 
+Most fork suites pin a past block, so they need an RPC that serves historical state (an archive
+node). A public endpoint without it answers "Block requested not found" for those suites; the ones
+that read the latest block, such as ReceiverSwap, run anywhere. Without MONAD_MAINNET_RPC_URL every
+fork suite skips with a line saying so.
+
 ```
 forge build                 compile, zero warnings
 npm test                    215 tests: unit, fuzz, invariant and mainnet fork
