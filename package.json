@@ -27,6 +27,14 @@
     "reputation:post": "npm run reputation:post --workspace packages/verifier --",
     "agent": "npm run agent --workspace packages/agents --"
   },
+  "overrides": {
+    "envio": {
+      "express": "4.22.3"
+    },
+    "viem": {
+      "ws": "^8.21.0"
+    }
+  },
   "allowScripts": {
     "@contentauth/c2pa-node@0.9.3": true,
     "esbuild@0.27.2": true
