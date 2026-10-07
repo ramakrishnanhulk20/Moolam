@@ -34,7 +34,7 @@ export function statedBlock(data: StoryData): StatedBlock | null {
  * at all. It stays out of the film until the claim screens ship on the public
  * site, and this is the one place that changes on that day.
  */
-export const WAITING_SHIPPED = false;
+export const WAITING_SHIPPED = true;
 
 /**
  * The beats the day's data lets the film tell, in playing order.

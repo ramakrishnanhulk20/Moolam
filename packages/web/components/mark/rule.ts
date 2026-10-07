@@ -23,4 +23,4 @@ export const DAY_SECONDS = 86_400;
  * whoever prepared it, and one registered after it with no statement came some
  * other way than through the service. Null reads as "before" for every passport.
  */
-export const SWORN_SINCE: number | null = null;
+export const SWORN_SINCE: number | null = 1_791_362_274;

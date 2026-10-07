@@ -323,16 +323,16 @@ function beatsOf(html: string): string[] {
 }
 
 describe("gating by data", () => {
-  it("leaves out the look-alike and waiting beats until their data exists", () => {
+  it("leaves out the look-alike beat until its data exists, and plays the waiting beat now the email claim has shipped", () => {
     const cut = stated.filmCut(day());
     expect(cut).not.toContain("lookalike");
-    expect(cut).not.toContain("waiting");
-    expect(stated.WAITING_SHIPPED).toBe(false);
+    expect(cut).toContain("waiting");
+    expect(stated.WAITING_SHIPPED).toBe(true);
     const html = render(createElement(LandingStory, { data: day(), variant: "chapter" as const }));
     expect(beatsOf(html)).not.toContain("lookalike");
-    expect(beatsOf(html)).not.toContain("waiting");
+    expect(beatsOf(html)).toContain("waiting");
     expect(html).not.toContain(en.story.lookalike.title);
-    expect(html).not.toContain(en.story.waiting.title);
+    expect(html).toContain(en.story.waiting.title);
   });
 
   it("plays the look-alike beat once a network record with two pictures is there", () => {
@@ -428,7 +428,7 @@ describe("gating by data", () => {
         constraintInfo: "",
       },
     });
-    expect(stated.filmCut(all)).toEqual(["opening", "imagined", "sealed", "stated", "asked", "shared", "verified", "checked", "offer", "close"]);
+    expect(stated.filmCut(all)).toEqual(["opening", "imagined", "sealed", "stated", "asked", "shared", "verified", "checked", "waiting", "offer", "close"]);
   });
 });
 
