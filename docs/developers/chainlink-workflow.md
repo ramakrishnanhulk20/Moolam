@@ -219,8 +219,8 @@ fingerprint, the consensus and the write. The look-alike step is in it from 2026
 
 | What | Value |
 | --- | --- |
-| Workflow | `moolam-verifier`, deployed to Chainlink's network, verdict step only on 2026-10-02 |
-| Workflow ID | `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890` |
+| Workflow | `moolam-verifier`, deployed to Chainlink's network: the verdict step on 2026-10-02, the look-alike step added on 2026-10-07 |
+| Workflow ID | `0031b78176458a823e3930d4efe7d5b6a45807964dac463e9551b49e28e3fe21` since 2026-10-07; `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890` before |
 | Owner | `0xf072a8c620bfc818875736e3f2d3a2a339c06584` |
 | Active from | about 07:09 UTC on 2026-10-02 |
 | Writes through | the Keystone Forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62`, to `MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` |

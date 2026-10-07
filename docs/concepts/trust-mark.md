@@ -66,10 +66,11 @@ Live on Monad mainnet since 2026-10-02:
 - `MoolamReceiver` is on the policy's list again, in
   [transaction 0x446c3051…ff9f](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f),
   block 109,830,535, at 07:08:18 UTC.
-- Chainlink's network runs `moolam-verifier`, workflow ID
-  `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner
-  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. On 2026-10-02 this deployment held the
-  verdict step only.
+- Chainlink's network runs `moolam-verifier`, owner `0xf072a8c620bfc818875736e3f2d3a2a339c06584`. It went
+  live at about 07:09 UTC on 2026-10-02 as workflow ID
+  `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, with the verdict step only. Since
+  2026-10-07 it runs as workflow ID
+  `0031b78176458a823e3930d4efe7d5b6a45807964dac463e9551b49e28e3fe21`, with the look-alike step too.
 - The first network verdict was written at 07:23:42 UTC for passport
   `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782`, registered at 07:23:26 UTC in
   [transaction 0x162c97a7…feaa](https://monadvision.com/tx/0x162c97a70e53441e16633250e1cf96d695b01939d10625bf29248a9c01e3feaa).
