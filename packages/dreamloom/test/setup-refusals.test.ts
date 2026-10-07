@@ -40,10 +40,10 @@ afterAll(() => {
 describe("wallet.ts", () => {
   it("fills a blank line in place and keeps every other line", () => {
     const envFile = path.join(workDir, "blank.env");
-    writeFileSync(envFile, "MOOLAM_SITE_URL=https://moolam.vercel.app\nDREAMLOOM_WALLET_KEY=\nMONAD_RPC_URL=http://127.0.0.1:8545\n");
+    writeFileSync(envFile, "MOOLAM_SITE_URL=https://moolam.site\nDREAMLOOM_WALLET_KEY=\nMONAD_RPC_URL=http://127.0.0.1:8545\n");
     const { address } = createWallet({ envFile });
     const lines = readFileSync(envFile, "utf8").trimEnd().split("\n");
-    expect(lines[0]).toBe("MOOLAM_SITE_URL=https://moolam.vercel.app");
+    expect(lines[0]).toBe("MOOLAM_SITE_URL=https://moolam.site");
     expect(lines[2]).toBe("MONAD_RPC_URL=http://127.0.0.1:8545");
     const key = (parseEnv(readFileSync(envFile, "utf8")) as Record<string, string>).DREAMLOOM_WALLET_KEY as Hex;
     expect(privateKeyToAccount(key).address).toBe(address);

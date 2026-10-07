@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { MoveConfirm, MoveFlowView } from "@/components/result/move-flow";
 import { confirmQuestion, moveStep, type MoveState } from "@/components/result/move-steps";
 
-const SITE = "https://moolam.vercel.app";
-const ORIGIN = "https://moolam.vercel.app";
+const SITE = "https://moolam.site";
+const ORIGIN = "https://moolam.site";
 const LINK = `${SITE}/en/connect?origin=${encodeURIComponent("https://dreamloom.example")}`;
 const ADDRESS = "0x52908400098527886E0F7030069857D2E4169EE7";
 const OTHER = "0x8617E340B3D01FA5F11F306F4090FD50E238070D";

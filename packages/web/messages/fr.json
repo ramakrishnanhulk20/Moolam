@@ -2464,12 +2464,12 @@
       "source": "Lu dans l’index de Moolam et sa liste signée, gardé une minute.",
       "unread": "Pas lu pour l’instant",
       "now": "En service : les routes pour plateformes et le serveur MCP du service de vérification de Moolam, et Dreamloom.",
-      "next": "Avec la prochaine version : le laisser à son adresse e-mail, et les fenêtres de cosignature et de liaison sur moolam.vercel.app.",
+      "next": "Avec la prochaine version : le laisser à son adresse e-mail, et les fenêtres de cosignature et de liaison sur moolam.site.",
       "agent": "Agent {id}",
       "pictureAlt": "{title}, une image dessinée sur {platform} avec son passeport sur Monad",
       "pictureAltUntitled": "Une image dessinée sur {platform} avec son passeport sur Monad",
       "open": "Ouvrir Dreamloom",
-      "nowShipped": "En service : les routes pour plateformes et le serveur MCP du service de vérification de Moolam, Dreamloom, et les fenêtres de cosignature, de liaison et d’e-mail sur moolam.vercel.app."
+      "nowShipped": "En service : les routes pour plateformes et le serveur MCP du service de vérification de Moolam, Dreamloom, et les fenêtres de cosignature, de liaison et d’e-mail sur moolam.site."
     },
     "pricing": {
       "kicker": "Tarifs",

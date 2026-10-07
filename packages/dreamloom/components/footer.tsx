@@ -1,6 +1,6 @@
 import { Wordmark } from "./wordmark";
 
-export const PLATFORM_DOCS_URL = "https://moolam.vercel.app/en/docs/developers/platform-kit";
+export const PLATFORM_DOCS_URL = "https://moolam.site/en/docs/developers/platform-kit";
 
 export function Footer() {
   return (

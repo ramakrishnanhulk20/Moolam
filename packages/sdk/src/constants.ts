@@ -13,12 +13,12 @@ export const MOOLAM_CONSENT: Address = "0x1151E69a82947920546e779c4C8c785b2a3C12
 export const AGENT_IDENTITY_REGISTRY: Address = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
 
 /** The Moolam site a co-sign link opens on. */
-export const MOOLAM_SITE_URL = "https://moolam.vercel.app";
+export const MOOLAM_SITE_URL = "https://moolam.site";
 
 /**
  * The hostnames Moolam's own passkeys are made under. A platform's server key must never claim one
  * of them, or any name under them, as its relying party (P20).
  */
-export const MOOLAM_HOSTNAMES: readonly string[] = ["moolam.vercel.app"];
+export const MOOLAM_HOSTNAMES: readonly string[] = ["moolam.site", "moolam.vercel.app"];
 
 export const ZERO_BYTES32 = `0x${"00".repeat(32)}` as const;

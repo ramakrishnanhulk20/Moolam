@@ -130,10 +130,10 @@ describe("the markdown on GitHub", () => {
   it("still reads sensibly around the token: a placeholder, and where the real address is shown", () => {
     const graphql = repoFile("docs", "api", "graphql.md");
     expect(graphql.split(INDEX_URL_TOKEN)).toHaveLength(3);
-    expect(graphql).toContain("moolam.vercel.app/en/docs/api/graphql");
+    expect(graphql).toContain("moolam.site/en/docs/api/graphql");
     expect(repoFile("docs", "developers", "envio-indexer.md")).toContain(
-      "moolam.vercel.app/en/docs/developers/envio-indexer",
+      "moolam.site/en/docs/developers/envio-indexer",
     );
-    expect(repoFile("README.md")).toContain("(https://moolam.vercel.app/en/docs/api/graphql)");
+    expect(repoFile("README.md")).toContain("(https://moolam.site/en/docs/api/graphql)");
   });
 });

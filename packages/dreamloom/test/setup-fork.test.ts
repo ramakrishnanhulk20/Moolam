@@ -388,7 +388,7 @@ describe.skipIf(skipReason !== undefined)("Dreamloom's setup, step by step on a 
     // could not happen even by mistake.
     Object.assign(process.env, {
       MOOLAM_VERIFY_URL: service.base,
-      MOOLAM_SITE_URL: "https://moolam.vercel.app",
+      MOOLAM_SITE_URL: "https://moolam.site",
       MONAD_RPC_URL: fork.rpc,
       DREAMLOOM_WALLET_KEY: values.DREAMLOOM_WALLET_KEY,
       DREAMLOOM_PASSKEY_KEY: values.DREAMLOOM_PASSKEY_KEY,

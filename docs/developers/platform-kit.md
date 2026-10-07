@@ -13,12 +13,11 @@ passport fields.
 
 > **What is live today.** The verify service at `https://verifier-production-d76f.up.railway.app`
 > runs the four `/platform` routes and the MCP server, and `https://<verify-service>` on this page
-> stands for that address. Moolam's platform list has one entry, Dreamloom, the demo platform at
-> `https://dreamloom-production-3e74.up.railway.app`, which registers its pictures through the kit.
-> **Not live yet:** the email claim routes (`/claims` and `/platform/deliveries`), the confirmed
-> credit described below, and the co-sign and connect pages on `moolam.vercel.app`. The routes and
-> the credit go live with the next deploy of the verify service, and the pages with the next deploy
-> of the web app. The package is private to this repository and not on npm yet.
+> stands for that address. Since 7 October 2026 it also runs the email claim routes (`/claims` and
+> `/platform/deliveries`) and the confirmed credit described below, and the co-sign and connect
+> pages are live on `moolam.site`. Moolam's platform list has one entry, Dreamloom, the demo
+> platform at `https://dreamloom-production-3e74.up.railway.app`, which registers its pictures
+> through the kit. The package is private to this repository and not on npm yet.
 
 ## The two modes
 
@@ -36,9 +35,9 @@ passport credits them from the first block.
 | Pick it when | The person can give one passkey signature, which is almost always | You generate at volume, or your users have no Moolam account yet |
 
 In co-sign mode your server prepares the picture and your agent signs, and the person finishes it on
-a page at `https://moolam.vercel.app/cosign#<handle>`. The handle travels after the `#`, so it never
-reaches a server log, an analytics tool or a `Referer` header. The co-sign page ships with the next
-deploy of the web app.
+a page at `https://moolam.site/cosign#<handle>`. The handle travels after the `#`, so it never
+reaches a server log, an analytics tool or a `Referer` header. The co-sign page has been live since
+7 October 2026.
 
 In platform mode you register the picture at once and hold the passport for the person until they
 claim it. One company holds both keys the registry asks for. The chain records the same fields it
@@ -383,8 +382,9 @@ declare function addressTheyGaveYou(): Promise<string>;
 wallet and the registry, uses `safeTransferFrom`, and returns only after a successful receipt and a
 fresh `ownerOf` read that names the new holder. The terms your wallet stated stay in force until the
 new holder states their own, and the history shows who wrote each. The person can hand you their
-address through Moolam's connect page, which ships with the co-sign page: it names your platform from
-the list and posts the address only to one of your listed origins, after they click.
+address through Moolam's connect page, which has been live with the co-sign page since 7 October
+2026: it names your platform from the list and posts the address only to one of your listed
+origins, after they click.
 
 ### Leaving a passport for a person's email
 
@@ -450,7 +450,7 @@ The service looks about once a minute. A passport that has not landed within two
 closes its ticket, and so does one your wallet moves before the person answers.
 
 **What the person sees at Moolam.** Dreamloom, the demo platform, tells the person "Your passport is
-waiting at Moolam. Claim it with r****@gmail.com at moolam.vercel.app/en/mine". There:
+waiting at Moolam. Claim it with r****@gmail.com at moolam.site/en/mine". There:
 
 1. They sign in to Moolam with Google or an emailed code. Only an address Privy verified for them,
    their email account or their Google account's email, matches a ticket.

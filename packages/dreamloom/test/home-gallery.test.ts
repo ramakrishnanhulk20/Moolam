@@ -3,7 +3,7 @@ import { createGalleryReader, gatewayAddress, passportUrl, type GallerySettings 
 
 const INDEX = "https://index.example/v1/graphql";
 const GATEWAY = "https://gateway.example/ipfs/";
-const SITE = "https://moolam.vercel.app";
+const SITE = "https://moolam.site";
 const ID_A = `0x${"a1".repeat(32)}`;
 const ID_B = `0x${"b2".repeat(32)}`;
 
@@ -146,7 +146,7 @@ describe("an index that does not answer", () => {
 
 describe("the badge link", () => {
   it("is built from the passport id on Moolam's English passport page", () => {
-    expect(passportUrl(ID_A, SITE)).toBe(`https://moolam.vercel.app/en/passport/${ID_A}`);
+    expect(passportUrl(ID_A, SITE)).toBe(`https://moolam.site/en/passport/${ID_A}`);
     expect(passportUrl(ID_A.toUpperCase().replace("0X", "0x"), `${SITE}/`)).toBe(`${SITE}/en/passport/${ID_A}`);
   });
 

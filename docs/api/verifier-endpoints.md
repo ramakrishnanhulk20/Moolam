@@ -869,7 +869,7 @@ and the byte check after signing looks only for text values held under place or 
 | `503` | `{ "error": "chain-unreachable" }`. `privateRecheck` was asked for and the check for an existing passport could not reach the chain, so no private copy was made and nothing was pinned. A public or plain sealed prepare goes on in that case, as it always has |
 
 **CORS.** A browser may call this service only from an origin listed in `CORS_ORIGINS`, and those
-are exact origins: `https://moolam.app`, never a wildcard, a path or a trailing slash. The allowed
+are exact origins: `https://moolam.site`, never a wildcard, a path or a trailing slash. The allowed
 methods are `GET` and `POST`, and the allowed headers are `Authorization` and `Content-Type`. An
 origin that is not on the list gets no allow header back, which the browser turns into a refusal on
 its side; curl and any server-side caller are unaffected either way. With `CORS_ORIGINS` empty, no
@@ -1561,8 +1561,9 @@ and names its picture as pinned content (so the workflow can check it), and it s
   `Attestation.network` flag. The service holds no rule of its own for this, so it can never
   disagree with the index;
 - for an original, a look-alike record: a `LookalikeChecked` event from `LOOKALIKE_RECEIVER` whose
-  `executedAt` is at or after `NETWORK_ACTIVATION_TIME`. Until the index carries these records, the
-  service reads the events itself in the background, after each index refresh.
+  `executedAt` is at or after `NETWORK_ACTIVATION_TIME`. The service reads these records from the
+  index's `Lookalike` rows, which the live index serves. Only an index that does not serve that
+  entity makes it read the events itself in the background, after each index refresh.
 
 A passport whose newest network verdict says its fingerprints did not match is not waiting for a
 look-alike record: the workflow proves no look-alike for it, so none ever comes.
@@ -1731,8 +1732,8 @@ below for you.
 Mounted only when the host has `PINATA_JWT`, `PRIVY_APP_ID` and `PRIVY_APP_SECRET`, a signing
 certificate and key that load, and a platform list whose every signature checks out. A refused list
 turns all four `/platform` routes off; it is never half loaded. Live on the hosted verify service. The
-`deliverTo` part and its refusals below belong to the claim and delivery routes, and go live with
-them at the next deploy.
+`deliverTo` part and its refusals below belong to the claim and delivery routes, live since 7 October
+2026.
 
 **Headers.** `Authorization: Bearer <platform key>`, the 64 hex characters Moolam issued. The key
 identifies and meters the platform and authorises nothing else.
@@ -1792,9 +1793,10 @@ slot back.
 
 **The manifest.** The claim generator is `moolam-platform-kit/0.1.0`, the action `c2pa.created` and
 the source type `trainedAlgorithmicMedia`. Its `softwareAgent` names `<platform> generator` and, under
-the key `app.vercel.moolam.erc8004`, the agent id and the registry
-`eip155:143:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`. A picture the signer will not embed a
-manifest in is refused, because the manifest is what names the agent.
+the key `site.moolam.erc8004`, the agent id and the registry
+`eip155:143:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`. Manifests signed before 7 October 2026 name
+`app.vercel.moolam.erc8004` instead. A picture the signer will not embed a manifest in is refused,
+because the manifest is what names the agent.
 
 **Response in platform mode.** `200`. The four files are pinned, each checked against the content id
 computed before the pin.
@@ -1864,7 +1866,7 @@ In co-sign mode the creator is whoever opens the link, unknown at this point, so
 look-alike reads `found` and none reads `yours`. The frozen document carries the sworn line the
 person signs on the co-sign page, as under `/prepare`, and `seenEarlier` with a `found` look-alike.
 
-The service keeps only the handle's sha256. The person's link is `https://moolam.vercel.app/cosign#<handle>`.
+The service keeps only the handle's sha256. The person's link is `https://moolam.site/cosign#<handle>`.
 
 | Code | When |
 | --- | --- |
@@ -1985,7 +1987,7 @@ after their deadline.
 The platform's delivery worker reads it to learn which passports people accepted and where each
 goes. A ticket exists only after a platform-mode `/platform/prepare` that carried a `deliverTo`
 field; the guide is [Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email),
-and `runDeliveries` in `@moolam/platform` calls this route for you. Not live until the next deploy.
+and `runDeliveries` in `@moolam/platform` calls this route for you. Live since 7 October 2026.
 
 **Who may call.** A platform, with its key. **Headers.** `Authorization: Bearer <platform key>`.
 **Request.** No body.
@@ -2018,7 +2020,7 @@ when the chain shows the destination holding the passport; the worker says nothi
 ## POST /platform/deliveries/:ticketId/failed
 
 The worker gives up on a hand-over. The ticket moves from accepted to failed, is never listed again,
-and the person's page says the platform could not hand it over (P34). Not live until the next deploy.
+and the person's page says the platform could not hand it over (P34). Live since 7 October 2026.
 
 **Who may call.** A platform, with the key that wrote the ticket. **Headers.**
 `Authorization: Bearer <platform key>`. **Request.** No body; the ticket id is in the path.
@@ -2038,8 +2040,8 @@ and the person's page says the platform could not hand it over (P34). Not live u
 Five routes a person's browser calls from My pictures on the Moolam web app, to see what platforms
 hold for their verified email and to answer. The guide is
 [Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email),
-and the standards are in the [threat model](../security/threat-model#claim-with-your-email). Not live
-until the next deploy.
+and the standards are in the [threat model](../security/threat-model#claim-with-your-email). Live
+since 7 October 2026.
 
 **Who may call.** A person signed in to Moolam. **Headers.** `Authorization: Bearer <Privy access
 token>`, checked as under [`/prepare`](#post-prepare), and `Content-Type: application/json` on a

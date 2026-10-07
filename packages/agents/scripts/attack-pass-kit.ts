@@ -377,7 +377,7 @@ async function main(): Promise<void> {
   say(`verifier      ${VERIFIER}`);
   say(`dreamloom     ${DREAMLOOM}`);
   say(`web           ${WEB}, the Moolam dev server on this machine: the web app is not pushed yet, so`);
-  say("              the co-sign and connect page headers are read from the dev server, not moolam.vercel.app");
+  say("              the co-sign and connect page headers are read from the dev server, not moolam.site");
   say(`platform      Dreamloom, agent ${agentId}, creator wallet ${owner.address} (ownerOf read on chain: the same)`);
   say();
   say("Spend: one co-sign prepare (3a: a C2PA signing and files frozen on the verify service's volume,");
@@ -704,7 +704,7 @@ async function main(): Promise<void> {
   const rpcHeaders = { "content-type": "application/json", accept: "application/json, text/event-stream" };
   for (const [n, origin] of [
     ["4o", "https://evil.example"],
-    ["4p", "https://moolam.vercel.app.evil.example"],
+    ["4p", "https://moolam.site.evil.example"],
     ["4q", "null"],
   ] as const) {
     const answer = await call("mcp", mcpUrl, { method: "POST", headers: { ...rpcHeaders, origin }, body: initialize });

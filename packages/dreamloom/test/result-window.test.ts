@@ -14,7 +14,7 @@ import {
   type WindowLike,
 } from "@/components/result/window-flow";
 
-const SITE = "https://moolam.vercel.app";
+const SITE = "https://moolam.site";
 const ORIGIN = moolamOrigin(SITE);
 const COSIGN = `${SITE}/cosign#0123456789abcdef0123456789abcdef`;
 const ADDRESS = "0x52908400098527886E0F7030069857D2E4169EE7";
@@ -137,7 +137,7 @@ describe("the answer from Moolam's window", () => {
     b.checkout.open();
     const ignored: [unknown, string, "sign" | "share"][] = [
       [registered, "https://evil.example", "sign"],
-      [registered, "https://moolam.vercel.app.evil.example", "sign"],
+      [registered, "https://moolam.site.evil.example", "sign"],
       [shared, "https://evil.example", "share"],
       [shared, SITE, "sign"],
       [registered, SITE, "share"],

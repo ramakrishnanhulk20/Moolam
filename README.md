@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://moolam.vercel.app">Live App</a> &nbsp;|&nbsp;
-  <a href="https://moolam.vercel.app/en/docs/proof">Proof</a> &nbsp;|&nbsp;
-  <a href="https://moolam.vercel.app/en/docs">Documentation</a> &nbsp;|&nbsp;
+  <a href="https://moolam.site">Live App</a> &nbsp;|&nbsp;
+  <a href="https://moolam.site/en/docs/proof">Proof</a> &nbsp;|&nbsp;
+  <a href="https://moolam.site/en/docs">Documentation</a> &nbsp;|&nbsp;
   <a href="https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0">Contracts on MonadVision</a>
 </p>
 
@@ -31,13 +31,13 @@ The sources, the case against provenance and what Moolam does about each: [Why i
 
 Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad. Since 2026-10-02 the verdict step of `moolam-verifier` runs on Chainlink's network and writes through the Keystone Forwarder to [`MoolamReceiver` `0x0d69055c…Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), which went back on the policy's list at 07:08:18 UTC ([`0x446c3051…ff9f`](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f)). A run in Chainlink's simulator writes through a `SimulationReceiver` instead: [`0x4aD66c77…BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) for public pictures and [`0x52b8fE54…57f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) for private ones, both listed in the policy since 2026-09-27 14:18 UTC (listing transactions [`0xac642cc5…0bfb`](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb) and [`0x0e1e2937…457d`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d)). The `MoolamReceiver` pair came off the policy on 2026-09-26, and every re-check written before that stays under their addresses.
 
-- **See one.** [Monsoon Fishing Nets Drying](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
+- **See one.** [Monsoon Fishing Nets Drying](https://moolam.site/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
 - **See it on Chainlink's network.** Passport `0x793a540e…5782` was registered at 07:23:26 UTC on 2026-10-02 ([`0x162c97a7…feaa`](https://monadvision.com/tx/0x162c97a70e53441e16633250e1cf96d695b01939d10625bf29248a9c01e3feaa)). Ten Chainlink nodes recomputed its fingerprint, distance 0, matched, and the verdict landed in [`0x760dcb5e…2882`](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882), block 109,833,597, at 07:23:42 UTC, sent to the Keystone Forwarder `0x76c9…5E62`: 16 seconds from registration to the network's verdict. The deployment is `moolam-verifier`, workflow ID `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC, verdict step only.
-- **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
+- **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.site/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
 - **See it run itself.** Since 2026-09-27 15:12 UTC the [re-check runner](packages/recheck-runner) takes new registrations and requested re-checks every two minutes. Its first two verdicts were written with nobody pressing anything: [`0x37717b0c…e24b`](https://monadvision.com/tx/0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b) (block 108,499,297, 1 of 64 bits) and [`0x35c1302e…4c1a`](https://monadvision.com/tx/0x35c1302e7d190ef0f02e21432b483d47ef803edc13cf5fe88d00c116f3574c1a) (block 108,505,240, 0 of 64 bits), both matched, both through the public `SimulationReceiver`. Recorded in [proofs/rechecks.txt](proofs/rechecks.txt).
 - **Run one yourself.** With the CRE CLI signed in (`cre login`), this dry run sends nothing:
   `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive --trigger-index 0 --evm-tx-hash <a PassportRegistered tx> --evm-event-index 0`, from `packages/workflow`.
-- **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.vercel.app/en/docs/developers/chainlink-workflow).
+- **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.site/en/docs/developers/chainlink-workflow).
 - **Who can write one.** The receivers accept a simulated report only in a transaction signed by Moolam's own CRE wallet, so a copy of the public workflow cannot write a verdict.
 - **Where it stands.** All 17 real pictures, and 20 passports in all, carried a re-check by the index census of 2026-09-25, and every one of those reports was sent with `cre workflow simulate --broadcast` through the CRE simulation forwarder. Since 2026-10-02 the verdict step also runs on Chainlink's network. From 2026-10-07 the network workflow carries the look-alike step too, the hosted verify service serves the look-alike routes and its Google web check, and the hosted index is rebuilt so the live site's marks and counts see the network flag. Each passport card says which forwarder delivered its report, in plain words.
 
@@ -292,7 +292,7 @@ record is in [proofs/sealed-passports.txt](proofs/sealed-passports.txt) and the 
 [the Chainlink workflow page](docs/developers/chainlink-workflow.md).
 
 The same afternoon a second one ran on
-[Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4), drawn by agent
+[Kanchipuram Silk Loom at First Light](https://moolam.site/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4), drawn by agent
 10249 and registered sealed with the private re-check: its 35,599 byte private copy matched at
 distance 0, report [`0xa38fd971...fd72c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613.
 
@@ -442,11 +442,11 @@ flowchart TD
 
 ## The two-minute judge path
 
-Every claim on one page: [the proof](https://moolam.vercel.app/en/docs/proof).
+Every claim on one page: [the proof](https://moolam.site/en/docs/proof).
 
 ### The click path (no setup, no wallet)
 
-Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). The first seven steps are the two minutes, with no wallet and no seed phrase. Steps 8 to 10 are the agent, the edit and the registry, for anyone who wants the rest of it:
+Open the live app at https://moolam.site (on this machine, http://localhost:3210). The first seven steps are the two minutes, with no wallet and no seed phrase. Steps 8 to 10 are the agent, the edit and the registry, for anyone who wants the rest of it:
 
 1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Between "Sealed" and "Shared" the camera drops to the picture's lower edge for a chapter called "Stated": the consent register's rule draws itself from the day the picture was registered to today, a notch lands on the day the holder wrote their statement, and the four AI uses stamp in beside it, all read from MoolamConsent for that one passport. A passport nobody has written a statement for plays the film without that chapter rather than inventing one. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
 2. Open "Verify an image" in the header and press "Choose an image", or drop a file on the card. Picking it starts the check, so there is no upload button to find. Any copy of a registered image works: re-encoded, resized or mirrored. The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached, and "Verify another" clears it. An unregistered picture answers plainly that it is not registered and offers the studio.
@@ -454,7 +454,7 @@ Open the live app at https://moolam.vercel.app (on this machine, http://localhos
 4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
 5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
 6. Open the passport page from the receipt: the poster, the facts, the attestations (the Chainlink line: every real picture, seventeen as of 2026-09-25 at index block 107,960,831, carries a CRE re-check, read back in [proofs/rechecks.txt](proofs/rechecks.txt)), the lineage and a "Check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
-7. Open the Monsoon passport at [/en/passport/0xcdb25d37...d771638](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and scroll to "How AI may use this picture". Drag the day scrubber back past 2026-09-18 and the page asks the chain what was in force on the day under the thumb: "Nothing stated yet" for any day before the statement, "Not for AI training" from the moment it was written. That is one `consentAt` call per day you land on, not today's answer with an old date printed over it. Fifteen real pictures carry a statement as of 2026-09-25 at index block 107,961,293, and the passport's own holder is the only address that can write one.
+7. Open the Monsoon passport at [/en/passport/0xcdb25d37...d771638](https://moolam.site/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and scroll to "How AI may use this picture". Drag the day scrubber back past 2026-09-18 and the page asks the chain what was in force on the day under the thumb: "Nothing stated yet" for any day before the statement, "Not for AI training" from the moment it was written. That is one `consentAt` call per day you land on, not today's answer with an old date printed over it. Fifteen real pictures carry a statement as of 2026-09-25 at index block 107,961,293, and the passport's own holder is the only address that can write one.
 8. Back in "Register an image", press "Make one with the agent". Type a prompt or press one of the three examples, give it a title, and press "Make and register". The plate lights while the agent draws, the picture lands, and under "Two signatures, one transaction" the agent's seal fills with "Signed by the agent" before your device's unlock fills yours. One sponsored transaction carries both. The receipt names the model, agent 10249 and the new passport.
 9. Open a passport you own and scroll to its lineage. Press "Allow edits from this app": Privy asks once, and the signer it adds is held to a policy that allows `appendEdit` on the registry and nothing else. Drop an edited copy, add a title and a line on what changed, then press "Add this edit". It pins, sends from your own account with the fee sponsored, and the tree above redraws with the child. No passkey prompt on this one, and "Revoke" takes the permission back.
 10. Finish on "Explore" in the header: every passport on Monad, newest first, with the chips, the search by passport id and "Load more" for the rest. "Agents" beside it ranks the generators by trust score. Both read the live index, and both say so when it does not answer.
@@ -650,7 +650,7 @@ console.log(passport.creator, passport.generatorAgentId, passport.registeredAt);
 ```
 
 The indexer serves the same data over GraphQL, at the endpoint shown on
-[the GraphQL page](https://moolam.vercel.app/en/docs/api/graphql). Addresses are stored lowercase
+[the GraphQL page](https://moolam.site/en/docs/api/graphql). Addresses are stored lowercase
 there, including entity ids, so query with lowercase addresses.
 
 ---

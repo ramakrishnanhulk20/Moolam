@@ -43,7 +43,7 @@ describe("what robots.txt says", () => {
 describe("what the sitemap lists", () => {
   const when = new Date("2026-09-09T09:17:19.000Z");
   const map = sitemapEntries({
-    origin: "https://moolam.vercel.app/",
+    origin: "https://moolam.site/",
     locales: ["en", "ta"],
     defaultLocale: "en",
     pagePaths: ["/", "/verify", "/studio", "/docs", "/docs/api/events"],
@@ -55,16 +55,16 @@ describe("what the sitemap lists", () => {
   const urls = map.map((entry) => entry.url);
 
   it("carries every fixed page in every language", () => {
-    expect(urls).toContain("https://moolam.vercel.app/en");
-    expect(urls).toContain("https://moolam.vercel.app/ta");
-    expect(urls).toContain("https://moolam.vercel.app/en/verify");
-    expect(urls).toContain("https://moolam.vercel.app/ta/studio");
-    expect(urls).toContain("https://moolam.vercel.app/en/docs");
-    expect(urls).toContain("https://moolam.vercel.app/ta/docs/api/events");
+    expect(urls).toContain("https://moolam.site/en");
+    expect(urls).toContain("https://moolam.site/ta");
+    expect(urls).toContain("https://moolam.site/en/verify");
+    expect(urls).toContain("https://moolam.site/ta/studio");
+    expect(urls).toContain("https://moolam.site/en/docs");
+    expect(urls).toContain("https://moolam.site/ta/docs/api/events");
   });
 
   it("gives the home page the top priority and the records the lowest", () => {
-    expect(map.find((entry) => entry.url === "https://moolam.vercel.app/en")?.priority).toBe(1);
+    expect(map.find((entry) => entry.url === "https://moolam.site/en")?.priority).toBe(1);
     expect(map.find((entry) => entry.url.includes("/verify"))?.priority).toBe(0.8);
     expect(map.find((entry) => entry.url.includes("/agent/"))?.priority).toBe(0.6);
   });
@@ -72,17 +72,17 @@ describe("what the sitemap lists", () => {
   it("lists a record once, in the default language, with the date the index knows", () => {
     const records = urls.filter((url) => url.includes("/passport/") || url.includes("/agent/"));
     expect(records).toEqual([
-      `https://moolam.vercel.app/en/passport/0x${"1a".repeat(32)}`,
-      "https://moolam.vercel.app/en/agent/10248",
+      `https://moolam.site/en/passport/0x${"1a".repeat(32)}`,
+      "https://moolam.site/en/agent/10248",
     ]);
     expect(map.find((entry) => entry.url.includes("/agent/"))?.lastModified).toBe(when);
   });
 
   it("points a crawler at the same page in the other languages", () => {
-    const home = map.find((entry) => entry.url === "https://moolam.vercel.app/en");
+    const home = map.find((entry) => entry.url === "https://moolam.site/en");
     expect(home?.alternates?.languages).toEqual({
-      en: "https://moolam.vercel.app/en",
-      ta: "https://moolam.vercel.app/ta",
+      en: "https://moolam.site/en",
+      ta: "https://moolam.site/ta",
     });
   });
 

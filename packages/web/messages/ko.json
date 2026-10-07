@@ -2463,12 +2463,12 @@
       "source": "Moolam의 인덱스와 서명 목록에서 읽어 1분간 보관합니다.",
       "unread": "지금은 읽지 못함",
       "now": "지금 운영 중: Moolam 검증 서비스의 플랫폼 경로와 MCP 서버, 그리고 Dreamloom.",
-      "next": "다음 릴리스에 제공: 이메일 앞으로 맡겨 두기, 그리고 moolam.vercel.app의 공동 서명 창과 연결 창.",
+      "next": "다음 릴리스에 제공: 이메일 앞으로 맡겨 두기, 그리고 moolam.site의 공동 서명 창과 연결 창.",
       "agent": "에이전트 {id}",
       "pictureAlt": "{title}, {platform}에서 그려 Monad에 여권이 있는 이미지",
       "pictureAltUntitled": "{platform}에서 그려 Monad에 여권이 있는 이미지",
       "open": "Dreamloom 열기",
-      "nowShipped": "지금 운영 중: Moolam 검증 서비스의 플랫폼 경로와 MCP 서버, Dreamloom, 그리고 moolam.vercel.app의 공동 서명 창, 연결 창, 이메일 창."
+      "nowShipped": "지금 운영 중: Moolam 검증 서비스의 플랫폼 경로와 MCP 서버, Dreamloom, 그리고 moolam.site의 공동 서명 창, 연결 창, 이메일 창."
     },
     "pricing": {
       "kicker": "요금",

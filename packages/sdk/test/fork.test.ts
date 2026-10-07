@@ -229,7 +229,7 @@ afterAll(async () => {
 
 forkSuite("setupPlatform", () => {
   it("refuses Moolam's hostname and localhost before touching the chain", async () => {
-    await expect(setupPlatform({ walletClient: platformWallet, rpId: "moolam.vercel.app" })).rejects.toMatchObject({ code: "invalid-rp-id" });
+    await expect(setupPlatform({ walletClient: platformWallet, rpId: "moolam.site" })).rejects.toMatchObject({ code: "invalid-rp-id" });
     await expect(setupPlatform({ walletClient: platformWallet, rpId: "localhost" })).rejects.toMatchObject({ code: "invalid-rp-id" });
     expect(await nonceOf(platformAccount.address)).toBe(0);
   });
@@ -348,7 +348,7 @@ forkSuite("co-sign", () => {
       title: "A harbour in fog",
       terms: TERMS,
     });
-    expect(handle.cosignUrl).toBe(`https://moolam.vercel.app/cosign#${handle.handle}`);
+    expect(handle.cosignUrl).toBe(`https://moolam.site/cosign#${handle.handle}`);
     expect(JSON.stringify(handle)).not.toContain(PLATFORM_KEY);
 
     const waiting = waitForCreator(handle, { pollMs: 100, timeoutMs: 30_000 });
@@ -360,7 +360,7 @@ forkSuite("co-sign", () => {
 
     // What the Moolam co-sign page does in the person's browser: bind their passkey once, then sign
     // the digest it rebuilt from the fields it drew and send register from their wallet.
-    personKey = SoftwarePasskey.random({ rpId: "moolam.vercel.app" });
+    personKey = SoftwarePasskey.random({ rpId: "moolam.site" });
     const nonce = await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "bindNonce", args: [person.address] });
     const bindAuth = personKey.sign(bindDigest(person.address, personKey.qx, personKey.qy, nonce));
     await reader.waitForTransactionReceipt({

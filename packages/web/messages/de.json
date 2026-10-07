@@ -2452,12 +2452,12 @@
       "source": "Gelesen aus Moolams Index und seiner signierten Liste, für eine Minute zwischengespeichert.",
       "unread": "Gerade nicht gelesen",
       "now": "Jetzt live: die Plattform-Routen und der MCP-Server auf dem Prüfdienst von Moolam, dazu Dreamloom.",
-      "next": "Kommt mit der nächsten Version: das Hinterlegen unter der E-Mail sowie die Fenster zum Mitsignieren und Verbinden auf moolam.vercel.app.",
+      "next": "Kommt mit der nächsten Version: das Hinterlegen unter der E-Mail sowie die Fenster zum Mitsignieren und Verbinden auf moolam.site.",
       "agent": "Agent {id}",
       "pictureAlt": "{title}, ein auf {platform} gezeichnetes Bild mit seinem Pass auf Monad",
       "pictureAltUntitled": "Ein auf {platform} gezeichnetes Bild mit seinem Pass auf Monad",
       "open": "Dreamloom öffnen",
-      "nowShipped": "Jetzt live: die Plattform-Routen und der MCP-Server auf dem Prüfdienst von Moolam, Dreamloom sowie die Fenster zum Mitsignieren, Verbinden und für die E-Mail auf moolam.vercel.app."
+      "nowShipped": "Jetzt live: die Plattform-Routen und der MCP-Server auf dem Prüfdienst von Moolam, Dreamloom sowie die Fenster zum Mitsignieren, Verbinden und für die E-Mail auf moolam.site."
     },
     "pricing": {
       "kicker": "Preise",

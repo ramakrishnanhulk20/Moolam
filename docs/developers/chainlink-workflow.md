@@ -447,7 +447,7 @@ and [rechecks.txt](../../proofs/rechecks.txt), and attack pass 4 reads the row b
 [pass-4.txt](../../proofs/attacks/pass-4.txt), attack 8d.
 
 The second run, the same afternoon, was on
-[Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4), a picture agent 10249
+[Kanchipuram Silk Loom at First Light](https://moolam.site/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4), a picture agent 10249
 drew and its creator registered sealed with the private re-check: the 35,599 byte private copy
 recomputed to `0x85c0d272787e6e77`, the stored fingerprint exactly, distance 0, matched, report
 [`0xa38fd971...`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613.

@@ -19,7 +19,7 @@ function panel(remembered: string | null): string {
       createElement(ChoosePanel, {
         id: ID,
         prompt: "a fox reading by lamplight",
-        moolamSite: "https://moolam.vercel.app",
+        moolamSite: "https://moolam.site",
         remembered,
         onRemembered: noop,
         onCosignOpened: noop,

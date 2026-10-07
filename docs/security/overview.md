@@ -108,8 +108,8 @@ cannot choose. The route is mounted only when the host holds both a Pinata token
 so a verify-only deployment does not carry the surface at all, and the service holds no key that can
 write to the chain either way: the browser signs the passport and sends the transaction itself.
 
-**The platform kit and the MCP server.** Two surfaces go live with the next deploy of the verify
-service. An outside image generator holding a Moolam key can have pictures signed and fingerprinted,
+**The platform kit and the MCP server.** Two surfaces have been live on the verify service since
+30 September 2026. An outside image generator holding a Moolam key can have pictures signed and fingerprinted,
 but the key only identifies and meters it: every prepare also needs a signature from the owner of
 its ERC-8004 agent, read on chain at that moment, and a per-key quota and a ceiling for every
 platform bound the spend. A platform-mode passport is one company holding two keys, and Moolam says

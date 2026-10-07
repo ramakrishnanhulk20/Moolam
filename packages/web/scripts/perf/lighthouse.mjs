@@ -10,7 +10,7 @@
  * and nothing is added to package.json.
  *
  *   node packages/web/scripts/perf/lighthouse.mjs --base http://localhost:3311
- *   node packages/web/scripts/perf/lighthouse.mjs --base https://moolam.vercel.app --profile desktop
+ *   node packages/web/scripts/perf/lighthouse.mjs --base https://moolam.site --profile desktop
  *
  * Options: --base, --profile (mobile | desktop | both), --paths (comma separated),
  * --out (write the table to a file as well as the screen), --json (keep the raw

@@ -219,7 +219,7 @@ export async function readGallery(): Promise<GalleryAnswer> {
   shared ??= createGalleryReader({
     indexUrl: process.env.MOOLAM_INDEX_URL,
     agentId: process.env.DREAMLOOM_AGENT_ID,
-    siteUrl: process.env.MOOLAM_SITE_URL || "https://moolam.vercel.app",
+    siteUrl: process.env.MOOLAM_SITE_URL || "https://moolam.site",
     gateway: process.env.MOOLAM_IPFS_GATEWAY || MOOLAM_GATEWAY,
   });
   return await shared();

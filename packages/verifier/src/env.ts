@@ -380,7 +380,7 @@ const schema = z
           if (!isExactOrigin(origin)) {
             ctx.addIssue({
               code: "custom",
-              message: `CORS_ORIGINS must be a comma separated list of exact origins such as https://moolam.app, and "${origin}" is not one`,
+              message: `CORS_ORIGINS must be a comma separated list of exact origins such as https://moolam.site, and "${origin}" is not one`,
             });
             return z.NEVER;
           }

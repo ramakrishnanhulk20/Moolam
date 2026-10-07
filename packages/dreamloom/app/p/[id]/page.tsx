@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 /** Where Dreamloom answers when DREAMLOOM_ORIGIN is unset, the same fallback the server's Origin check uses. */
 const LOCAL_ORIGIN = "http://localhost:3300";
-const MOOLAM_SITE = "https://moolam.vercel.app";
+const MOOLAM_SITE = "https://moolam.site";
 
 /**
  * Both values are public: Moolam's site is where the passport lives, and Dreamloom's origin is what

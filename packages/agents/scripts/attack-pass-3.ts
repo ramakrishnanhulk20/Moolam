@@ -23,7 +23,7 @@ import { MONAD_MAINNET, loadDeployment } from "../src/chain/addresses.js";
  */
 
 const VERIFIER = "https://verifier-production-d76f.up.railway.app";
-const SITE = "https://moolam.vercel.app";
+const SITE = "https://moolam.site";
 
 /** The first sealed passport on mainnet, registered from the live studio (proofs/sealed-passports.txt). */
 const SEALED_ID = "0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c" as Hex;

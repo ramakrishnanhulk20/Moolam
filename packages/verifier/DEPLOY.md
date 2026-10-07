@@ -59,7 +59,7 @@ the boot loudly and names the variable.
 | `PINATA_JWT` | yes for the studio | An API key made at app.pinata.cloud, the JWT it shows once. This is what `/prepare` pins with, so treat it as a spending secret |
 | `PINATA_GATEWAY_URL` | no | This Pinata account's dedicated gateway, ending in `/ipfs/`. Defaults to the public gateway, which rate-limits a busy address |
 | `PRIVY_APP_ID` | yes for the studio | The app id from dashboard.privy.io, the same one the web app signs users in with. `/prepare` accepts that app's access tokens and no other's |
-| `CORS_ORIGINS` | yes for the studio | Comma separated exact origins of the web app, such as `https://moolam.app,http://localhost:3000`. No wildcard, no trailing slash |
+| `CORS_ORIGINS` | yes for the studio | Comma separated exact origins of the web app, such as `https://moolam.site,http://localhost:3000`. No wildcard, no trailing slash |
 | `OPENAI_API_KEY` | yes for `/generate` | A key from platform.openai.com. Every call spends money, so scope it to this project and watch the usage page |
 | `OPENROUTER_API_KEY` | no | Used only when there is no OpenAI key. Then set `AGENT_IMAGE_MODEL` to the vendor-prefixed name, `openai/gpt-image-1-mini` |
 | `AGENT_IMAGE_MODEL` | no | Defaults to `gpt-image-1-mini`, the cheapest image model on the account |

@@ -2473,12 +2473,12 @@
       "source": "读自 Moolam 的索引和签名名单，缓存一分钟。",
       "unread": "此刻未能读取",
       "now": "现已上线：Moolam 验证服务上的平台接口和 MCP 服务器，以及 Dreamloom。",
-      "next": "随下一个版本推出：留在本人的邮箱名下，以及 moolam.vercel.app 上的共同签名窗口和连接窗口。",
+      "next": "随下一个版本推出：留在本人的邮箱名下，以及 moolam.site 上的共同签名窗口和连接窗口。",
       "agent": "智能体 {id}",
       "pictureAlt": "{title}，一张在 {platform} 上绘制、在 Monad 上有护照的图片",
       "pictureAltUntitled": "一张在 {platform} 上绘制、在 Monad 上有护照的图片",
       "open": "打开 Dreamloom",
-      "nowShipped": "现已上线：Moolam 验证服务上的平台接口和 MCP 服务器、Dreamloom，以及 moolam.vercel.app 上的共同签名、连接和邮箱窗口。"
+      "nowShipped": "现已上线：Moolam 验证服务上的平台接口和 MCP 服务器、Dreamloom，以及 moolam.site 上的共同签名、连接和邮箱窗口。"
     },
     "pricing": {
       "kicker": "价格",

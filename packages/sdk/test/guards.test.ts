@@ -41,6 +41,8 @@ describe("the rpId a platform binds its server key under", () => {
   it("refuses Moolam's hostname and every name under it", () => {
     expect(rpIdProblem("moolam.vercel.app")).toMatch(/never Moolam's/);
     expect(rpIdProblem("cosign.moolam.vercel.app")).toMatch(/never Moolam's/);
+    expect(rpIdProblem("moolam.site")).toMatch(/never Moolam's/);
+    expect(rpIdProblem("cosign.moolam.site")).toMatch(/never Moolam's/);
   });
 
   it("refuses localhost, IP addresses and single labels", () => {

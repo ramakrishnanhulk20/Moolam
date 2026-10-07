@@ -11,7 +11,7 @@ The Envio indexer serves every passport, edit tree, attestation, dispute and cou
 ```
 
 The address is set by the deployment, so it always names the index the site itself reads. On GitHub
-it shows as a placeholder: the endpoint is the one on moolam.vercel.app/en/docs/api/graphql.
+it shows as a placeholder: the endpoint is the one on moolam.site/en/docs/api/graphql.
 
 Each entity is a query field named exactly as it is in `schema.graphql`, taking `where`,
 `order_by`, `limit` and `offset`. Addresses are stored lowercase, including entity ids, so query

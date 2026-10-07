@@ -409,7 +409,7 @@ describe("the platform routes", () => {
     expect(created?.digitalSourceType).toBe("http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia");
     expect(created?.softwareAgent).toMatchObject({
       name: "Acme Images generator",
-      "app.vercel.moolam.erc8004": { agentId: AGENT_ID.toString() },
+      "site.moolam.erc8004": { agentId: AGENT_ID.toString() },
     });
   }, 60_000);
 

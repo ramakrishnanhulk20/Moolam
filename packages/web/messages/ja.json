@@ -2466,12 +2466,12 @@
       "source": "Moolam のインデックスと署名済みリストから読み取り、1 分間保持しています。",
       "unread": "いまは読み取れません",
       "now": "稼働中: Moolam の検証サービス上のプラットフォーム用ルートと MCP サーバー、そして Dreamloom。",
-      "next": "次のリリースで提供: メールアドレス宛てに預ける方法と、moolam.vercel.app の共同署名と接続のウィンドウ。",
+      "next": "次のリリースで提供: メールアドレス宛てに預ける方法と、moolam.site の共同署名と接続のウィンドウ。",
       "agent": "エージェント {id}",
       "pictureAlt": "{title}、{platform} で描かれ、Monad 上にパスポートを持つ画像",
       "pictureAltUntitled": "{platform} で描かれ、Monad 上にパスポートを持つ画像",
       "open": "Dreamloom を開く",
-      "nowShipped": "稼働中: Moolam の検証サービス上のプラットフォーム用ルートと MCP サーバー、Dreamloom、そして moolam.vercel.app の共同署名、接続、メールのウィンドウ。"
+      "nowShipped": "稼働中: Moolam の検証サービス上のプラットフォーム用ルートと MCP サーバー、Dreamloom、そして moolam.site の共同署名、接続、メールのウィンドウ。"
     },
     "pricing": {
       "kicker": "料金",

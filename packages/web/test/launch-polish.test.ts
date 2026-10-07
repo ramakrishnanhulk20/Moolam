@@ -179,7 +179,7 @@ describe("the ten addresses every page answers at", () => {
       here.path = route;
       const markup = renderToStaticMarkup(
         createElement(PageAddress as FunctionComponent<Record<string, string>>, {
-          site: "https://moolam.vercel.app",
+          site: "https://moolam.site",
           ogLocale: "ta_IN",
           siteName: "Moolam",
         }),
@@ -188,13 +188,13 @@ describe("the ten addresses every page answers at", () => {
       const tail = route === "/" ? "" : route;
       for (const locale of locales) {
         expect(markup, `${route} ${locale}`).toContain(
-          `<link rel="alternate" hrefLang="${locale}" href="https://moolam.vercel.app/${locale}${tail}"/>`,
+          `<link rel="alternate" hrefLang="${locale}" href="https://moolam.site/${locale}${tail}"/>`,
         );
       }
       expect(markup, route).toContain(
-        `<link rel="alternate" hrefLang="x-default" href="https://moolam.vercel.app/en${tail}"/>`,
+        `<link rel="alternate" hrefLang="x-default" href="https://moolam.site/en${tail}"/>`,
       );
-      expect(markup, route).toContain(`<meta property="og:url" content="https://moolam.vercel.app/ta${tail}"/>`);
+      expect(markup, route).toContain(`<meta property="og:url" content="https://moolam.site/ta${tail}"/>`);
       expect(markup, route).toContain('<meta property="og:locale" content="ta_IN"/>');
       expect(markup, route).toContain('<meta property="og:site_name" content="Moolam"/>');
     }

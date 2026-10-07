@@ -20,7 +20,7 @@ function text(markup: string): string {
   return markup.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
 }
 
-function panel(picture: Partial<PictureView>, moolamSite = "https://moolam.vercel.app"): string {
+function panel(picture: Partial<PictureView>, moolamSite = "https://moolam.site"): string {
   const full: PictureView = { state: "registered", prompt: "a fox reading by lamplight", createdAt: new Date(0).toISOString(), ...picture };
   return renderToStaticMarkup(createElement(PassportPanel, { picture: full, moolamSite }));
 }
@@ -53,8 +53,8 @@ describe("the mask", () => {
 describe("the waiting line", () => {
   it("says the passport waits at Moolam, with the masked address and Moolam's My pictures page", () => {
     const markup = panel({ mode: "platform", passportId: PASSPORT, registerTx: TX, delivery: { kind: "waiting", to: "r****@gmail.com" } });
-    expect(text(markup)).toContain("Your passport is waiting at Moolam.Claim it with r****@gmail.com at moolam.vercel.app/en/mine");
-    expect(markup).toContain('href="https://moolam.vercel.app/en/mine"');
+    expect(text(markup)).toContain("Your passport is waiting at Moolam.Claim it with r****@gmail.com at moolam.site/en/mine");
+    expect(markup).toContain('href="https://moolam.site/en/mine"');
   });
 
   it("names the Moolam site it was set up with", () => {

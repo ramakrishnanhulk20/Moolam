@@ -134,7 +134,7 @@ describe("P4: the handle is a capability read from the fragment only", () => {
 
   it("never reads a handle from the path or the query string", () => {
     vi.stubGlobal("window", {
-      location: { hash: "", pathname: `/en/cosign/${HANDLE}`, search: `?handle=${HANDLE}`, href: `https://moolam.vercel.app/en/cosign/${HANDLE}?handle=${HANDLE}` },
+      location: { hash: "", pathname: `/en/cosign/${HANDLE}`, search: `?handle=${HANDLE}`, href: `https://moolam.site/en/cosign/${HANDLE}?handle=${HANDLE}` },
     });
     expect(handle.readHandle()).toBeNull();
     vi.stubGlobal("window", { location: { hash: `#${HANDLE}`, pathname: "/en/cosign", search: "" } });
@@ -182,13 +182,13 @@ describe("P4: the handle is a capability read from the fragment only", () => {
   });
 
   it("strips the fragment from every address the analytics beacons are given", () => {
-    const page = { type: "pageview" as const, url: `https://moolam.vercel.app/en/cosign#${HANDLE}` };
-    expect(handle.stripFragment(page)).toEqual({ type: "pageview", url: "https://moolam.vercel.app/en/cosign" });
-    const vital = { type: "LCP", url: `https://moolam.vercel.app/ta/cosign#${HANDLE}`, route: "/[locale]/cosign" };
-    expect(handle.stripFragment(vital)).toEqual({ type: "LCP", url: "https://moolam.vercel.app/ta/cosign", route: "/[locale]/cosign" });
+    const page = { type: "pageview" as const, url: `https://moolam.site/en/cosign#${HANDLE}` };
+    expect(handle.stripFragment(page)).toEqual({ type: "pageview", url: "https://moolam.site/en/cosign" });
+    const vital = { type: "LCP", url: `https://moolam.site/ta/cosign#${HANDLE}`, route: "/[locale]/cosign" };
+    expect(handle.stripFragment(vital)).toEqual({ type: "LCP", url: "https://moolam.site/ta/cosign", route: "/[locale]/cosign" });
     expect(handle.withoutFragment(`not a url#${HANDLE}`)).toBe("not a url");
-    expect(handle.stripFragment({ url: "https://moolam.vercel.app/en/explore?q=1" }).url).toBe(
-      "https://moolam.vercel.app/en/explore?q=1",
+    expect(handle.stripFragment({ url: "https://moolam.site/en/explore?q=1" }).url).toBe(
+      "https://moolam.site/en/explore?q=1",
     );
   });
 

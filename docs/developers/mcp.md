@@ -10,9 +10,9 @@ sign-in, no tool that writes, and the tool list is the same for every caller.
 
 > **What is live today.** The server runs on the hosted verify service at
 > `https://verifier-production-d76f.up.railway.app/mcp`, with the six tools below, and
-> `https://<verify-service>` on this page stands for that address. One part waits for the next deploy
-> of the verify service: the `credit` cases `held`, `handed`, `confirmed` and `passedOn` described
-> below. Until then the live server answers `credit` by the older rule.
+> `https://<verify-service>` on this page stands for that address. Since 7 October 2026 the live
+> server answers `credit` with the cases `held`, `handed`, `confirmed` and `passedOn` described
+> below.
 
 ## The endpoint
 

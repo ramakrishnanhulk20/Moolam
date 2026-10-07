@@ -98,10 +98,10 @@ const CLAIM_GENERATOR = "moolam-platform-kit/0.1.0";
 
 /**
  * The C2PA namespace a platform's agent is named under inside softwareAgent: the reverse-domain form
- * of moolam.vercel.app, the one the signed and validated test in the research used. It is written
- * into every manifest for good, so it changes only with a Moolam domain of its own.
+ * of moolam.site, Moolam's own domain. Manifests signed before 7 October 2026 carry
+ * app.vercel.moolam.erc8004, from moolam.vercel.app; both are written into their manifests for good.
  */
-const AGENT_NAMESPACE = "app.vercel.moolam.erc8004";
+const AGENT_NAMESPACE = "site.moolam.erc8004";
 
 /** The ERC-8004 identity registry as a CAIP-10 address on Monad mainnet. */
 const AGENT_REGISTRY_CAIP = `eip155:143:${AGENT_IDENTITY_REGISTRY}`;

@@ -267,7 +267,7 @@ service before it listens rather than after.
 | `PRIVY_EDIT_POLICY_ID` | The policy that quorum is held to: `appendEdit` on the Moolam registry, no MON, nothing else. A signer without it is refused |
 | `EDITS_PER_DAY` | Edits per creator in a rolling 24 hours, default 5 |
 | `MOOLAM_REGISTRY_ADDRESS` | The registry the agent's signature is bound to and `/edit` sends to. Defaults to the mainnet deployment |
-| `CORS_ORIGINS` | Comma separated exact origins allowed to call this service from a browser, such as `https://moolam.app,http://localhost:3000`. No wildcard, no path, no trailing slash |
+| `CORS_ORIGINS` | Comma separated exact origins allowed to call this service from a browser, such as `https://moolam.site,http://localhost:3000`. No wildcard, no path, no trailing slash |
 | `PRIVY_JWKS_OVERRIDE_PATH` | A local JWKS file for tests that sign their own tokens. Refused when `NODE_ENV` is production, because anyone holding that key could then mint tokens this service accepts |
 
 The certificate and the key are one identity, so the two paths are set together or not at all.

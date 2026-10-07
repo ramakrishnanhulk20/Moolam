@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 /** Where this app answers in public, for the sitemap, robots and every social card. */
-export const DEFAULT_SITE_URL = "https://moolam.vercel.app";
+export const DEFAULT_SITE_URL = "https://moolam.site";
 
 /**
  * The public origin, without a trailing slash.

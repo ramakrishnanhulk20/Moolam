@@ -2472,12 +2472,12 @@
       "source": "Cifras leídas del índice de Moolam y de su lista firmada, guardadas durante un minuto.",
       "unread": "No se pudo leer ahora",
       "now": "Ya en marcha: las rutas para plataformas y el servidor MCP en el servicio de verificación de Moolam, y Dreamloom.",
-      "next": "Llega con la próxima versión: la opción Déjala para su correo, y las ventanas de cofirma y de conexión en moolam.vercel.app.",
+      "next": "Llega con la próxima versión: la opción Déjala para su correo, y las ventanas de cofirma y de conexión en moolam.site.",
       "agent": "Agente {id}",
       "pictureAlt": "{title}, una imagen dibujada en {platform} con su pasaporte en Monad",
       "pictureAltUntitled": "Una imagen dibujada en {platform} con su pasaporte en Monad",
       "open": "Abrir Dreamloom",
-      "nowShipped": "Ya en marcha: las rutas para plataformas y el servidor MCP en el servicio de verificación de Moolam, Dreamloom, y las ventanas de cofirma, de conexión y de correo en moolam.vercel.app."
+      "nowShipped": "Ya en marcha: las rutas para plataformas y el servidor MCP en el servicio de verificación de Moolam, Dreamloom, y las ventanas de cofirma, de conexión y de correo en moolam.site."
     },
     "pricing": {
       "kicker": "Precios",

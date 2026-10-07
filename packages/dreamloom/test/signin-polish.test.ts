@@ -154,7 +154,7 @@ describe("each new line shows only in its own case", () => {
 
   function panel(picture: Partial<PictureView>): string {
     const full: PictureView = { state: "registered", prompt: "a fox reading by lamplight", createdAt: new Date(0).toISOString(), ...picture };
-    return text(renderToStaticMarkup(createElement(PassportPanel, { picture: full, moolamSite: "https://moolam.vercel.app" })));
+    return text(renderToStaticMarkup(createElement(PassportPanel, { picture: full, moolamSite: "https://moolam.site" })));
   }
 
   function move(waitsByEmail?: boolean): string {

@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { moolamOrigin } from "@/components/result/moolam-links";
 import { isRegisteredHint, sharedAddress } from "@/components/result/window-flow";
 
-const SITE = "https://moolam.vercel.app";
+const SITE = "https://moolam.site";
 const ORIGIN = moolamOrigin(SITE);
 const LOWER = "0x52908400098527886e0f7030069857d2e4169ee7";
 const CHECKSUMMED = "0x52908400098527886E0F7030069857D2E4169EE7";
 
 describe("the address message from Moolam's connect page", () => {
   it("takes a well-formed address from Moolam's exact origin, checksummed", () => {
-    expect(ORIGIN).toBe("https://moolam.vercel.app");
+    expect(ORIGIN).toBe("https://moolam.site");
     expect(sharedAddress({ origin: SITE, data: { type: "moolam:address", address: LOWER } }, ORIGIN)).toBe(CHECKSUMMED);
     expect(sharedAddress({ origin: SITE, data: { type: "moolam:address", address: CHECKSUMMED } }, ORIGIN)).toBe(
       CHECKSUMMED,
@@ -19,9 +19,9 @@ describe("the address message from Moolam's connect page", () => {
   it("ignores a wrong origin, however close it looks", () => {
     for (const origin of [
       "https://evil.example",
-      "https://moolam.vercel.app.evil.example",
-      "http://moolam.vercel.app",
-      "https://moolam.vercel.app:444",
+      "https://moolam.site.evil.example",
+      "http://moolam.site",
+      "https://moolam.site:444",
       "null",
       "",
     ]) {

@@ -33,7 +33,7 @@ export function mineLabel(moolamSite: string): string {
   try {
     return `${new URL(moolamSite).host}/en/mine`;
   } catch {
-    return "moolam.vercel.app/en/mine";
+    return "moolam.site/en/mine";
   }
 }
 

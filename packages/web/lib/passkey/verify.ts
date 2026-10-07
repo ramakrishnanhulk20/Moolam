@@ -24,7 +24,7 @@ export type AuthCheck = { ok: true } | { ok: false; problem: AuthProblem; messag
  * refusing here rather than paying gas to have accepted.
  */
 export interface Expected {
-  /** The relying party id the credential was made under, "moolam.app" or "localhost". */
+  /** The relying party id the credential was made under, "moolam.site" or "localhost". */
   rpId?: string;
   /** The exact origin clientDataJSON must carry, scheme, host and port. */
   origin?: string;
