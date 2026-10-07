@@ -69,8 +69,8 @@ both together, the way the Explore filter does.
 
 ## Look-alikes and Chainlink's network
 
-These fields arrive when the hosted index is rebuilt on push day, 2026-10-12; the live endpoint does
-not serve them yet.
+These fields are live from 2026-10-07: the hosted index is rebuilt with them, and the live endpoint
+serves them.
 
 On `Passport`:
 

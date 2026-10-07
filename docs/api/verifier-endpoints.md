@@ -1498,7 +1498,7 @@ A sealed passport whose document asks for a private re-check is queued only whil
 
 ## POST /lookalikes/candidates
 
-The hosted service gets both `/lookalikes` routes, and its Google web check, on push day, 2026-10-12.
+The hosted service serves both `/lookalikes` routes, and runs its Google web check, from 2026-10-07.
 
 Which earlier passports might show the same picture as a set of fingerprints. Chainlink's nodes ask
 it during a look-alike run; anyone may. The answer only proposes: the workflow reads each id on

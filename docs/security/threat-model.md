@@ -700,7 +700,7 @@ What went live on 2026-10-02, on Monad mainnet:
   [`0x446c3051...`](https://monadvision.com/tx/0x446c3051322060339d8e95bcc2938ca6db6692e8d583d360ebab6e626ea1ff9f).
 - Chainlink's network runs `moolam-verifier`, workflow ID
   `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner
-  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. It holds the verdict
+  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. On that day it held the verdict
   step only. The index and the workflow count network writes from 1790924898 (07:08:18 UTC).
 - The first network verdict: passport `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782`,
   registered at 07:23:26 UTC in
@@ -713,10 +713,10 @@ What went live on 2026-10-02, on Monad mainnet:
   [`0x45700954...`](https://monadvision.com/tx/0x457009544b51c256c130534b76cd7c3052e3f8299984b54d78037d21fb5d371d),
   block 109,834,440, 07:27 UTC. Rejected bonds are burned.
 
-Still to come on push day, 2026-10-12: the look-alike step in the network workflow, the verify
+Live from 2026-10-07: the look-alike step in the network workflow, the verify
 service's look-alike routes and its Google web check on the hosted service, and the hosted index
-rebuild that lets the live site's marks and counts see the network flag. Until that rebuild the live
-site's index cannot tell network verdicts from test runs. Paths are under `packages/verifier` unless
+rebuild that lets the live site's marks and counts see the network flag. Before that rebuild the live
+site's index could not tell network verdicts from test runs. Paths are under `packages/verifier` unless
 they name another package.
 
 ### A) What kind of system this is

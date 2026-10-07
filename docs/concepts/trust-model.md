@@ -130,8 +130,8 @@ is on chain: ten nodes recomputed the fingerprint, distance 0, matched, written 
 [transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882)
 at 07:23:42 UTC, 16 seconds after the passport was registered. Only a verdict from Chainlink's
 network, where a quorum of nodes has to agree, can turn on a passport's trust mark: one written by
-`MoolamReceiver` in a transaction sent to Chainlink's forwarder. The live site's index cannot tell
-those from test runs until its rebuild on push day, 2026-10-12. What each mark means, and what
+`MoolamReceiver` in a transaction sent to Chainlink's forwarder. The live site's index tells
+those from test runs from its rebuild on 2026-10-07. What each mark means, and what
 lights it, is in [The trust mark](trust-mark).
 
 ## Disputes and bonds

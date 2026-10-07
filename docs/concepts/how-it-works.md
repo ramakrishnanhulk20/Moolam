@@ -128,7 +128,7 @@ registered
 ([transaction 0x760dcb5e…2882](https://monadvision.com/tx/0x760dcb5e1b83929201d8fe299ce9c3be2cf8981502117c5288386d7da3438882)).
 Every verdict written before that came from Chainlink's simulator with `--broadcast`, which is one
 machine and no consensus, and the passport page labels each one by the forwarder that delivered it.
-The look-alike step joins the network workflow on push day, 2026-10-12.
+The look-alike step is in the network workflow from 2026-10-07.
 
 ## 6. Trusted
 

@@ -59,7 +59,7 @@ could point it somewhere else, and a transaction that never went through the for
 from Chainlink. The same rule decides look-alike records. It is held by `isNetworkWrite` in
 `packages/indexer/src/network.ts`.
 
-### What is live, and what comes on push day
+### What is live
 
 Live on Monad mainnet since 2026-10-02:
 
@@ -68,7 +68,7 @@ Live on Monad mainnet since 2026-10-02:
   block 109,830,535, at 07:08:18 UTC.
 - Chainlink's network runs `moolam-verifier`, workflow ID
   `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890`, owner
-  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. This deployment holds the
+  `0xf072a8c620bfc818875736e3f2d3a2a339c06584`, active from about 07:09 UTC. On 2026-10-02 this deployment held the
   verdict step only.
 - The first network verdict was written at 07:23:42 UTC for passport
   `0x793a540e287cbdfc6cb680c42b553641fa504afebcce6fd5f035e5e600f15782`, registered at 07:23:26 UTC in
@@ -78,12 +78,12 @@ Live on Monad mainnet since 2026-10-02:
   block 109,833,597, sent to the Keystone Forwarder: 16 seconds from registration to the network's
   verdict.
 
-Still to come on push day, 2026-10-12:
+Live from 2026-10-07:
 
 - The look-alike step in the network workflow.
 - The verify service's look-alike routes and its Google web check on the hosted service.
-- The hosted index rebuild that lets the live site's marks and counts see the network flag. Until
-  that rebuild the live site's index cannot tell a network verdict from a test run.
+- The hosted index rebuild that lets the live site's marks and counts see the network flag. Before
+  that rebuild the live site's index could not tell a network verdict from a test run.
 
 ## Look-alikes
 
@@ -92,9 +92,8 @@ Still to come on push day, 2026-10-12:
 Anyone can save a copy of someone else's picture and register it as a new original, because a new
 file is a new hash. The look-alike check is how Moolam catches that after the fact.
 
-The look-alike step is built and tested but is not in the network deployment yet. It arrives on push
-day, 2026-10-12, with the verify service's look-alike routes. What follows is how it works once it is
-in.
+The look-alike step is built and tested, and it is in the network deployment from 2026-10-07, with the
+verify service's look-alike routes. What follows is how it works.
 
 When Chainlink's workflow has written its verdict on a new original passport, and its own
 measurement of the picture matched, it asks Moolam's verify service for up to three earlier

@@ -214,12 +214,12 @@ true and distance 0.
 ## On Chainlink's network
 
 Since 2026-10-02 `moolam-verifier` also runs on Chainlink's network, where a quorum of nodes has to
-agree before a report is signed. The deployment holds the verdict step only: the fetch, the
-fingerprint, the consensus and the write. The look-alike step is not in it yet.
+agree before a report is signed. The deployment of 2026-10-02 held the verdict step only: the fetch, the
+fingerprint, the consensus and the write. The look-alike step is in it from 2026-10-07.
 
 | What | Value |
 | --- | --- |
-| Workflow | `moolam-verifier`, deployed to Chainlink's network, verdict step only |
+| Workflow | `moolam-verifier`, deployed to Chainlink's network, verdict step only on 2026-10-02 |
 | Workflow ID | `00c4dd797775bb465fff638ab5171b19a35ed11d4513eb4890661935d4801890` |
 | Owner | `0xf072a8c620bfc818875736e3f2d3a2a339c06584` |
 | Active from | about 07:09 UTC on 2026-10-02 |
@@ -242,12 +242,12 @@ The first verdict from the network:
 To check it yourself, open the verdict transaction on MonadVision: its `to` is the Keystone
 Forwarder, not the simulator's mock, and the passport page says the same under the verdict.
 
-Still to come on push day, 2026-10-12:
+Live from 2026-10-07:
 
 - The look-alike step in the network workflow.
 - The verify service's look-alike routes and its Google web check on the hosted service.
-- The hosted index rebuild that lets the live site's marks and counts see the network flag. Until
-  that rebuild the live site's index cannot tell network verdicts from test runs.
+- The hosted index rebuild that lets the live site's marks and counts see the network flag. Before
+  that rebuild the live site's index could not tell network verdicts from test runs.
 
 ## What is on chain today
 

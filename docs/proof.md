@@ -124,11 +124,11 @@ sponsorship, session signers under a policy, and server wallets with a key quoru
 - No compliance claim. Registering a picture here does not make a provider or a deployer compliant
   with any law. [Rules and standards](concepts/rules-and-standards) sets what Moolam does beside
   what the C2PA specification and the EU texts actually ask for.
-- Network consensus covers the verdict step only. Chainlink's network has run it since 2026-10-02,
-  and the first verdict is in the table above. Every re-check before it came from Chainlink's
+- Network consensus covered the verdict step only until 2026-10-07. Chainlink's network has run that
+  step since 2026-10-02, and the first verdict is in the table above. Every re-check before it came from Chainlink's
   simulator run with `--broadcast`, one machine and no quorum, and the passport page says so under
-  each verdict. The look-alike step is not in the network workflow yet. It comes on push day,
-  2026-10-12, with the verify service's look-alike routes, its Google web check on the hosted service,
+  each verdict. The look-alike step is in the network workflow from 2026-10-07, with the verify
+  service's look-alike routes, its Google web check on the hosted service,
   and the hosted index rebuild that lets the live site's marks and counts see the network flag.
 - No watermark. Moolam writes nothing imperceptible into the picture. A product that needs
   machine-readable marking in the file itself still needs a watermarking layer beside this one.
