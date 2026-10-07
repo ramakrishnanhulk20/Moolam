@@ -1,3 +1,4 @@
 *.env
 .cre_build_tmp.js
 dist/
+binary.wasm.br.b64
