@@ -498,7 +498,11 @@ finished 2026-09-08T14:10:42.572Z, 128 seconds
 
 - Node 22.13 or newer, per the root `package.json` engines field. The verify service container is
   built on `node:26-bookworm-slim`.
-- Foundry, for anything that touches the contracts.
+- Foundry, for anything that touches the contracts, with `forge` on your PATH (`foundryup` installs it
+  in `~/.foundry/bin`).
+- Bun, for the Chainlink workflow and the re-check runner tests.
+- On Windows, `git config --global core.longpaths true` before cloning: a folder deep inside the
+  OpenZeppelin submodule is longer than Windows allows by default.
 - WSL2 with Linux Node for the indexer only. `envio codegen` and the indexer tests are Linux builds.
 
 ### Install
@@ -515,6 +519,12 @@ The contracts need the OpenZeppelin submodule and a build:
 ```sh
 git submodule update --init --recursive
 cd packages/contracts && forge build
+```
+
+The Chainlink workflow installs its own packages with Bun, and the re-check runner tests read them:
+
+```sh
+cd packages/workflow/moolam-verifier && bun install
 ```
 
 ### The environment file
@@ -559,13 +569,16 @@ curl against the same URL works.
 | Package | Command | Tests passed | Skipped without secrets |
 | --- | --- | --- | --- |
 | Contracts | `npm test` from `packages/contracts` | 215 | 7 fork suites |
-| Verify service | `npm run test:verifier` | 1218 | 0 |
+| Verify service | `npm run test:verifier` | 1219 | 0 |
 | Chain client and agents | `npm run test:agents` | 55 | 18 |
 | Indexer | `npm run test:indexer` | 47 | 0 |
 | Web app | `npm test` from `packages/web` | 3428 | 5 |
 | Re-check runner | `npm test` from `packages/recheck-runner` | 314 | 0 |
+| Platform kit | `npm test -w @moolam/platform` | 35 | 17 fork tests |
+| Dreamloom | `npm test -w dreamloom` | 338 | 10 |
+| Chainlink workflow | `bun test` from `packages/workflow/moolam-verifier` | 31 | 0 |
 
-These are the counts from the full run of 4 October 2026 on commit 952499b, made with no `.env` file.
+These are the counts from a fresh clone on 7 October 2026, made with no `.env` file.
 The indexer's 47 are from its own run on 3 October, and nothing in the indexer has changed since.
 
 The contract suites that fork Monad mainnet need `MONAD_MAINNET_RPC_URL` in the root `.env`. Without
@@ -767,7 +780,7 @@ no trailing slash.
 | Suite | Tests passed | What it covers |
 | --- | --- | --- |
 | Contracts | 215 | 18 on the policy timelock, 76 on the registry covering every rule, custom error and event, 16 on MoolamReceiver and 13 on the SimulationReceivers, 45 on the consent register, 10 on MoolamDecisions, 14 on MoolamLookalikes, 1 on renouncing ownership, 19 fuzz tests, and three invariant suites that each drove 8,192 random calls. The 7 fork suites against real Monad mainnet state run on top of these when `MONAD_MAINNET_RPC_URL` is set |
-| Verify service | 1218 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
+| Verify service | 1219 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
 | Chain client and agents | 55 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from, and the receiver attack command. 18 more of its tests need `MONAD_MAINNET_RPC_URL` or `PRIVY_AUTHORIZATION_KEY` and skip without them |
 | Indexer | 47 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, the five consent summaries checked against the web app's own rule for all 256 combinations, and the look-alike records and network-verdict counters |
 | Web app | 3428 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages, the picture download route, and the re-check control that reads its verdict from the chain |
