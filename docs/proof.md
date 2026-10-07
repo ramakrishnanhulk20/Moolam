@@ -18,11 +18,14 @@ The contracts, the receivers the policy lists today, and their Sourcify matches 
 any row is in [Architecture](developers/architecture), the [Threat model](security/threat-model) or
 the API pages.
 
-## The track: primitives for trust, provenance and user-owned data
+## The track: trust, identity and AI infrastructure
 
-Track 04 asks for "protocol-level primitives for trust, provenance, and user-owned data", and the
-grand champion is "The best build of Metropolis". The program's own FAQ says judges "need to be
-able to verify what you built". This section answers that sentence.
+Track 04 is "Trust, Identity & AI Infrastructure". The program says: "AI has made identity,
+provenance, data ownership, and agent trust urgent infrastructure problems." One of its examples is
+"Provenance for generated media that survives re-encoding". Moolam is that example.
+
+The grand champion is "The best build of Metropolis." The program's own FAQ says: "Judges need to be
+able to verify what you built during the six weeks." This section answers that sentence.
 
 | Claim | See it | File | Test or run | On Monad |
 | --- | --- | --- | --- | --- |
@@ -58,14 +61,16 @@ source, LLM or agent", and "a successful CLI simulation".
 
 ## Envio: depth of use
 
-The bounty asks for a "non-trivial schema, derived or aggregated entities", "working, live, correct
-data", "originality" and "craft".
+The Envio bounty judges six things: multichain use, a non-trivial schema, derived or aggregated
+entities, live and correct data, originality, and craft. The program's public page gives only the
+bounty's title, so these six are in our words, not quoted. Moolam indexes one chain, Monad mainnet.
+The rows below answer the other five.
 
 | Claim | See it | File | Test or run | On Monad |
 | --- | --- | --- | --- | --- |
-| Derived entities, not a log mirror. `Creator`, `Generator` with its trust score, `CreatorDay`, `DailyStats`, `GlobalStats`, `ConsentEntry`, and the flattened statement on every `Passport` | [Envio indexer](https://moolam.vercel.app/en/docs/developers/envio-indexer) | `packages/indexer/schema.graphql`, `packages/indexer/src/trust.ts`, `packages/indexer/src/day.ts`, `packages/indexer/src/consent.ts` | 26 indexer tests, saved in [indexer-tests.txt](../proofs/indexer-tests.txt); "splits the daily counters by UTC day while the global totals keep adding up" | Watches all four contracts from their deploy blocks |
+| Derived entities, not a log mirror. `Creator`, `Generator` with its trust score, `CreatorDay`, `DailyStats`, `GlobalStats`, `ConsentEntry`, and the flattened statement on every `Passport` | [Envio indexer](https://moolam.vercel.app/en/docs/developers/envio-indexer) | `packages/indexer/schema.graphql`, `packages/indexer/src/trust.ts`, `packages/indexer/src/day.ts`, `packages/indexer/src/consent.ts` | 47 indexer tests, saved in [indexer-tests.txt](../proofs/indexer-tests.txt); "splits the daily counters by UTC day while the global totals keep adding up" | Watches all five contracts it reads from their deploy blocks |
 | `inheritedDisputed`: an edit made after its parent lost a challenge is marked, so a reader does not have to walk the tree to find out | [Explore](https://moolam.vercel.app/en/explore), the Disputed chip | `packages/indexer/src/tree.ts` | "gives an edit made after its parent lost a challenge the inherited mark", and "marks every edit already made from a passport when its challenge is upheld" | No dispute has ever been opened on mainnet, so this is held by the tests and by attack 6 on a mainnet fork in [pass-2.txt](../proofs/attacks/pass-2.txt) |
-| Working, live, correct. This query was run against the hosted endpoint on 2026-09-22 and the answer is below, untouched | [GraphQL](https://moolam.vercel.app/en/docs/api/graphql) | `packages/indexer/src/EventHandlers.ts` | The 26 tests above, plus `npx tsc --noEmit` against the generated types | On that day the fourteen re-checks then in [rechecks.txt](../proofs/rechecks.txt) were fourteen of the fifteen attestation rows the index returned, the fifteenth being an earlier delivery; two more were added on 2026-09-23 |
+| Working, live, correct. This query was run against the hosted endpoint on 2026-09-22 and the answer is below, untouched | [GraphQL](https://moolam.vercel.app/en/docs/api/graphql) | `packages/indexer/src/EventHandlers.ts` | The 47 tests above | On that day the fourteen re-checks then in [rechecks.txt](../proofs/rechecks.txt) were fourteen of the fifteen attestation rows the index returned, the fifteenth being an earlier delivery; two more were added on 2026-09-23 |
 | The app reads the index, never a fixture. Explore, its AI-use filter, Agents, and the film's own counts all read live and say so when the index does not answer | [Explore](https://moolam.vercel.app/en/explore) and [Agents](https://moolam.vercel.app/en/agents) | `packages/web/components/explore/query.ts`, `packages/web/lib/data/passports.ts` | `explore-consent.test.ts`, "says how many pictures carry a statement, counted by the index itself"; `index-retry.test.ts` | The registry and the consent register, read through the index |
 
 ```graphql

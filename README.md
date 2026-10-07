@@ -556,17 +556,22 @@ curl against the same URL works.
 
 ### The tests
 
-| Package | Command | Tests |
-| --- | --- | --- |
-| Contracts | `npm test` from `packages/contracts` | 215 |
-| Verify service | `npm run test:verifier` | 874 |
-| Chain client and agents | `npm run test:agents` | 71 |
-| Indexer | `npm run test:indexer` | 26 |
-| Web app | `npm test` from `packages/web` | 2387 |
-| Re-check runner | `npm test` from `packages/recheck-runner` | 314 |
+| Package | Command | Tests passed | Skipped without secrets |
+| --- | --- | --- | --- |
+| Contracts | `npm test` from `packages/contracts` | 215 | 7 fork suites |
+| Verify service | `npm run test:verifier` | 1218 | 0 |
+| Chain client and agents | `npm run test:agents` | 55 | 18 |
+| Indexer | `npm run test:indexer` | 47 | 0 |
+| Web app | `npm test` from `packages/web` | 3428 | 5 |
+| Re-check runner | `npm test` from `packages/recheck-runner` | 314 | 0 |
 
-The contract count needs `MONAD_MAINNET_RPC_URL` in the root `.env`, because 28 of the tests
-fork Monad mainnet. Without it `forge test` runs 187 and skips the five fork suites rather than failing.
+These are the counts from the full run of 4 October 2026 on commit 952499b, made with no `.env` file.
+The indexer's 47 are from its own run on 3 October, and nothing in the indexer has changed since.
+
+The contract suites that fork Monad mainnet need `MONAD_MAINNET_RPC_URL` in the root `.env`. Without
+it `forge test` skips those 7 suites rather than failing. Most of them pin a past block, so the
+endpoint also has to serve old state. The 18 skipped agent tests need that variable or
+`PRIVY_AUTHORIZATION_KEY`. The 5 skipped web tests need a local browser or a live server.
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -759,23 +764,26 @@ no trailing slash.
 
 ## Test output
 
-| Suite | Tests | What it covers |
+| Suite | Tests passed | What it covers |
 | --- | --- | --- |
-| Contracts | 215 | 18 on the policy timelock, 76 on the registry covering every rule, custom error and event, 16 on MoolamReceiver and 13 on the SimulationReceivers, 45 on the consent register, 1 on renouncing ownership, 16 fuzz tests, two invariant suites that each drove 8,192 random calls, and 28 fork tests against real Monad mainnet state |
-| Verify service | 874 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
-| Chain client and agents | 71 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from, and the receiver attack command |
-| Indexer | 26 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, and the five consent summaries checked against the web app's own rule for all 256 combinations |
-| Web app | 2387 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages, the picture download route, and the re-check control that reads its verdict from the chain |
+| Contracts | 215 | 18 on the policy timelock, 76 on the registry covering every rule, custom error and event, 16 on MoolamReceiver and 13 on the SimulationReceivers, 45 on the consent register, 10 on MoolamDecisions, 14 on MoolamLookalikes, 1 on renouncing ownership, 19 fuzz tests, and three invariant suites that each drove 8,192 random calls. The 7 fork suites against real Monad mainnet state run on top of these when `MONAD_MAINNET_RPC_URL` is set |
+| Verify service | 1218 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
+| Chain client and agents | 55 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from, and the receiver attack command. 18 more of its tests need `MONAD_MAINNET_RPC_URL` or `PRIVY_AUTHORIZATION_KEY` and skip without them |
+| Indexer | 47 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, the five consent summaries checked against the web app's own rule for all 256 combinations, and the look-alike records and network-verdict counters |
+| Web app | 3428 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages, the picture download route, and the re-check control that reads its verdict from the chain |
 | Re-check runner | 314 | The request queue and the sweep, the daily cap, the per-pass cap and the balance floor counted before any spend, the shape of every value handed to the CLI, fetches of pinned content only, a run called done only from the registry's own log, a report the CLI printed no hash for found on chain, the circuit breaker, and nothing from the env file leaving the process |
 
-The registry's six invariants all held: the contract balance always covers every liability, the bond
+The registry's seven invariants all held: the contract balance always covers every liability, the bond
 total always equals the sum of open disputes, every edit points at a parent that exists, no image id
-is ever minted twice, attestations only ever come from an address the policy lists, and no passport
-appears while the registry is paused. The consent register's six held too, with the single write and
+is ever minted twice, attestations only ever come from an address the policy lists, no passport
+appears while the registry is paused, and the total owed always equals what the accounts are owed. The
+consent register's six held too, with the single write and
 the batch competing for the same three passports while those passports changed hands: an entry once
 written never changes, the history only grows, the contract holds nothing, the latest entry is the
-one in force, the writer held the passport, and timestamps strictly increase. Each test file opens
-with a note saying what it does not cover.
+one in force, the writer held the passport, and timestamps strictly increase. The look-alike
+register's two held as well: no record is accepted from a run dated more than an hour ahead of the
+block, and a passport's record never moves back to an older run. Each test file opens with a note
+saying what it does not cover.
 
 The summary of the latest prove-it run follows, then every attack in the
 [threat model](docs/security/threat-model.md) executed against the live contracts, each with its
@@ -862,7 +870,7 @@ headroom on top of Monad's 10 MON reserve balance, which every account has to ke
 ```
 Moolam/
 ├── packages/
-│   ├── contracts/          Solidity, Foundry. Five contracts, 215 tests, deploy and proof scripts
+│   ├── contracts/          Solidity, Foundry. Seven contracts, 215 tests, deploy and proof scripts
 │   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, SimulationReceiver, MoolamConsent, the vendored Chainlink template
 │   │   ├── test/           unit, fuzz, invariant and mainnet fork suites
 │   │   ├── script/         Deploy, the receiver deploys and listings, ConfigureReceiver, RegisterAgent, LiveProof

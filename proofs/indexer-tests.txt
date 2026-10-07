@@ -1,39 +1,32 @@
-Indexer proof: envio codegen, tsc and the tests, all run inside WSL2 Ubuntu.
-Run on 2026-09-21T10:55:41Z with v22.23.2 (nvm), npm 10.9.8. This run replaces the one from 2026-09-08 (9 tests);
-the suite now covers the consent statements as well.
+Indexer proof: the indexer's tests, 47 of 47 passing.
 
-Every command below was run from Windows through this wrapper, which loads the WSL-side Node 22:
+Run on 2026-10-03, started at 05:17:44 UTC (10:47 in India), inside WSL2 Ubuntu, on a copy of packages/indexer.
+The first three lines of the output below compare that copy with the repository's src folder, schema.graphql and
+config.yaml, and all three are the same. The repository was at commit 3a0873f when it ran. The last commit that
+changed anything under packages/indexer is 97b5422, from 2026-10-02, so this run covers the indexer as it stands.
 
-  wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/d/Projects/Monad && <command>'
+Three test files: consent.test.ts holds 6 tests, lookalikes.test.ts 17 and handlers.test.ts 24. This run replaces
+the one from 2026-09-21, which ran before the look-alike records and the network-verdict counters were added.
 
-=== npx envio --version
-envio 3.9.0
+The output below is the run, copied as it was printed, with the colour codes removed. The earlier run also saved the
+envio codegen and tsc steps. They were not run again for this file.
 
-=== npm run codegen:indexer   (writes .envio/types.d.ts and envio-env.d.ts)
-exit code: 0
+== diff src
+SAME
+== diff schema.graphql
+SAME
+== diff config.yaml
+SAME
 
-=== npx tsc --noEmit -p tsconfig.json   (against the generated types, no stand-in)
-exit code: 0
+ RUN  v5.0.0 /home/ram/wo276-indexer
 
-=== npm run test:indexer
+ ✓ test/consent.test.ts (6 tests) 8ms
+ ✓ test/lookalikes.test.ts (17 tests) 239ms
+ ✓ test/handlers.test.ts (24 tests) 249ms
 
-> moolam@0.1.0 test:indexer
-> npm run test --workspace packages/indexer
+ Test Files  3 passed (3)
+      Tests  47 passed (47)
+   Start at  05:17:44
+   Duration  1.79s (import 77%, tests 14%, transform 8%, worker 1%)
 
-
-> @moolam/indexer@0.1.0 test
-> vitest run
-
-
- RUN  v5.0.0 /mnt/d/Projects/Monad/packages/indexer
-
- ✓ test/consent.test.ts (6 tests) 41ms
- ✓ test/handlers.test.ts (20 tests) 1547ms
-   ✓ Moolam indexer handlers (12)
-     ✓ records an original passport as its own root at depth zero 1412ms
-
- Test Files  2 passed (2)
-      Tests  26 passed (26)
-   Start at  11:03:38
-   Duration  175.75s (import 98%, tests 1%, transform 1%)
-
+exit=0

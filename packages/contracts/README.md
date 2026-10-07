@@ -56,7 +56,7 @@ fork suite skips with a line saying so.
 ```
 forge build                 compile, zero warnings
 npm test                    215 tests: unit, fuzz, invariant and mainnet fork
-npm run test:fork           the 28 fork tests only, against real Monad mainnet state
+npm run test:fork           the seven fork suites only, against real Monad mainnet state
 npm run gas                 the gas table saved in proofs/gas.txt
 npm run abi                 regenerate the three ABIs in abi/
 slither .                   static analysis, report in proofs/slither.txt
@@ -171,13 +171,12 @@ every account has to keep and cannot spend.
 
 ## What the tests prove
 
-215 tests across sixteen suites. 18 on the policy timelock, 76 on the registry covering every rule,
+215 tests across fifteen suites. 18 on the policy timelock, 76 on the registry covering every rule,
 every custom error and every event, 16 on MoolamReceiver including the replay, wrong chain and
-wrong workflow identity refusals, 13 on the SimulationReceivers, 45 on the consent register, 1 on
-renouncing ownership, 16 fuzz tests on the register and edit inputs, the dispute money path, the
-consent register and the SimulationReceivers' sender and time rules, two invariant suites that each
-drove 8,192 random calls, and 28 fork tests against real Monad mainnet state. Without
-MONAD_MAINNET_RPC_URL the five fork suites are skipped and 187 run.
+wrong workflow identity refusals, 13 on the SimulationReceivers, 45 on the consent register, 10 on
+MoolamDecisions, 14 on MoolamLookalikes, 1 on renouncing ownership, 19 fuzz tests, and three
+invariant suites that each drove 8,192 random calls. The seven fork suites against real Monad
+mainnet state run on top of these when MONAD_MAINNET_RPC_URL is set; without it they skip.
 
 The six invariants all held: the contract balance always covers every liability, the bond total
 always equals the sum of open disputes, every edit points at a parent that exists, no image id is
