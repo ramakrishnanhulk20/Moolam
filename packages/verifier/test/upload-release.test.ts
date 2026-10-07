@@ -3,6 +3,7 @@
 // after signing leaves the share counted while the route still holds the bytes through its pins,
 // and it comes back when the handler ends. V80: a sealed answer the client never reads is cut at
 // the idle limit, and the share is back once the handler has ended, not when the socket closes.
+// V121: the same cut holds when the handler outlasts the idle limit before it ends the answer.
 // Over real connections on this machine with a short idle limit, because only a real socket can
 // hang up.
 // Does NOT cover Privy, Pinata or the chain: the token is signed here and its check can be held
@@ -10,8 +11,8 @@
 // stubbed. /edit and /unseal give their shares back through the same wrapper and are not driven
 // here. Nor a real client that stops reading: on this Windows machine the kernel took a single
 // 30 MB write to a loopback client that read nothing and reported it sent (measured 2026-09-26),
-// so the V80 test holds the server socket's writes instead, the way a full receive window holds
-// them on Linux.
+// so the V80 and V121 tests hold the server socket's writes instead, the way a full receive window
+// holds them on Linux.
 
 import { tracingChannel } from "node:diagnostics_channel";
 import { request as httpRequest, type ClientRequest, type IncomingMessage, type ServerResponse } from "node:http";
@@ -94,11 +95,19 @@ const clients: ClientRequest[] = [];
 /** True while the next request's answer should never leave the server, as for a client that reads nothing. */
 let stallNext = false;
 
-/** Makes a socket take every write and never finish sending it, as a full receive window does. */
+/**
+ * Makes a socket take every write and never finish sending it, as a full receive window does. A real
+ * write re-arms Node's idle timer even after it has fired, so the stub does as well: without that it
+ * hides the second timeout production gets once a handler has outlasted the idle limit.
+ */
 function neverFlushes(socket: Socket): void {
-  const held = socket as unknown as { _write: unknown; _writev: unknown };
-  held._write = () => undefined;
-  held._writev = () => undefined;
+  const held = socket as unknown as { _write: unknown; _writev: unknown; _unrefTimer: () => void };
+  held._write = () => {
+    held._unrefTimer();
+  };
+  held._writev = () => {
+    held._unrefTimer();
+  };
 }
 
 async function bearer(subject: string): Promise<string> {
@@ -289,5 +298,30 @@ describe("V80: a sealed answer the client never reads", () => {
     expect(response.writableFinished).toBe(false);
     await until(() => heldUploads.held === 0, 1_000);
     await until(() => serverSide.destroyed, IDLE_MS * 6);
+  }, 60_000);
+});
+
+describe("V121: a sealed answer the client never reads, from a handler slower than the idle limit", () => {
+  it("is cut within six idle limits of the answer ending, and its share is back once the handler has ended", async () => {
+    pin = async (bytes) => {
+      await pause(IDLE_MS * 2 + 100);
+      return pinned(bytes);
+    };
+    stallNext = true;
+    const before = arrivals.length;
+    await prepare(picture, true, "did:privy:never-reads-slow");
+
+    await until(() => arrivals.length > before);
+    const { request: incoming, response } = arrivals[before] as { request: IncomingMessage; response: ServerResponse };
+    const serverSide = incoming.socket;
+    await until(() => response.writableEnded, 30_000);
+    const cutBy = Date.now() + IDLE_MS * 6;
+
+    // The idle limit passed while the pins were held, and the hook spared a request still being worked on.
+    expect(response.statusCode).toBe(200);
+    expect(response.writableFinished).toBe(false);
+    expect(serverSide.destroyed).toBe(false);
+    await until(() => heldUploads.held === 0, 1_000);
+    await until(() => serverSide.destroyed, cutBy - Date.now());
   }, 60_000);
 });
