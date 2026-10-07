@@ -12,7 +12,7 @@
 // scripts/robustness.ts measures, nor AVIF, HEIF or JPEG XL files, which are refused by the same
 // rule and are not built here.
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import sharp from "sharp";
@@ -164,7 +164,9 @@ describe("intake 3: transparency", () => {
   }, 60_000);
 
   it("hashes every upright fixture with no alpha exactly as the two libraries do on their own", async () => {
-    const folders = [path.join(PACKAGE_ROOT, "test-assets"), path.join(PACKAGE_ROOT, "test", "fixtures")];
+    // test-assets is written by scripts/spike.ts and kept out of git, so a fresh clone holds only the
+    // committed fixture; the generated pictures below keep the check from running on almost nothing.
+    const folders = [path.join(PACKAGE_ROOT, "test-assets"), path.join(PACKAGE_ROOT, "test", "fixtures")].filter(existsSync);
     const files = folders.flatMap((folder) =>
       readdirSync(folder)
         .filter((name) => /\.(jpe?g|png)$/i.test(name))
@@ -176,7 +178,12 @@ describe("intake 3: transparency", () => {
       { name: "generated png", bytes: await makeImage(4, "png") },
       { name: "generated webp", bytes: await makeImage(5, "webp") },
     ];
-    expect(files.length).toBeGreaterThanOrEqual(10);
+    const formats = ["jpeg", "png", "webp"] as const;
+    for (let seed = 6; seed < 13; seed += 1) {
+      pictures.push({ name: `generated ${seed}`, bytes: await makeImage(seed, formats[seed % 3]) });
+    }
+    expect(files.length).toBeGreaterThanOrEqual(1);
+    expect(pictures.length).toBeGreaterThanOrEqual(10);
 
     for (const picture of pictures) {
       const meta = await sharp(picture.bytes).metadata();
