@@ -93,6 +93,11 @@ const nextConfig: NextConfig = {
   // Dev only.
   devIndicators: { position: "top-right" },
 
+  // The browser keeps a prefetched page for 5 minutes by default, so a list or
+  // a count read right after an action stayed old. 30 seconds is the least
+  // Next allows.
+  experimental: { staleTimes: { static: 30 } },
+
   async headers() {
     return [
       {

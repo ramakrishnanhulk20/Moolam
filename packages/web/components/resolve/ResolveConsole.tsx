@@ -439,6 +439,7 @@ function Owed({ rows, publish }: { rows: WaitingReasons[]; publish: PublishDesk 
             <div className="min-w-0">
               <Link
                 href={`/passport/${row.passportId}#decision`}
+                prefetch={false}
                 className="group flex flex-wrap items-baseline gap-x-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint"
               >
                 <span>{resolve("passport")}</span>

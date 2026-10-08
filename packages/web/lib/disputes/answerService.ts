@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
+import { HOLD_SECONDS } from "@/lib/chain/client";
+import { passportTag } from "@/lib/chain/registry";
 import { publicEnv } from "@/lib/env";
 import { answerReadSchema, refusalOf, type AnswerDocument, type AnswerRefusal } from "./answer";
 
@@ -39,6 +42,37 @@ export async function readAnswer(passportId: Hex, options: { signal?: AbortSigna
     const parsed = answerReadSchema.safeParse(await response.json());
     return parsed.success ? { kind: "found", ...parsed.data } : { kind: "failed" };
   } catch {
+    return { kind: "failed" };
+  }
+}
+
+/**
+ * The same read, held for a minute under this passport's own name.
+ *
+ * The passport page is built once and handed to everybody who asks inside that
+ * minute, and a read that is never kept makes Next throw "changed from static to
+ * dynamic" inside it. The holder's answer drops the name when it is sent, so it
+ * is one refresh away rather than a minute. A read that did not come back is
+ * thrown inside the hold so it is never kept, and is handed back as "failed".
+ */
+export async function heldAnswer(passportId: Hex): Promise<AnswerRead> {
+  const held = unstable_cache(
+    async (): Promise<AnswerRead> => {
+      const read = await readAnswer(passportId);
+      if (read.kind === "failed") {
+        throw new Error("the verify service did not return the answer");
+      }
+      return read;
+    },
+    ["moolam-dispute-answer", passportId.toLowerCase()],
+    { revalidate: HOLD_SECONDS, tags: [passportTag(passportId)] },
+  );
+  try {
+    return await held();
+  } catch (error) {
+    if ((error as Error | undefined)?.message?.includes("incrementalCache") === true) {
+      return await readAnswer(passportId);
+    }
     return { kind: "failed" };
   }
 }

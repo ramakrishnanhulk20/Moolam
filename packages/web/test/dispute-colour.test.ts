@@ -38,11 +38,10 @@ vi.mock("next-intl/server", () => ({
 // the record. Both are answered here so the quoted claim, which has its own rule,
 // is drawn too.
 vi.mock("@/lib/disputes/indexed", () => ({
-  indexAvailable: () => true,
-  indexedDispute: async () => ({ evidenceURI: "data:text/plain,claim" }),
+  heldIndexedRow: async () => ({ evidenceURI: "data:text/plain,claim" }),
 }));
 // The holder's answer and the chain's clock would be read over the network.
-vi.mock("@/lib/disputes/answerService", () => ({ readAnswer: async () => ({ kind: "none" }) }));
+vi.mock("@/lib/disputes/answerService", () => ({ heldAnswer: async () => ({ kind: "none" }) }));
 vi.mock("@/lib/chain/time", () => ({ headTimestamp: async () => 1_788_965_000n }));
 vi.mock("@/lib/disputes/evidence", async (load) => ({
   ...(await load<object>()),

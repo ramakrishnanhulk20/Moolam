@@ -14,6 +14,7 @@ import { setConsentRequest } from "@/lib/consent/call";
 import { confirmSetConsent } from "@/lib/consent/confirm";
 import { describeConsentFailure } from "@/lib/consent/failure";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { checkAuth } from "@/lib/passkey/verify";
 import { accountName, type SignedInUser } from "@/lib/studio/account";
 import { useWalletState } from "@/lib/studio/binding";
@@ -308,6 +309,8 @@ export function useCosign(): Cosign {
         dispatch({ type: "send", send: { at: "unconfirmed", failure: null } });
         return;
       }
+      // The page for this passport may have been seen, or prefetched, before it existed.
+      void refreshPassport(passportId).catch(() => undefined);
       const drawn = latest.current.drawn ?? (await draw(record).catch(() => null));
       dispatch({ type: "send", send: { at: "registered", passportId, txHash } });
       if (ownSend) return;
@@ -379,6 +382,8 @@ export function useCosign(): Cosign {
         dispatch({ type: "terms", terms: { at: "failed", failure: { key: "confirmPending", next: "recheck" } } });
         return;
       }
+      // The page holds the empty statement for a minute unless it is told the terms are on the chain.
+      void refreshPassport(passportId).catch(() => undefined);
       dispatch({ type: "terms", terms: { at: "written", txHash } });
     } catch (error) {
       const failure = describeConsentFailure(error);

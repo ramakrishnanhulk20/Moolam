@@ -286,12 +286,12 @@ describe("another account on the same tab", () => {
 });
 
 describe("the grid waiting on the index", () => {
-  it("looks again at 1, 2, 4, 8 and then every 16 seconds, and stops once the minute is up", () => {
+  it("looks again at 1, 2, 4, 8 and then every 16 seconds, and stops once three minutes are up", () => {
     expect([0, 1, 2, 3, 4, 5].map((attempt) => nextLook(attempt, 0))).toEqual([
       1_000, 2_000, 4_000, 8_000, 16_000, 16_000,
     ]);
     expect(nextLook(5, INDEX_CATCH_UP_MS - 20_000)).toBe(16_000);
     expect(nextLook(5, INDEX_CATCH_UP_MS - 10_000)).toBeNull();
-    expect(INDEX_CATCH_UP_MS).toBe(60_000);
+    expect(INDEX_CATCH_UP_MS).toBe(180_000);
   });
 });

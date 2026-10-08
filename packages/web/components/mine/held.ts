@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAddress, type Hex } from "viem";
 import { pinnedUri } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
@@ -161,6 +161,19 @@ function browserStorage(): Storage | null {
   }
 }
 
+/**
+ * Whoever is listening for a read from outside the grid. The confirm card is
+ * drawn by a sibling component, so it cannot reach the hook's own reread.
+ */
+const rereadListeners = new Set<() => void>();
+
+/** Asks every mounted held list to read the index again. Does nothing when none is mounted. */
+export function rereadHeldPassports(): void {
+  for (const listener of rereadListeners) {
+    listener();
+  }
+}
+
 export interface HeldPassports {
   status: "reading" | "ready" | "unreadable";
   /** The handovers this wallet confirmed and is credited with, drawn with its own pictures and never hidden. */
@@ -169,6 +182,8 @@ export interface HeldPassports {
   hiddenCount: number;
   hide: (id: string) => void;
   showHidden: () => void;
+  /** Reads the list again, keeping the rows on screen until the new answer arrives. */
+  reread: () => void;
 }
 
 /** The held-not-made rows for one wallet, with this browser's hidden list applied. */
@@ -182,6 +197,17 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
     wallet,
     ids: readHidden(browserStorage(), wallet),
   }));
+  const [round, setRound] = useState(0);
+  const reread = useCallback(() => setRound((was) => was + 1), []);
+  // The wallet a finished answer is on screen for, so a second read does not blank the thumbnails while it fetches them again.
+  const drawnFor = useRef<Hex | null>(null);
+
+  useEffect(() => {
+    rereadListeners.add(reread);
+    return () => {
+      rereadListeners.delete(reread);
+    };
+  }, [reread]);
 
   useEffect(() => {
     let live = true;
@@ -196,14 +222,18 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
           return;
         }
         const { confirmed, held } = splitCredited(rows, list, wallet, handovers);
-        setAnswer({ wallet, rows: held, confirmed });
+        if (drawnFor.current !== wallet) {
+          setAnswer({ wallet, rows: held, confirmed });
+        }
         const [heldArt, confirmedArt] = await Promise.all([Promise.all(held.map(withArt)), Promise.all(confirmed.map(withArt))]);
         if (live) {
+          drawnFor.current = wallet;
           setAnswer({ wallet, rows: heldArt, confirmed: confirmedArt });
         }
       } catch {
         if (live) {
-          setAnswer({ wallet, rows: null, confirmed: [] });
+          // A read that fails after a good one leaves the good one on screen.
+          setAnswer((was) => (was !== null && was.wallet === wallet && was.rows !== null ? was : { wallet, rows: null, confirmed: [] }));
         }
       }
     })();
@@ -211,7 +241,7 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
     return () => {
       live = false;
     };
-  }, [wallet]);
+  }, [wallet, round]);
 
   const ids = useMemo(
     () => (hidden.wallet === wallet ? hidden.ids : readHidden(browserStorage(), wallet)),
@@ -243,6 +273,7 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
     hiddenCount,
     hide,
     showHidden,
+    reread,
   };
 }
 

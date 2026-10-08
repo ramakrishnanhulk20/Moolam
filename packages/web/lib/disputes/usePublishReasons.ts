@@ -7,6 +7,7 @@ import { CHAIN_ID, chain } from "@/lib/chain/client";
 import { DisputeStatus, getDispute } from "@/lib/chain/registry";
 import { headTimestamp } from "@/lib/chain/time";
 import { isUserCancellation } from "@/lib/errors/cancelled";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { transactionHash } from "@/lib/studio/confirm";
 import { ensureMonad } from "@/lib/studio/wallet";
 import { DECISIONS_ADDRESS } from "./decisionsContract";
@@ -96,6 +97,8 @@ export function usePublishReasons(): PublishDesk {
       try {
         const landed = await confirmPublish({ ...out, passportId });
         watches.current.delete(passportId.toLowerCase());
+        // Before the screen says done, so anything that redraws on done reads the new decision.
+        await refreshPassport(passportId).catch(() => undefined);
         update(passportId, { phase: "done", hash: landed.hash, reasonsURI: landed.published.reasonsURI });
       } catch (error) {
         if (error instanceof PublishPending) {

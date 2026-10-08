@@ -40,6 +40,7 @@ vi.mock("next-intl/server", () => ({
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: ReactNode; className?: string }) =>
     createElement("a", { href: props.href, className: props.className }, props.children),
+  useRouter: () => ({ refresh: () => undefined }),
 }));
 
 vi.mock("@/lib/chain/registry", async (real) => ({

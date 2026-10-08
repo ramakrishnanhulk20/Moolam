@@ -62,7 +62,11 @@ export function HeldGrid({
               className="group relative grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-4 bg-bg-raised"
             >
               {/* The link lies on the card's own grid, so Hide takes a column of its own and the title gives way in any language. */}
-              <Link href={`/passport/${row.id}`} className="col-[1/-1] row-[1/-1] grid grid-cols-subgrid grid-rows-subgrid">
+              <Link
+                href={`/passport/${row.id}`}
+                prefetch={false}
+                className="col-[1/-1] row-[1/-1] grid grid-cols-subgrid grid-rows-subgrid"
+              >
                 <div className="grain relative col-[1/-1] aspect-[4/3] overflow-hidden bg-bg-sunken">
                   {row.imageUrl === undefined ? (
                     <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">

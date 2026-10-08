@@ -66,6 +66,7 @@ export function Receipt({ studio }: { studio: Studio }) {
       ) : (
         <Link
           href={`/passport/${id}`}
+          prefetch={false}
           data-private-copy-link
           className="text-text-muted underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
         >

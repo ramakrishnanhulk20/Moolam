@@ -19,7 +19,7 @@ import { knownAgentIds } from "@/lib/data/prerender";
 // Four chain reads, a few index queries and two dozen gateway fetches make this
 // page, and they answer the same for everybody. So it is built once and rebuilt
 // a minute at a time, and a visitor gets the finished page rather than the wait.
-export const revalidate = 300;
+export const revalidate = 60;
 
 /**
  * Every agent the index has seen sign a picture is built when the site is, so

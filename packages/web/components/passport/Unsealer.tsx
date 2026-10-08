@@ -199,7 +199,7 @@ function Choose({ unseal, passportId }: { unseal: PassportUnseal; passportId: He
 
       {state.failure === null ? null : (
         <div className="mt-6">
-          <FailureLine failure={state.failure} unseal={unseal} />
+          <FailureLine failure={state.failure} unseal={unseal} passportId={passportId} />
         </div>
       )}
     </div>
@@ -337,7 +337,7 @@ function Line({ tone, text }: { tone: "running"; text: string }) {
  * failure the holder can do anything about except look at the page, so those
  * two keep the muted ink and the status role.
  */
-function FailureLine({ failure, unseal }: { failure: UnsealFailure; unseal: PassportUnseal }) {
+function FailureLine({ failure, unseal, passportId }: { failure: UnsealFailure; unseal: PassportUnseal; passportId: Hex }) {
   const t = useTranslations("passport.unseal");
   const format = useFormatter();
   const router = useRouter();
@@ -349,7 +349,8 @@ function FailureLine({ failure, unseal }: { failure: UnsealFailure; unseal: Pass
     later: () => void unseal.actions.publish(),
     chooseAgain: unseal.actions.reset,
     signIn: unseal.actions.signIn,
-    showPicture: () => router.refresh(),
+    // The sealed page is held under the passport's name, so a plain re-read would hand the same page back.
+    showPicture: () => void refreshPassport(passportId).catch(() => undefined).then(() => router.refresh()),
   };
   const action = failure.next === undefined ? undefined : handlers[failure.next];
 

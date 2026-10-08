@@ -19,6 +19,7 @@ import { setConsentRequest, type ConsentDraft } from "@/lib/consent/call";
 import { confirmSetConsent } from "@/lib/consent/confirm";
 import { describeConsentFailure } from "@/lib/consent/failure";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { checkAuth } from "@/lib/passkey/verify";
 import { decideSealed } from "@/lib/sealed/handback";
 import { VerifierError, generate, prepare, type GenerateResponse, type PrepareResponse } from "@/lib/verifier/client";
@@ -500,6 +501,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         hash: out.hash,
         sponsored: true,
       });
+      void refreshPassport(out.passportId).catch(() => undefined);
     } catch (error) {
       const failure = describeConsentFailure(error);
       // A wait that ran out keeps the watch: the statement may already be on
@@ -598,6 +600,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         timing,
         charge: await billed(landed.hash),
       });
+      void refreshPassport(watch.exactHash).catch(() => undefined);
 
       await settleSponsorship(watch.wallet, watch.balanceBefore);
       watching.current = null;

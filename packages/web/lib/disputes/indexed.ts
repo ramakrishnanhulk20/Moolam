@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
+import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { passportTag } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "@/lib/data/source";
 
 /**
@@ -128,6 +131,69 @@ export async function indexedDispute(passportId: Hex): Promise<IndexedDispute | 
 
   const row = rows[0];
   return row === undefined ? null : shape(row);
+}
+
+/** One dispute row with its numbers as strings, because a bigint cannot be held. */
+type HeldDisputeRow = Omit<IndexedDispute, "bond" | "openedAt" | "resolvedAt"> & {
+  bond: string;
+  openedAt: string;
+  resolvedAt: string | null;
+};
+
+function toHeld(row: IndexedDispute): HeldDisputeRow {
+  return {
+    ...row,
+    bond: row.bond.toString(),
+    openedAt: row.openedAt.toString(),
+    resolvedAt: row.resolvedAt === null ? null : row.resolvedAt.toString(),
+  };
+}
+
+function fromHeld(row: HeldDisputeRow): IndexedDispute {
+  return {
+    ...row,
+    bond: BigInt(row.bond),
+    openedAt: BigInt(row.openedAt),
+    resolvedAt: row.resolvedAt === null ? null : BigInt(row.resolvedAt),
+  };
+}
+
+/**
+ * The same row, held for a minute under this passport's own name, or null when
+ * the index is missing, behind or down.
+ *
+ * The passport page is built once and handed to everybody who asks inside that
+ * minute, and a read that is never kept makes Next throw "changed from static to
+ * dynamic" inside it. A write to the record drops the name, so a challenge that
+ * lands is one refresh away rather than a minute. A failed read is thrown inside
+ * the hold so it is never kept.
+ */
+export async function heldIndexedRow(passportId: Hex): Promise<IndexedDispute | null> {
+  if (!indexAvailable()) {
+    return null;
+  }
+  const read = async (): Promise<HeldDisputeRow | null> => {
+    const row = await indexedDispute(passportId);
+    return row === null ? null : toHeld(row);
+  };
+  const held = unstable_cache(read, ["moolam-dispute-row", passportId.toLowerCase()], {
+    revalidate: HOLD_SECONDS,
+    tags: [CACHE_TAGS.index, passportTag(passportId)],
+  });
+  try {
+    const row = await held();
+    return row === null ? null : fromHeld(row);
+  } catch (error) {
+    if ((error as Error | undefined)?.message?.includes("incrementalCache") === true) {
+      try {
+        const row = await read();
+        return row === null ? null : fromHeld(row);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
 }
 
 function shape(row: Row): IndexedDispute {

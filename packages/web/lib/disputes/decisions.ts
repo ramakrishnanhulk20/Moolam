@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { parseAbiItem, type Hex } from "viem";
 import { z } from "zod";
-import { CACHE_TAGS, DEPLOY_BLOCK, addresses, chain } from "@/lib/chain/client";
-import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
+import { CACHE_TAGS, DEPLOY_BLOCK, HOLD_SECONDS, addresses, chain } from "@/lib/chain/client";
+import { DisputeStatus, passportTag, type Dispute } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "@/lib/data/source";
 import { DECISIONS_ADDRESS, DECISIONS_BLOCK, decisionPublishedEvent } from "./decisionsContract";
 import { pinnedLink } from "./evidence";
@@ -121,6 +121,37 @@ export async function readDecision(passportId: Hex, openedAt: number): Promise<D
   try {
     return (await decisionSchema()) ? await fromIndex(passportId, openedAt) : await fromChain(passportId, openedAt);
   } catch {
+    return { kind: "failed" };
+  }
+}
+
+/**
+ * The same read, held for a minute under this passport's own name.
+ *
+ * The passport page is built once and handed to everybody who asks inside that
+ * minute, and a read that is never kept makes Next throw "changed from static to
+ * dynamic" inside it. Publishing the reasons drops the name, so they show one
+ * refresh later rather than a minute later. A read that failed is thrown inside
+ * the hold so it is never kept, and is handed back as "failed".
+ */
+export async function heldDecision(passportId: Hex, openedAt: number): Promise<DecisionRead> {
+  const held = unstable_cache(
+    async (): Promise<DecisionRead> => {
+      const read = await readDecision(passportId, openedAt);
+      if (read.kind === "failed") {
+        throw new Error("the published decision could not be read");
+      }
+      return read;
+    },
+    ["moolam-dispute-decision", passportId.toLowerCase(), String(openedAt)],
+    { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index, passportTag(passportId)] },
+  );
+  try {
+    return await held();
+  } catch (error) {
+    if ((error as Error | undefined)?.message?.includes("incrementalCache") === true) {
+      return await readDecision(passportId, openedAt);
+    }
     return { kind: "failed" };
   }
 }

@@ -1,9 +1,9 @@
 import type { Hex } from "viem";
 import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
-import { readAnswer } from "@/lib/disputes/answerService";
-import { decisionView, readDecision, resolvedAtFromChain, type DecisionView } from "@/lib/disputes/decisions";
+import { heldAnswer } from "@/lib/disputes/answerService";
+import { decisionView, heldDecision, resolvedAtFromChain, type DecisionView } from "@/lib/disputes/decisions";
 import { evidenceMatches, reasonFrom } from "@/lib/disputes/evidence";
-import { indexAvailable, indexedDispute, type IndexedDispute } from "@/lib/disputes/indexed";
+import { heldIndexedRow, type IndexedDispute } from "@/lib/disputes/indexed";
 import { answerStanding, chainNow } from "@/lib/disputes/standing";
 import { ChallengeRecord, type ChallengeEvidence } from "@/components/challenge/ChallengeRecord";
 import { DecisionBlock } from "@/components/challenge/DecisionBlock";
@@ -22,6 +22,10 @@ import { DecisionBlock } from "@/components/challenge/DecisionBlock";
  * The holder's answer comes from the verify service and is checked again here
  * against this dispute and the holder's signature before a word of it is drawn.
  * A settled dispute carries its decision and the reasons Moolam published.
+ *
+ * All three reads are the held ones: this renders inside the passport page,
+ * which is built once a minute, and a read that is never kept makes Next throw
+ * out of that page.
  */
 export async function DisputeNote({
   dispute,
@@ -32,8 +36,8 @@ export async function DisputeNote({
   locale: string;
 }) {
   const [row, read, now] = await Promise.all([
-    indexedRow(passportId),
-    readAnswer(passportId),
+    heldIndexedRow(passportId),
+    heldAnswer(passportId),
     chainNow(),
   ]);
   const [answer, decision] = await Promise.all([
@@ -65,22 +69,10 @@ async function decisionOf(passportId: Hex, dispute: Dispute, row: IndexedDispute
   const indexedAt =
     row !== null && row.openedAt === dispute.openedAt && row.resolvedAt !== null ? Number(row.resolvedAt) : null;
   const [read, resolvedAt] = await Promise.all([
-    readDecision(passportId, openedAt),
+    heldDecision(passportId, openedAt),
     indexedAt === null ? resolvedAtFromChain(passportId) : Promise.resolve(indexedAt),
   ]);
   return decisionView(dispute, read, resolvedAt);
-}
-
-/** The index's row for this passport's dispute, or null when the index is missing, behind or down. */
-async function indexedRow(passportId: Hex): Promise<IndexedDispute | null> {
-  if (!indexAvailable()) {
-    return null;
-  }
-  try {
-    return await indexedDispute(passportId);
-  } catch {
-    return null;
-  }
 }
 
 /**

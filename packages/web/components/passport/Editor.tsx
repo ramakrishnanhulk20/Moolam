@@ -352,7 +352,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.child")}</dt>
           <dd className="mt-1.5 text-sm">
             {child === null ? null : (
-              <Link href={`/passport/${child}`} className="transition-colors duration-200 hover:text-accent">
+              <Link href={`/passport/${child}`} prefetch={false} className="transition-colors duration-200 hover:text-accent">
                 <Mono value={child} className="text-sm" />
               </Link>
             )}
@@ -391,6 +391,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         {child === null ? null : (
           <Link
             href={`/passport/${child}`}
+            prefetch={false}
             className="rounded-[8px] bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
           >
             {t("done.open")}
@@ -535,6 +536,7 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       {openPassport ? (
         <Link
           href={`/passport/${failure.passportId}`}
+          prefetch={false}
           className="mt-4 inline-block rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
         >
           {t("actions.openPassport")}

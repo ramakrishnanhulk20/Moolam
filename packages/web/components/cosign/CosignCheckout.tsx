@@ -187,7 +187,7 @@ export function CosignCheckout({
               <Actions model={model} words={words} exactHash={exactHash} onPress={onPress} checkout />
             ) : closing === "stuck" && passportId !== null && words.primary !== undefined ? (
               <div className="flex justify-center">
-                <Link href={`/passport/${passportId}`} className={QUIET}>
+                <Link href={`/passport/${passportId}`} prefetch={false} className={QUIET}>
                   {words.primary}
                 </Link>
               </div>

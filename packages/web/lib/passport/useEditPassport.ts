@@ -3,6 +3,7 @@
 import { usePrivy, useSigners, useWallets } from "@privy-io/react-auth";
 import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
+import { awaitPassport } from "@/lib/data/passports";
 import { editSigner } from "@/lib/env";
 import { VerifierError, edit } from "@/lib/verifier/client";
 import { confirmEdit } from "./confirm";
@@ -184,6 +185,10 @@ export function useEditPassport({
     try {
       const landed = await confirmEdit({ parentId, childId: out.childId, hash: out.hash });
       watching.current = null;
+      // The edit is a new passport in this wallet's own list, which the index shows a little later.
+      if (wallet !== undefined && out.childId !== undefined) {
+        awaitPassport(wallet, out.childId);
+      }
       dispatch({
         type: "confirmed",
         block: landed.blockNumber ?? null,
@@ -196,7 +201,7 @@ export function useEditPassport({
     } finally {
       polling.current = false;
     }
-  }, [onLanded, parentId]);
+  }, [onLanded, parentId, wallet]);
 
   const submit = useCallback(async () => {
     if (wallet === undefined || editSigner === null) {

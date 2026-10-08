@@ -48,6 +48,7 @@ export function DoneActions({
         {id === null ? null : (
           <Link
             href={`/passport/${id}`}
+            prefetch={false}
             className="rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
           >
             {t("register.openPassport")}
@@ -57,6 +58,7 @@ export function DoneActions({
         {state.mode === "generate" && drawn !== null ? (
           <Link
             href={`/agent/${drawn.agent.id}`}
+            prefetch={false}
             className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
           >
             {agent("openAgent")}

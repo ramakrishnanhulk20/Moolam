@@ -37,7 +37,7 @@ export function ConfirmedPictures({ rows }: { rows: ConfirmedPassport[] }) {
           transition={{ duration: 0.6, delay: Math.min(index, 5) * 0.05, ease: [0.16, 1, 0.3, 1] }}
           className="group bg-bg-raised"
         >
-          <Link href={`/passport/${row.id}`} className="block">
+          <Link href={`/passport/${row.id}`} prefetch={false} className="block">
             <div className="grain relative aspect-[4/3] overflow-hidden bg-bg-sunken">
               {row.imageUrl === undefined ? (
                 <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">

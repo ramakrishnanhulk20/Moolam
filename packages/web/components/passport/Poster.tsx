@@ -10,6 +10,7 @@ import type { Passport } from "@/lib/chain/registry";
 import { pictureSources } from "@/lib/images";
 import type { Art } from "./art";
 import { DownloadOriginal } from "./DownloadOriginal";
+import { LiveRefresh } from "./LiveRefresh";
 import { Picture } from "./Picture";
 import { sealedBits } from "./sealed";
 import { ShareLink } from "./ShareLink";
@@ -56,6 +57,10 @@ export async function Poster({
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
   const copy = mark ?? (await markCopy(await passportMarkFacts(passport, art), locale));
+  const live =
+    copy.state === "waiting" ? (
+      <LiveRefresh passportId={passport.id} registeredAt={Number(passport.registeredAt)} />
+    ) : null;
   const stamp =
     copy.word === null ? null : <MarkStamp state={copy.state} word={copy.word} tone={copy.tone} delay={0.5} />;
 
@@ -64,6 +69,7 @@ export async function Poster({
 
     return (
       <>
+        {live}
         {/* The plate is the whole header here, so it keeps the element the rest of
             the page's landmarks are laid out against. */}
         <header>
@@ -113,6 +119,7 @@ export async function Poster({
 
   return (
     <>
+      {live}
       <header className="group/poster grain relative h-[74svh] min-h-[34rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
         {art.imageUrl === undefined ? (
           missing

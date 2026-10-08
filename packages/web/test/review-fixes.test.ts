@@ -216,7 +216,7 @@ describe("step 2: my pictures never leaving reading", () => {
     await wait(30_000);
     expect(seen.status).toBe("reading");
 
-    await wait(31_000);
+    await wait(151_000);
     expect(seen.status).toBe("unreadable");
     expect(seen.error).toBeNull();
     const asked = index.byCreator.length;
@@ -231,7 +231,7 @@ describe("step 2: my pictures never leaving reading", () => {
     await wait(20_000);
     expect(index.byCreator.length).toBeGreaterThan(afterPress);
     expect(seen.status).toBe("reading");
-    await wait(45_000);
+    await wait(165_000);
     expect(seen.status).toBe("unreadable");
   });
 });

@@ -46,8 +46,12 @@ interface Answer {
   moreError: string | null;
 }
 
-/** How long the index is watched for a passport Monad has already confirmed. */
-export const INDEX_CATCH_UP_MS = 60_000;
+/**
+ * How long the index is watched for a passport Monad has already confirmed.
+ * Three minutes, because a minute was not always enough for the index to show
+ * an edit or a delivered picture; that is about fourteen reads at most.
+ */
+export const INDEX_CATCH_UP_MS = 180_000;
 
 const NOTHING_CONFIRMED: ConfirmedPassports = new Map();
 const nothingOnServer = () => NOTHING_CONFIRMED;
@@ -55,7 +59,8 @@ const nothingOnServer = () => NOTHING_CONFIRMED;
 /**
  * How long to wait before the next look at the index, or null once the window
  * has closed. The looks space out, 1, 2, 4, 8 and then every 16 seconds, which
- * is about seven reads against a shared index over the minute.
+ * is about seven reads against a shared index in the first minute, then four a
+ * minute until the window closes.
  */
 export function nextLook(attempt: number, waitedMs: number): number | null {
   const delay = Math.min(1_000 * 2 ** attempt, 16_000);

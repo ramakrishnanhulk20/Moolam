@@ -2,15 +2,19 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { sessionEmails } from "@/lib/claims/offers";
 import type { ConfirmRow } from "@/lib/claims/useClaimConfirm";
 import { useClaims } from "@/lib/claims/useClaims";
 import { usePendingConfirm, type PendingGroup } from "@/lib/claims/usePendingConfirm";
+import { rereadHeldPassports } from "@/components/mine/held";
 import type { SignedInUser } from "@/lib/studio/account";
 import { ClaimsView, type ConfirmedNow } from "./ClaimsView";
 import { ReadFailed } from "./ReadFailed";
+
+/** When the held list is read again after a confirm: at once, then after the index has had time to catch up. */
+const REREAD_AFTER_MS = [0, 30_000, 90_000];
 
 // The wallet send and its receipt checks arrive only once a platform has handed something over.
 const ClaimConfirm = dynamic(() => import("./ClaimConfirm").then((module) => module.ClaimConfirm));
@@ -28,6 +32,19 @@ export function ClaimsSection({ wallet }: { wallet: Hex }) {
   const claims = useClaims({ getToken: getAccessToken, signIn: login, signedIn: authenticated, account: user });
   const pending = usePendingConfirm(claims.answer, wallet);
   const [confirmedNow, setConfirmedNow] = useState<ConfirmedNow[]>([]);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(
+    () => () => {
+      for (const timer of timers.current) clearTimeout(timer);
+    },
+    [],
+  );
+
+  // The confirmed pictures move from "made by others" to the person's own once the index shows the terms, which it does a little after the chain.
+  const rereadHeldLater = useCallback(() => {
+    timers.current.push(...REREAD_AFTER_MS.map((after) => setTimeout(rereadHeldPassports, after)));
+  }, []);
 
   const renderConfirm = useCallback(
     (group: PendingGroup) => (
@@ -36,12 +53,13 @@ export function ClaimsSection({ wallet }: { wallet: Hex }) {
         group={group}
         wallet={wallet}
         onReread={pending.reread}
-        onDone={(txHash: Hex, rows: ConfirmRow[]) =>
-          setConfirmedNow((was) => [...was.filter((one) => one.key !== group.key), { key: group.key, terms: group.terms, txHash, rows }])
-        }
+        onDone={(txHash: Hex, rows: ConfirmRow[]) => {
+          setConfirmedNow((was) => [...was.filter((one) => one.key !== group.key), { key: group.key, terms: group.terms, txHash, rows }]);
+          rereadHeldLater();
+        }}
       />
     ),
-    [pending.reread, wallet],
+    [pending.reread, rereadHeldLater, wallet],
   );
 
   if (claims.answer === null) {

@@ -8,11 +8,22 @@ import { consentStruct } from "@/lib/consent/call";
 import { confirmSetConsent } from "@/lib/consent/confirm";
 import { describeConsentFailure, type ConsentFailure } from "@/lib/consent/failure";
 import { confirmedConsent } from "@/lib/cosign/landed";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { transactionHash } from "@/lib/studio/confirm";
 import { ensureMonad } from "@/lib/studio/wallet";
 import { artFor, type ClaimArt } from "./art";
 import { lookForReceipt, runConfirm, type ConfirmDeps, type ConfirmEvent, type SentBatch } from "./confirm";
 import { holderReads, type PendingGroup } from "./usePendingConfirm";
+
+/** A batch holds up to 32; each page is its own server call, so the loop stops short of the whole batch. */
+const REFRESH_LIMIT = 24;
+
+/** Expires the held page of each confirmed passport, one after another. A failed call is skipped. */
+async function refreshConfirmed(ids: readonly Hex[]): Promise<void> {
+  for (const id of ids.slice(0, REFRESH_LIMIT)) {
+    await refreshPassport(id).catch(() => undefined);
+  }
+}
 
 export type ConfirmStep = "ready" | "checking" | "changed" | "sending" | "confirming" | "done" | "failed";
 
@@ -132,6 +143,8 @@ export function useClaimConfirm({
       if (!live.current) return;
       if (event.at === "done") {
         out.current = null;
+        // The passport pages held the old statement; a link opened from here must read the new one.
+        void refreshConfirmed(rowsNow.current.map((row) => row.passportId));
         setTxHash(event.txHash);
         setStep("done");
         onDone?.(event.txHash, rowsNow.current);

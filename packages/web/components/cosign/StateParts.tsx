@@ -82,7 +82,7 @@ export function Actions({
       {sworn}
       <div className={checkout ? "flex flex-col gap-1.5" : "mt-8 flex flex-wrap items-center gap-x-4 gap-y-3 pb-3"}>
         {words.primary === undefined ? null : primaryHref !== null ? (
-          <Link href={primaryHref} className={primaryClass}>
+          <Link href={primaryHref} prefetch={false} className={primaryClass}>
             <span aria-hidden className="motif h-[14px] w-[14px] bg-accent-ink" />
             {words.primary}
           </Link>
