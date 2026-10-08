@@ -154,7 +154,7 @@ describe("what a search result and a link preview carry", () => {
     expect(word.replace("...", "").endsWith("wor")).toBe(false);
     // Importing the docs page pulls its markdown and highlighter in, which alone
     // passes 5 s when the whole suite shares the machine.
-  }, 15_000);
+  }, 60_000);
 
   it("cuts a passport's description at a whole word inside the budget", async () => {
     const { shortDescription } = await import("@/app/[locale]/passport/[id]/opengraph-image");
