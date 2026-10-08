@@ -76,8 +76,10 @@ export function ceiling(max: number, clock: () => number): () => boolean {
 
 /**
  * The two routes Chainlink's nodes ask during a look-alike run. Both answer from the in-memory
- * index and what the background refresh left beside it: neither reads the chain, Pinata or the
- * gateway while a request waits (L16, L18). Both are pure functions of that copy and the inputs,
+ * index and what the background refresh left beside it: neither reads Pinata or the gateway while a
+ * request waits (L16, L18). The one read a request can wait on is a candidates catch-up load of the
+ * index itself, at most one started every five seconds for the whole process, which reads the
+ * indexer and two block times as every load does. Both are pure functions of that copy and the inputs,
  * so every node asking with the same `asOf` while one copy is in hand gets the same bytes back.
  * Neither ever decides anything: the workflow proves every id on chain before it writes (L8).
  *
@@ -105,7 +107,9 @@ export async function lookalikeRoutes(app: FastifyInstance, options: LookalikeRo
   /**
    * POST /lookalikes/candidates: up to three earlier passports that might show the same picture as
    * any of the fingerprint pairs sent, registered strictly before `asOf`, oldest first by the
-   * shared rule. The earliest registration within the thresholds is always among them.
+   * shared rule. The earliest registration within the thresholds is always among them. A copy that
+   * does not cover `asOf` first waits for one catch-up load of the index, at most six seconds, and
+   * answers not-ready only when the copy after it still does not.
    */
   app.post("/lookalikes/candidates", async (request: FastifyRequest, reply: FastifyReply) => {
     if (!candidatesRoom()) return overCeiling(request, reply);
@@ -118,9 +122,13 @@ export async function lookalikeRoutes(app: FastifyInstance, options: LookalikeRo
       return refuse(request, reply, 400, "asOf is in the future");
     }
 
-    const copy = app.verifier.snapshot();
+    let copy = app.verifier.snapshot();
     if (copy.state().stale || !copy.covers(asOf)) {
-      return reply.header("cache-control", "no-store").send({ status: "not-ready" });
+      await app.verifier.catchUp(asOf);
+      copy = app.verifier.snapshot();
+      if (copy.state().stale || !copy.covers(asOf)) {
+        return reply.header("cache-control", "no-store").send({ status: "not-ready" });
+      }
     }
     const pairs = fingerprints.map((pair) => ({ phash: BigInt(pair.phash), blockhash: pair.blockhash.toLowerCase() as Hex }));
     const candidates = lookalikesOf(copy.index, pairs, asOf)

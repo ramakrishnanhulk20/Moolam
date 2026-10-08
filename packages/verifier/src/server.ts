@@ -379,6 +379,13 @@ export interface Verifier {
    * so does one that began before the copy in hand did.
    */
   reload: () => Promise<void>;
+  /**
+   * Loads the register now when the copy in hand does not cover `asOf`, and waits for that load for
+   * at most six seconds. Callers at the same time share one load, and a new one starts at most once
+   * every five seconds for the whole process; a call inside that gap with no load running returns at
+   * once. Never throws: a failed load keeps the copy in hand, as reload does.
+   */
+  catchUp: (asOf: number) => Promise<void>;
   /** When the copy in hand now was loaded, and whether it is too old to trust as current. */
   indexState: () => IndexState;
   /** Reads what a passport's holder has stated about AI use, for the verify answers. */
@@ -822,6 +829,41 @@ export async function buildServer(
     }
   };
 
+  // Chainlink's log trigger asks about a passport about six seconds after it is registered, while the
+  // timer reloads once a minute, so without a load on demand the first answer is nearly always
+  // not-ready. One load shared by every waiter, and at most one started per gap for the whole
+  // process, keep the hosted index's shared query budget safe however many callers ask.
+  const CATCH_UP_WAIT_MS = 6_000;
+  const CATCH_UP_GAP_MS = 5_000;
+  let catching: Promise<void> | undefined;
+  let lastCatchUpMs: number | undefined;
+  const catchUp = async (asOf: number): Promise<void> => {
+    if (covers(current, asOf)) {
+      return;
+    }
+    let load = catching;
+    if (load === undefined) {
+      const now = clock();
+      if (lastCatchUpMs !== undefined && now - lastCatchUpMs < CATCH_UP_GAP_MS) {
+        return;
+      }
+      lastCatchUpMs = now;
+      load = reload().finally(() => {
+        catching = undefined;
+      });
+      catching = load;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const waited = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, CATCH_UP_WAIT_MS);
+    });
+    try {
+      await Promise.race([load, waited]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const canPrepare = env.PINATA_JWT !== undefined && env.PRIVY_APP_ID !== undefined;
   const canGenerate =
     canPrepare &&
@@ -988,6 +1030,7 @@ export async function buildServer(
     runVerify: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("verify", caller, task, gone),
     runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("studio", caller, task, gone),
     reload,
+    catchUp,
     indexState,
     consent,
     dispute,

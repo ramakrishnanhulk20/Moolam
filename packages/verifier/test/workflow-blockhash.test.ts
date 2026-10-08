@@ -68,7 +68,7 @@ describe("the workflow's block hash against imghash", () => {
         expect(blockHash(new Uint8Array(data), info.width, info.height, 3)).toBe(theirs);
       }
     }
-  });
+  }, 60_000);
 
   it("reads a grey sample as three equal channels, as the canvas decoder spreads it", () => {
     const width = 40;

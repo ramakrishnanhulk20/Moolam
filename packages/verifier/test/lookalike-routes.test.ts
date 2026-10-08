@@ -3,7 +3,9 @@
 // oldest first by the shared rule, at most three, the earliest always among them, one place per
 // fingerprint however many copies carry it (L10, L11, L16). Two asks with the same asOf get the
 // same bytes; an index not loaded through asOf answers not-ready; anything malformed is refused
-// 400 before a scan (L16). The backlog lists the passports still waiting for a network verdict or,
+// 400 before a scan (L16). A candidates question newer than the copy in hand first waits for one
+// catch-up load (WO-331): questions at the same time share it, a second starts no sooner than five
+// seconds after the first, and one slower than six seconds is answered not-ready. The backlog lists the passports still waiting for a network verdict or,
 // for an original, a look-alike record, that the workflow can check, oldest first, and says
 // not-ready rather than a partial list; with either setting unset it is off, says not-ready and
 // shows under `off` on /health with the boot log naming it (L14's list side). Its start moves by
@@ -17,7 +19,8 @@
 // such entity and is asked again after ten minutes; an index that served them and then fails a read
 // leaves the backlog not-ready.
 // Does NOT cover the live index, a real RPC or the gateway: the index is a stub source or a local
-// mock GraphQL server, the chain a stub, the documents a stub reader. The prepare warning is
+// mock GraphQL server, the chain a stub, the documents a stub reader, and the six second catch-up
+// wait runs on vitest's fake timers. The prepare warning is
 // test/lookalike-presign.test.ts, the rule file itself test/lookalike-rule.test.ts.
 
 import fs from "node:fs";
@@ -95,12 +98,15 @@ async function serve(
     chain?: LedgerChain;
     ceilings?: { candidates?: number; backlog?: number };
     index?: LookalikeIndexReader;
+    /** Replaces the source built from `records` and `through`. */
+    source?: PassportSource;
+    indexClock?: () => number;
   } = {},
 ): Promise<FastifyInstance> {
   app = await buildServer({
-    source: indexedThrough(records, options.through),
+    source: options.source ?? indexedThrough(records, options.through),
     logger: false,
-    index: { refreshMs: 0, clock: () => NOW * 1000 },
+    index: { refreshMs: 0, clock: options.indexClock ?? (() => NOW * 1000) },
     lookalikes: {
       settings: options.settings ?? {},
       clock: () => NOW * 1000,
@@ -244,6 +250,117 @@ describe("POST /lookalikes/candidates", () => {
     expect((await ask(server, { fingerprints: ONE_PAIR, asOf: NOW + 60 })).json).toEqual({ status: "not-ready" });
     expect((await ask(server, { fingerprints: ONE_PAIR, asOf: 500 })).status).toBe(200);
     expect(scan).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * A source whose indexer has read through `state.through` as each load begins, counting every load,
+ * the boot's included. While `state.held` is set, a load waits on it before it answers.
+ */
+function catchingUp(records: PassportRecord[], through: number) {
+  const state: { through: number; loads: number; held?: Promise<void> } = { through, loads: 0 };
+  const source: PassportSource = {
+    load: async () => records,
+    loadWithProgress: async () => {
+      state.loads += 1;
+      const read = state.through;
+      if (state.held !== undefined) await state.held;
+      return { records, progress: { block: 100_000, blockTime: read, headTime: read, syncing: false } };
+    },
+  };
+  return { source, state };
+}
+
+function gate(): { wait: Promise<void>; open: () => void } {
+  let open: () => void = () => undefined;
+  const wait = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { wait, open };
+}
+
+describe("POST /lookalikes/candidates: a passport newer than the copy in hand (WO-331)", () => {
+  const LOADED_TO = 1_000;
+  const FRESH = { fingerprints: ONE_PAIR, asOf: 1_001 };
+  const FOUND = { status: "ok", candidates: [idFrom(1)] };
+
+  it("loads the index once on the spot and answers ok when that load covers asOf", async () => {
+    const { source, state } = catchingUp([passport(1, 100)], LOADED_TO);
+    const server = await serve([], { source });
+    state.through = FRESH.asOf;
+
+    expect((await ask(server, FRESH)).json).toEqual(FOUND);
+    expect(state.loads).toBe(2);
+  });
+
+  it("shares one load between two questions that arrive while it runs", async () => {
+    const { source, state } = catchingUp([passport(1, 100)], LOADED_TO);
+    const server = await serve([], { source });
+    const hold = gate();
+    state.through = FRESH.asOf;
+    state.held = hold.wait;
+    const caughtUp = vi.spyOn(server.verifier, "catchUp");
+
+    const answers = Promise.all([ask(server, FRESH, "198.51.100.1"), ask(server, FRESH, "203.0.113.9")]);
+    await vi.waitFor(() => expect(caughtUp).toHaveBeenCalledTimes(2));
+    hold.open();
+
+    expect((await answers).map((answer) => answer.json)).toEqual([FOUND, FOUND]);
+    expect(state.loads).toBe(2);
+  });
+
+  it("answers not-ready when the load it waited for still does not cover asOf", async () => {
+    const { source, state } = catchingUp([passport(1, 100)], LOADED_TO);
+    const server = await serve([], { source });
+
+    expect((await ask(server, FRESH)).json).toEqual({ status: "not-ready" });
+    expect(state.loads).toBe(2);
+  });
+
+  it("starts no second load inside the five second gap, and one once the gap has passed", async () => {
+    let now = NOW * 1000;
+    const { source, state } = catchingUp([passport(1, 100)], LOADED_TO);
+    const server = await serve([], { source, indexClock: () => now });
+
+    expect((await ask(server, FRESH)).json).toEqual({ status: "not-ready" });
+    state.through = FRESH.asOf;
+    now += 4_999;
+    expect((await ask(server, FRESH)).json).toEqual({ status: "not-ready" });
+    expect(state.loads).toBe(2);
+
+    now += 1;
+    expect((await ask(server, FRESH)).json).toEqual(FOUND);
+    expect(state.loads).toBe(3);
+  });
+
+  it("answers not-ready at six seconds when the load is slower, and starts no other load", async () => {
+    const { source, state } = catchingUp([passport(1, 100)], LOADED_TO);
+    const server = await serve([], { source });
+    const hold = gate();
+    state.through = FRESH.asOf;
+    state.held = hold.wait;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      let answered = false;
+      const answering = ask(server, FRESH).then((answer) => {
+        answered = true;
+        return answer;
+      });
+      // The wait's timer is the only one this request sets, so the clock moves only once it is set.
+      for (let turn = 0; turn < 1_000 && vi.getTimerCount() === 0; turn += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      expect(vi.getTimerCount()).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(5_999);
+      expect(answered).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await answering).json).toEqual({ status: "not-ready" });
+    } finally {
+      vi.useRealTimers();
+      hold.open();
+    }
+    expect(state.loads).toBe(2);
   });
 });
 
