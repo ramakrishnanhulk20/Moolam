@@ -27,8 +27,55 @@ type Load =
   | { kind: "error"; words: string }
   | { kind: "ready"; picture: PictureView };
 
+/** How long a passport held under an email is watched for its claim, counted from when this page first saw it waiting. */
+export const CLAIM_WATCH_MS = 15 * 60_000;
+
 const WAITING = new Set(["cosign-open", "cosign-signed"]);
 const LANDED = new Set(["registered", "moved"]);
+
+/** A passport Dreamloom registered and sent to an email: the person may claim it at Moolam in another tab at any moment. */
+export function waitsForClaim(picture: Pick<PictureView, "state" | "delivery">): boolean {
+  return picture.state === "registered" && picture.delivery?.kind === "waiting";
+}
+
+export interface WatchClock {
+  set: (run: () => void, ms: number) => unknown;
+  clear: (timer: unknown) => void;
+  now: () => number;
+}
+
+export interface WatchPage {
+  visibilityState: string;
+  addEventListener: (type: "visibilitychange", listener: () => void) => void;
+  removeEventListener: (type: "visibilitychange", listener: () => void) => void;
+}
+
+/**
+ * Re-reads the picture every POLL_MS until CLAIM_WATCH_MS has passed, so a claim made at Moolam shows
+ * without a reload. A person who comes back to the tab gets one read at once, even after the timed
+ * watch has ended, because that is one request, not a load. The returned function ends both.
+ */
+export function watchForClaim(read: () => void, clock: WatchClock, page: WatchPage): () => void {
+  const startedAt = clock.now();
+  const timer = clock.set(() => {
+    read();
+    if (clock.now() - startedAt >= CLAIM_WATCH_MS) clock.clear(timer);
+  }, POLL_MS);
+  const back = () => {
+    if (page.visibilityState === "visible") read();
+  };
+  page.addEventListener("visibilitychange", back);
+  return () => {
+    clock.clear(timer);
+    page.removeEventListener("visibilitychange", back);
+  };
+}
+
+const BROWSER_CLOCK: WatchClock = {
+  set: (run, ms) => window.setInterval(run, ms),
+  clear: (timer) => window.clearInterval(timer as number),
+  now: () => Date.now(),
+};
 
 export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolamSite: string; ownOrigin: string }) {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -92,13 +139,14 @@ export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolam
 
   const state = load.kind === "ready" ? load.picture.state : null;
   const waiting = state !== null && WAITING.has(state);
+  const claimPending = load.kind === "ready" && waitsForClaim(load.picture);
   const origin = moolamOrigin(moolamSite);
   const signLink = load.kind === "ready" ? cosignLink(load.picture.cosignUrl, moolamSite) : null;
 
-  // Once the passport is here, Moolam's window has nothing left to do.
+  // Moolam's window shuts itself once the AI-use terms are written. Closing it here as soon as the
+  // store says registered can cut off the person's second transaction, the AI-use terms.
   useEffect(() => {
     if (state === null || waiting) return;
-    if (LANDED.has(state)) checkout.close();
     setSignWindow(null);
   }, [state, waiting]);
 
@@ -131,6 +179,11 @@ export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolam
       document.removeEventListener("visibilitychange", back);
     };
   }, [waiting, origin, refresh]);
+
+  useEffect(() => {
+    if (!claimPending) return;
+    return watchForClaim(() => void refresh(), BROWSER_CLOCK, document);
+  }, [claimPending, refresh]);
 
   return (
     <div className="relative isolate overflow-clip">

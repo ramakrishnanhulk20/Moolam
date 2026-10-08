@@ -121,15 +121,16 @@ describe("the answer from Moolam's window", () => {
   const registered = { type: "moolam:registered", passportId: PASSPORT, txHash: `0x${"b".repeat(64)}` };
   const shared = { type: "moolam:address", address: ADDRESS.toLowerCase() };
 
-  it("closes the window when the passport landed or the address arrived", () => {
+  it("leaves the co-sign window to close itself after the terms, and closes the connect window", () => {
     const b = browser();
     b.checkout.open();
     expect(takeAnswer({ origin: SITE, data: registered }, ORIGIN, "sign", b.checkout)).toEqual({ kind: "registered" });
-    expect(b.windows[0]!.closeCalls).toBe(1);
+    expect(b.windows[0]!.closeCalls).toBe(0);
 
-    b.checkout.open();
-    expect(takeAnswer({ origin: SITE, data: shared }, ORIGIN, "share", b.checkout)).toEqual({ kind: "address", address: ADDRESS });
-    expect(b.windows[1]!.closeCalls).toBe(1);
+    const connect = browser();
+    connect.checkout.open();
+    expect(takeAnswer({ origin: SITE, data: shared }, ORIGIN, "share", connect.checkout)).toEqual({ kind: "address", address: ADDRESS });
+    expect(connect.windows[0]!.closeCalls).toBe(1);
   });
 
   it("changes nothing for a wrong origin, a wrong type, a bad address or a bad passport id", () => {

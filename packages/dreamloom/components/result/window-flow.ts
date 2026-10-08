@@ -191,8 +191,10 @@ export type MoolamAnswer = { kind: "registered" } | { kind: "address"; address: 
 
 /**
  * A message heard while Moolam's window is open. Moolam's answer for this place (a landed passport
- * for "sign", a shared address for "share") closes the window and comes back; anything else,
- * including the right message from the wrong origin, closes nothing and comes back null.
+ * for "sign", a shared address for "share") comes back; anything else, including the right message
+ * from the wrong origin, comes back null. Only the connect window is closed here: the co-sign window
+ * posts "registered" before the person's AI-use terms go out in a second transaction, and it closes
+ * itself once they are written, so shutting it on that message could drop them.
  */
 export function takeAnswer(
   event: MessageLike,
@@ -206,6 +208,6 @@ export function takeAnswer(
     const address = sharedAddress(event, expectedOrigin);
     if (address !== null) answer = { kind: "address", address };
   }
-  if (answer !== null) target.close();
+  if (answer !== null && place === "share") target.close();
   return answer;
 }
