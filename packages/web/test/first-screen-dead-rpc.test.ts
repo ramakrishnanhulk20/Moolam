@@ -52,6 +52,13 @@ beforeAll(async () => {
   // Read once, when the chain client is built, so they are set before any import of it.
   vi.stubEnv("MONAD_RPC_URL", "");
   vi.stubEnv("NEXT_PUBLIC_MONAD_RPC_URL", "http://127.0.0.1:9");
+  // Monad's other public endpoints are the browser's backups, so every one of them is dead here too.
+  const passThrough = globalThis.fetch;
+  vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (/^https:\/\/rpc\d?\.monad\.xyz/.test(url)) throw new TypeError("fetch failed");
+    return await passThrough(input, init);
+  });
   modules = {
     read: await import("@/components/home/read"),
     board: await import("@/components/home/Board"),
@@ -60,6 +67,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 function draw(data: Awaited<ReturnType<Modules["read"]["firstScreenData"]>>): string {

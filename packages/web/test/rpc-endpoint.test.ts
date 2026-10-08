@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 /** Shaped like a QuickNode address, where the path is the credential. Nothing here is real. */
 const DEDICATED = "https://moolam-test.monad-mainnet.example/TOKEN-IN-THE-ADDRESS/";
 const PUBLIC = "https://rpc1.monad.xyz";
+const BACKUPS = ["https://rpc.monad.xyz", "https://rpc2.monad.xyz", "https://rpc3.monad.xyz"];
 const BLOCK = 123_456n;
 
 interface CreatedTransport {
@@ -48,11 +49,14 @@ afterEach(() => {
 });
 
 describe("which endpoint the server reads through", () => {
-  it("uses the public endpoint alone when no dedicated one is set", async () => {
+  it("reads through the public endpoints, the configured one first, when no dedicated one is set", async () => {
     const { chain } = await loadClient();
 
-    expect(chain.transport.type).toBe("http");
-    expect(chain.transport.url).toBe(PUBLIC);
+    expect(chain.transport.type).toBe("fallback");
+    expect((chain.transport.transports as CreatedTransport[]).map((one) => one.value.url)).toEqual([
+      PUBLIC,
+      ...BACKUPS,
+    ]);
   });
 
   it("puts the dedicated endpoint first and the public one behind it when one is set", async () => {
@@ -62,6 +66,7 @@ describe("which endpoint the server reads through", () => {
     expect((chain.transport.transports as CreatedTransport[]).map((one) => one.value.url)).toEqual([
       DEDICATED,
       PUBLIC,
+      ...BACKUPS,
     ]);
   });
 

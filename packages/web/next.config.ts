@@ -40,10 +40,15 @@ function originOf(value: string | undefined, fallback: string): string[] {
 // and reads Monad from the browser, so both belong in connect-src; a local
 // setup lists its own localhost service here, which costs a deployed build
 // nothing because the deployed build has the real values.
-const serviceOrigins = [
+const serviceOrigins = [...new Set([
   ...originOf(process.env.NEXT_PUBLIC_VERIFIER_URL, "http://localhost:4010"),
   ...originOf(process.env.NEXT_PUBLIC_MONAD_RPC_URL, "https://rpc1.monad.xyz"),
-];
+  // The browser falls back to Monad's other public endpoints (lib/chain/client.ts).
+  "https://rpc.monad.xyz",
+  "https://rpc1.monad.xyz",
+  "https://rpc2.monad.xyz",
+  "https://rpc3.monad.xyz",
+])];
 
 const pictureOrigins = pictureHosts.map((host) => `https://${host}`);
 

@@ -58,7 +58,7 @@ describe("the headers every page and every route answers with", () => {
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self'",
         "img-src 'self' data: blob: https://lavender-personal-grasshopper-978.mypinata.cloud",
-        "connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com wss://relay.walletconnect.org https://verifier-production-d76f.up.railway.app https://rpc1.monad.xyz https://lavender-personal-grasshopper-978.mypinata.cloud",
+        "connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com wss://relay.walletconnect.org https://verifier-production-d76f.up.railway.app https://rpc1.monad.xyz https://rpc.monad.xyz https://rpc2.monad.xyz https://rpc3.monad.xyz https://lavender-personal-grasshopper-978.mypinata.cloud",
         "frame-src https://auth.privy.io",
         "worker-src 'self' blob:",
         "child-src 'self' blob: https://auth.privy.io",

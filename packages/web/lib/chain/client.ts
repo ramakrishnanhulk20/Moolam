@@ -105,15 +105,21 @@ const RPC_OPTIONS = { batch: true, timeout: 15_000 } as const;
  * public one only picks up what it drops, so a rate-limited minute on either
  * side is a slower read rather than an error line on a passport page. Ranking
  * is off on purpose: the order is the one written here, not whichever endpoint
- * happened to be quickest a moment ago. Without the variable this is the plain
- * public transport the app has always used.
+ * happened to be quickest a moment ago. A browser never has the variable, since
+ * the dedicated address is its access token, so it reads through the public
+ * endpoints alone, the configured one first and Monad's other public ones
+ * after it: a single busy endpoint used to stop the studio with "Monad could not
+ * be read". next.config.ts lists the same origins in connect-src.
  */
+const PUBLIC_RPC_BACKUPS = ["https://rpc.monad.xyz", "https://rpc2.monad.xyz", "https://rpc3.monad.xyz", "https://rpc1.monad.xyz"];
+const publicTransports = [...new Set([publicEnv.monadRpcUrl, ...PUBLIC_RPC_BACKUPS])].map((url) => http(url, RPC_OPTIONS));
+
 export const chain = createPublicClient({
   chain: monad,
-  transport:
-    serverRpcUrl === undefined
-      ? http(publicEnv.monadRpcUrl, RPC_OPTIONS)
-      : fallback([http(serverRpcUrl, RPC_OPTIONS), http(publicEnv.monadRpcUrl, RPC_OPTIONS)], { rank: false }),
+  transport: fallback(
+    serverRpcUrl === undefined ? publicTransports : [http(serverRpcUrl, RPC_OPTIONS), ...publicTransports],
+    { rank: false },
+  ),
 });
 
 /**
