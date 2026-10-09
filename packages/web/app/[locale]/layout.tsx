@@ -19,6 +19,7 @@ import { PHONE_ROOM, type BarItem } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { WalletHost } from "@/components/providers/WalletProvider";
 import { StatusPending, SystemStatus } from "@/components/status/SystemStatus";
 import { CHAIN_ID, MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { activeSource } from "@/lib/data/source";
@@ -248,7 +249,7 @@ export default async function LocaleLayout({
                   />
                 </header>
 
-                <main className="flex-1">{children}</main>
+                <main className="flex-1"><WalletHost>{children}</WalletHost></main>
 
                 {/* The room the bar asks for, on the last thing in the
                     column rather than on main: the footer comes after main, so

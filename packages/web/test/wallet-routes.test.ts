@@ -15,7 +15,6 @@ const SIGNING = [
 ];
 
 const READING = [
-  "@/app/[locale]/layout.tsx",
   "@/app/[locale]/page.tsx",
   "@/app/[locale]/explore/page.tsx",
   "@/app/[locale]/explore/view/page.tsx",
@@ -103,6 +102,13 @@ describe("which routes carry the wallet", () => {
   it("keeps the provider out of the layout every page shares", () => {
     const layout = readFileSync(join(web, "app/[locale]/layout.tsx"), "utf8");
     expect(layout).not.toContain("PrivyProvider");
+  });
+
+  // The layout holds the wallet host, which keeps the SDK mounted once a signing page has asked for
+  // it, so the SDK is one dynamic import away from every page and in none of their first scripts.
+  it("ships no wallet SDK from the layout every page shares, before any dynamic import", () => {
+    const packages = browserPackages("@/app/[locale]/layout.tsx", STATIC_ONLY);
+    expect([...packages].filter((name) => WALLET.includes(name))).toEqual([]);
   });
 
   it("finds the wallet when it is there, so the walk itself is not the pass", () => {
