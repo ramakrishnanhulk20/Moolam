@@ -447,7 +447,9 @@ function Mark({
       aria-hidden={on ? undefined : true}
       title={on ? label : undefined}
       className={`flex h-[15px] w-[15px] items-center justify-center rounded-[3px] border font-mono text-[8px] leading-none ${
-        on ? lit : "border-line-strong/60 text-transparent"
+        // A lit chip sits on a solid fill: the card's glow behind it took the
+        // 8px letters under 4.5 to 1 in the light theme.
+        on ? `${lit} bg-bg-raised` : "border-line-strong/60 text-transparent"
       }`}
     >
       {letter}
