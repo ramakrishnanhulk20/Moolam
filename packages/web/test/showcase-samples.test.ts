@@ -22,6 +22,7 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/chain/client", () => ({
   CACHE_TAGS: { index: "moolam-index", chain: "moolam-chain", metadata: "moolam-metadata" },
   HOLD_SECONDS: 60,
+  LIST_HOLD_SECONDS: 600,
 }));
 
 vi.mock("@/components/story/data", () => ({ heldStory: holds.story }));

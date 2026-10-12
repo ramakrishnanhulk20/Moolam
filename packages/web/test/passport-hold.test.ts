@@ -40,6 +40,7 @@ vi.mock("@/lib/chain/client", () => ({
   policyAbi: [],
   CACHE_TAGS: { index: "moolam-index", chain: "moolam-chain", metadata: "moolam-metadata" },
   HOLD_SECONDS: 60,
+  LIST_HOLD_SECONDS: 600,
   REPUTATION_REGISTRY: "0x0000000000000000000000000000000000000003",
   gatewayUrl: (uri: string) => uri,
 }));

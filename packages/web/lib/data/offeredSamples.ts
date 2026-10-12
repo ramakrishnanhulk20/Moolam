@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
 import { heldStory } from "@/components/story/data";
-import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { CACHE_TAGS, LIST_HOLD_SECONDS } from "@/lib/chain/client";
 import { askIndex, heldArt } from "@/lib/data/passports";
 import { pickSamples, type PickedPlate, type SampleMark, type TrySample } from "./samples";
 import { SHOWCASE } from "./showcase";
@@ -107,7 +107,7 @@ async function pickRead(id: Hex, rows: Record<string, SampleRow>): Promise<Picke
 }
 
 /**
- * What the index says about the candidates, filed by id, held for a minute.
+ * What the index says about the candidates, filed by id, held for ten minutes.
  *
  * The candidates and the showcase picks are asked for in the one query. An
  * index that answers nothing is an empty map rather than a failure: every pick
@@ -115,7 +115,7 @@ async function pickRead(id: Hex, rows: Record<string, SampleRow>): Promise<Picke
  */
 async function heldRows(ids: string[]): Promise<Record<string, SampleRow>> {
   const held = unstable_cache(async () => await sampleRows(ids), ["moolam-sample-rows", ids.join(",")], {
-    revalidate: HOLD_SECONDS,
+    revalidate: LIST_HOLD_SECONDS,
     tags: [CACHE_TAGS.index],
   });
 

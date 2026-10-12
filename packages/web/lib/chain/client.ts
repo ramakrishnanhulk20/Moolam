@@ -62,6 +62,9 @@ export const REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" 
  */
 export const HOLD_SECONDS = 60;
 
+/** The list pages' held reads, at the pace their pages refresh: each refresh is a cache write Vercel counts. */
+export const LIST_HOLD_SECONDS = 600;
+
 /**
  * How long a pinned metadata document is held. It is content addressed, so the
  * same URI can never come back with different words or a different picture.

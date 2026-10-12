@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import type { Hex } from "viem";
-import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { CACHE_TAGS, HOLD_SECONDS, LIST_HOLD_SECONDS } from "@/lib/chain/client";
 import { passportTag } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "./source";
 
@@ -125,12 +125,12 @@ async function readNetworkCheckCount(): Promise<number | null> {
 }
 
 const heldCount = unstable_cache(async () => await readNetworkCheckCount(), ["moolam-network-check-count"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
 /**
- * The same count, held for a minute with the rest of the index reads: the
+ * The same count, held for ten minutes with the list pages' other reads: the
  * home page's close card and anything else that quotes it share one query.
  * Never throws; a failed read is null, and is asked again on the next render.
  */

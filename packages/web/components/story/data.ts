@@ -4,7 +4,7 @@ import { isTestCard } from "@/components/explore/sort";
 import {
   CACHE_TAGS,
   DEMO_AGENT_ID,
-  HOLD_SECONDS,
+  LIST_HOLD_SECONDS,
   METADATA_HOLD_SECONDS,
   gatewayUrl,
   reason,
@@ -553,7 +553,7 @@ interface LookalikeRow {
   earlier: LookalikeLine | null;
 }
 
-/** The newest few network records, held for a minute. Asked only of an index that serves them. */
+/** The newest few network records, held for ten minutes. Asked only of an index that serves them. */
 const heldLookalikeRows = unstable_cache(
   async (): Promise<LookalikeRow[]> => {
     const response = await fetch(envioUrl(), {
@@ -573,7 +573,7 @@ const heldLookalikeRows = unstable_cache(
     return body.data.Lookalike;
   },
   ["moolam-story-lookalike"],
-  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+  { revalidate: LIST_HOLD_SECONDS, tags: [CACHE_TAGS.index] },
 );
 
 /**
@@ -740,7 +740,7 @@ export async function heldStory(): Promise<StoryData> {
  * which is what lets the answer be stored at all.
  */
 const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index-picks"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
@@ -836,9 +836,9 @@ function toRow(row: IndexPassport): IndexRow {
  * every row, so this path reads the record and its attestation list for each of
  * the eight, which the index would have answered in one trip.
  */
-/** The same rows on a day with no index, held for the same minute. */
+/** The same rows on a day with no index, held for the same ten minutes. */
 const heldChain = unstable_cache(async () => await fromChain(), ["moolam-story-chain"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.chain],
 });
 
@@ -987,13 +987,13 @@ export function focalFrom(row: IndexRow, picture: string, reason: FocalReason): 
 }
 
 /**
- * This passport's own re-check, held for a minute. Two chain reads, and a new
- * one lands minutes apart at best, so a minute costs the story nothing. The
+ * This passport's own re-check, held for ten minutes. Two chain reads, and a new
+ * one lands minutes apart at best, so the hold costs the story nothing. The
  * story calls it a Chainlink CRE workflow's, so a row from a writer the app
  * cannot name is passed over rather than given that name.
  */
 const heldAttestation = unstable_cache(async (id: string) => await focalAttestation(id as Hex), ["moolam-story-recheck"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.chain],
 });
 

@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import sharp from "sharp";
 import { networkVerdicts } from "@/components/mark/read";
 import { heldIndexedVerdictRows } from "@/components/passport/indexed";
-import { CACHE_TAGS, HOLD_SECONDS, reason } from "@/lib/chain/client";
+import { CACHE_TAGS, LIST_HOLD_SECONDS, reason } from "@/lib/chain/client";
 import { chainlinkReceivers } from "@/lib/chain/receivers";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { heldPassportRecord } from "@/lib/chain/registry";
@@ -167,14 +167,14 @@ const FINDING_ROW = `query FindingRow($ids: [String!]!) {
   }
 }`;
 
-/** Where the index says the passport's document is pinned, held for a minute like every other index read. */
+/** Where the index says the passport's document is pinned, held for ten minutes like the page that reads it. */
 const heldDocumentAddress = unstable_cache(
   async (id: string) => {
     const data = await askIndex<{ Passport: { metadataURI: string }[] }>(FINDING_ROW, { ids: [id] });
     return data.Passport[0]?.metadataURI ?? null;
   },
   ["moolam-first-screen-document"],
-  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+  { revalidate: LIST_HOLD_SECONDS, tags: [CACHE_TAGS.index] },
 );
 
 /**

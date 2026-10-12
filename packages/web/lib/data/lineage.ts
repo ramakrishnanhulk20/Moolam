@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { CACHE_TAGS, HOLD_SECONDS, LIST_HOLD_SECONDS } from "@/lib/chain/client";
 import { activeSource, envioUrl } from "./source";
 
 /**
@@ -144,7 +144,7 @@ export async function disputedReach(): Promise<DisputedReach> {
 }
 
 const heldReach = unstable_cache(async () => await readReach(), ["moolam-disputed-reach"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 

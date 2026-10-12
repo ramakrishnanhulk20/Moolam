@@ -10,10 +10,10 @@ const NEWEST = `query NewestRegistration {
 /**
  * How long the newest id is held. The index allows about a hundred queries a
  * minute, shared by the live site, the verify service and every build, so the
- * board asks at most four times a minute however many people open it, and a
- * new registration still reaches the next visitor within this.
+ * board asks at most once every two minutes however many people open it, and a
+ * new registration still reaches the next visitor within two minutes.
  */
-const HOLD_SECONDS = 15;
+const HOLD_SECONDS = 120;
 
 const heldNewest = unstable_cache(
   async () => {

@@ -13,7 +13,7 @@ import { routing } from "@/lib/i18n/routing";
 // request. The index itself only catches up on that cadence, so nobody is
 // shown a figure older than the index could have given them, and nobody waits
 // behind twenty six upstream calls to see the first frame.
-export const revalidate = 60;
+export const revalidate = 600;
 
 /**
  * The ten home pages are drawn when the site is built, and rebuilt a minute at

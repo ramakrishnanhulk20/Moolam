@@ -6,6 +6,7 @@ import {
   CACHE_TAGS,
   DEPLOY_BLOCK,
   HOLD_SECONDS,
+  LIST_HOLD_SECONDS,
   METADATA_HOLD_SECONDS,
   addresses,
   chain,
@@ -657,11 +658,11 @@ export async function generatorRecord(agentId: bigint | string): Promise<Generat
 }
 
 /**
- * The same row, held for a minute, for the agent page and the home story, which
+ * The same row, held for ten minutes, for the agent page and the home story, which
  * both draw it on every visit.
  */
 const heldGeneratorRow = unstable_cache(async (id: string) => await generatorRow(id), ["moolam-generator-row"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
@@ -1202,12 +1203,12 @@ export async function registryCounts(): Promise<RegistryCounts> {
 }
 
 /**
- * The same three numbers, held for a minute. It is the most expensive query the
- * Explore page makes, it is the same for everybody, and the index it counts
- * only moves on that cadence anyway.
+ * The same three numbers, held for ten minutes. It is the most expensive query
+ * the Explore page makes, it is the same for everybody, and the page that shows
+ * it is built again on the same pace.
  */
 export const heldRegistryCounts = unstable_cache(async () => await registryCounts(), ["moolam-registry-counts"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 

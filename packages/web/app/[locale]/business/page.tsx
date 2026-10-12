@@ -7,7 +7,7 @@ import { routing } from "@/lib/i18n/routing";
 // The same minute as the home page: every figure here is read through a hold of
 // that length, so a page rebuilt more often could show nothing newer, and one
 // rebuilt less often would show a count older than the index could give.
-export const revalidate = 60;
+export const revalidate = 600;
 
 /**
  * The ten pages are drawn when the site is built and a minute at a time after

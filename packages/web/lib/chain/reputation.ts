@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { CACHE_TAGS, HOLD_SECONDS, chain, REPUTATION_REGISTRY } from "./client";
+import { CACHE_TAGS, LIST_HOLD_SECONDS, chain, REPUTATION_REGISTRY } from "./client";
 
 /**
  * The two reads Moolam needs from the ERC-8004 reputation registry on Monad
@@ -72,7 +72,7 @@ export async function getReputation(
 }
 
 /**
- * Both reads behind the feedback line, as one call held for a minute.
+ * Both reads behind the feedback line, as one call held for ten minutes.
  *
  * The client list and the summary are two round trips that always travel
  * together, so they are held together. The two figures cross the cache as
@@ -85,7 +85,7 @@ const heldSummary = unstable_cache(
     return { count: summary.count.toString(), value: summary.value.toString(), decimals: summary.decimals };
   },
   ["moolam-agent-reputation"],
-  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.chain] },
+  { revalidate: LIST_HOLD_SECONDS, tags: [CACHE_TAGS.chain] },
 );
 
 export async function heldReputation(agentId: bigint): Promise<{ count: bigint; value: bigint; decimals: number }> {

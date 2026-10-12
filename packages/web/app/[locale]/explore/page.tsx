@@ -8,7 +8,7 @@ import { routing } from "@/lib/i18n/routing";
 // A minute is the window every read on this page is already held for, so the
 // page is made once and refreshed a minute at a time behind whoever asks for
 // it. A picture registered now is on the sheet on the next request after that.
-export const revalidate = 60;
+export const revalidate = 600;
 
 /**
  * The opening view is made in all ten languages while the site is built, so the

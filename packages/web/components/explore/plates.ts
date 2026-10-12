@@ -3,7 +3,7 @@ import { networkCanFetch } from "@/components/mark/networkFetch";
 import { plateMarkState } from "@/components/mark/plate";
 import type { MarkPicture } from "@/components/mark/mark";
 import { recordUnread } from "@/components/passport/unread";
-import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { CACHE_TAGS, LIST_HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
 import { markSchema } from "@/lib/data/marks";
 import { heldPlatformList, labelFrom, listedAgentOwner, plateMark } from "@/lib/data/platform-label";
@@ -184,12 +184,12 @@ export async function pictureSplit(): Promise<PictureSplit> {
 }
 
 /**
- * The same line, held for a minute. It reads the title of every document in the
+ * The same line, held for ten minutes. It reads the title of every document in the
  * index, so it is the most expensive thing on the page and the least urgent:
  * one new passport does not move either number by anything a reader would see.
  */
 export const heldPictureSplit = unstable_cache(async () => await pictureSplit(), ["moolam-picture-split"], {
-  revalidate: HOLD_SECONDS,
+  revalidate: LIST_HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
@@ -268,7 +268,7 @@ const heldSheet = unstable_cache(
     return { plates: sheet.platesFor(page.passports), cursor: page.cursor };
   },
   ["moolam-explore-sheet"],
-  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+  { revalidate: LIST_HOLD_SECONDS, tags: [CACHE_TAGS.index] },
 );
 
 /**

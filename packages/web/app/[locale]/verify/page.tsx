@@ -9,7 +9,7 @@ import { offeredSamples } from "@/lib/data/offeredSamples";
 // that read a minute at a time rather than on every visit. It is the same
 // cadence the index itself catches up on, and the same one the home page uses,
 // so the two screens offer the same three pictures.
-export const revalidate = 60;
+export const revalidate = 600;
 
 export async function generateMetadata({
   params,

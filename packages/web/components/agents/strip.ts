@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
 import { isTestCard } from "@/components/explore/sort";
 import { plateUnread } from "@/components/explore/unread";
-import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { CACHE_TAGS, LIST_HOLD_SECONDS } from "@/lib/chain/client";
 import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { anyDisputed, LINEAGE_DEPTH, type AncestorRow } from "@/lib/data/lineage";
 import { askIndex, heldArt, NO_MANIFEST } from "@/lib/data/passports";
@@ -97,15 +97,15 @@ async function stripRows(): Promise<GeneratorStrip[]> {
 }
 
 /**
- * The same answer held for a minute, like the roster beside it, so the ten
- * languages the build makes and every visitor inside that minute share one
+ * The same answer held for ten minutes, like the pages that show it, so the ten
+ * languages the build makes and every visitor inside that time share one
  * read. Everything in it is a string, a number or a flag, so it can be held.
  * The newest registration is part of the name, so a new passport is on the
  * strips at once (components/agents/fresh.ts).
  */
 function heldStripRows(newest: string): Promise<GeneratorStrip[]> {
   const held = unstable_cache(stripRows, ["moolam-agent-strips", String(STRIP_AGENTS), String(STRIP_SCAN), newest], {
-    revalidate: HOLD_SECONDS,
+    revalidate: LIST_HOLD_SECONDS,
     tags: [CACHE_TAGS.index],
   });
   return held();

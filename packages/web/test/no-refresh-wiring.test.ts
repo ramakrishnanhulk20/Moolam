@@ -107,7 +107,7 @@ describe("how long a page is kept", () => {
     expect(config.experimental?.staleTimes?.static).toBe(30);
   });
 
-  it("builds the agent page again every minute, as the passport page is", () => {
-    expect(read("app/[locale]/agent/[id]/page.tsx")).toMatch(/^export const revalidate = 60;$/m);
+  it("builds the agent page again every ten minutes, like the other list pages", () => {
+    expect(read("app/[locale]/agent/[id]/page.tsx")).toMatch(/^export const revalidate = 600;$/m);
   });
 });
