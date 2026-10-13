@@ -14,7 +14,7 @@
     "test:verifier": "npm run test --workspace packages/verifier",
     "robustness": "npm run robustness --workspace packages/verifier",
     "dev:verifier": "npm run dev --workspace packages/verifier",
-    "dev:web": "npm run dev --workspace packages/web",
+    "dev:web": "npm run dev --workspace packages/web -- -p 3210",
     "build:web": "npm run build --workspace packages/web",
     "lint:web": "npm run lint --workspace packages/web",
     "codegen:indexer": "npm run codegen --workspace packages/indexer",

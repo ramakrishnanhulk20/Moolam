@@ -8,8 +8,8 @@ import type { Art } from "@/components/passport/art";
 import type { Attestation } from "@/lib/chain/registry";
 
 /**
- * The judge's walk on words (WO-293b, kitchen/reports/ui-audit-2026-10-01.md rows
- * 4, 5, 6, 9, 11, 12, 15, 23, 25): a run in Chainlink's simulator is a test run
+ * The judge's walk on words (WO-293b, rows 4, 5, 6, 9, 11, 12, 15, 23 and 25
+ * of the UI audit of 2026-10-01): a run in Chainlink's simulator is a test run
  * on every surface and only a network verdict is a check; the claim's origin
  * says who wrote the document; the challenge rules read without an account; and
  * the small wording slips are gone in all ten languages.

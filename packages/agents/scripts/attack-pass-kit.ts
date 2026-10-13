@@ -39,7 +39,7 @@ const AGENT_IDENTITY_REGISTRY = getAddress("0x8004A169FB4a3325136EB29fA0ceB6D2e5
 const MCP_BODY_LIMIT = Math.ceil((20 * 1024 * 1024) / 3) * 4 + 64 * 1024;
 const URL_UNFETCHABLE = "that address could not be fetched";
 
-/** 2.2 seconds between any two requests: at most 27 a minute, under the 30 the work order allows. */
+/** 2.2 seconds between any two requests: at most 27 a minute, under the 30 this pass was allowed. */
 const GAP_MS = 2_200;
 const GROUP_PAUSE_MS = 8_000;
 const TIMEOUT_MS = 30_000;
@@ -367,8 +367,8 @@ async function main(): Promise<void> {
   say();
   say("What this is: every invariant the platform kit (P) and the MCP server (M) promise, and");
   say("Dreamloom's D1 to D7, attacked from outside against the deployed services. Invariants are in");
-  say("docs/security/threat-model.md and kitchen/research/platform-kit-threat-model.md (P1 to P25,");
-  say("M1 to M6) and PLAN.md 9.3 (D1 to D7). Each attack prints what was sent, with keys, handles and");
+  say("docs/security/threat-model.md (P1 to P25,");
+  say("M1 to M6) and Dreamloom's design notes (D1 to D7). Each attack prints what was sent, with keys, handles and");
   say("session values shown as placeholders, and the answer's status and error word.");
   say();
   say(`date          ${startedAt.toISOString()}`);

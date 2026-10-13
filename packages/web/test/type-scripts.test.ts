@@ -19,8 +19,8 @@ const { GuideCard } = await import("@/components/guide/GuideWalk");
 
 /**
  * The per-language type rules are plain CSS that only a browser applies, so this
- * reads the stylesheet as text and pins each selector and value. The pictures
- * that show what they do are in kitchen/reports/ui-polish-2026-09-28/type/scripts.
+ * reads the stylesheet as text and pins each selector and value. What they do on
+ * screen was checked in a real browser on 2026-09-28.
  */
 const css = readFileSync(fileURLToPath(new URL("../styles/globals.css", import.meta.url)), "utf8");
 

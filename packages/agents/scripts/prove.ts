@@ -437,18 +437,52 @@ async function readDemoAgentId(): Promise<bigint> {
   return BigInt(parsed.demoAgentId);
 }
 
-main()
-  .catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(message);
-    say();
-    say(`FAIL: the run stopped before it finished: ${message}`);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await mkdir(dirname(REPORT_FILE), { recursive: true });
-    await writeFile(REPORT_FILE, `${lines.join("\n")}\n`, "utf8");
-    console.log();
-    console.log(`Saved to ${REPORT_FILE}`);
-    console.log(`Attack outputs in ${ATTACKS_DIR}`);
-  });
+/**
+ * Every value the run reads from the root .env, checked with the same rules the run itself applies
+ * later. A run missing one stops here, before the first transaction, pin or write, so it cannot
+ * overwrite the recorded transcript in proofs/ with a one-line failure.
+ */
+function missingSettings(): string[] {
+  const problems: string[] = [];
+  for (const name of ["DEPLOYER_PRIVATE_KEY", "VERIFIER_PRIVATE_KEY", "PROOF_P256_PRIVATE_KEY"]) {
+    try {
+      requiredKey(name);
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if ((process.env.PINATA_JWT?.trim() ?? "").length < 20) {
+    problems.push("PINATA_JWT is missing from the root .env, or is too short to be a Pinata API token.");
+  }
+  for (const name of ["PRIVY_APP_ID", "PRIVY_APP_SECRET", "PRIVY_AUTHORIZATION_KEY"]) {
+    if ((process.env[name]?.trim() ?? "").length === 0) {
+      problems.push(`${name} is missing from the root .env.`);
+    }
+  }
+  return problems;
+}
+
+const missing = missingSettings();
+if (missing.length > 0) {
+  for (const problem of missing) console.error(problem);
+  console.error(
+    `Nothing was sent, pinned or saved, and ${REPORT_FILE} is unchanged. The README's prove section says where each value comes from.`,
+  );
+  process.exitCode = 1;
+} else {
+  main()
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
+      say();
+      say(`FAIL: the run stopped before it finished: ${message}`);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await mkdir(dirname(REPORT_FILE), { recursive: true });
+      await writeFile(REPORT_FILE, `${lines.join("\n")}\n`, "utf8");
+      console.log();
+      console.log(`Saved to ${REPORT_FILE}`);
+      console.log(`Attack outputs in ${ATTACKS_DIR}`);
+    });
+}

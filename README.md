@@ -463,8 +463,10 @@ Open the live app at https://moolam.site (on this machine, http://localhost:3210
 
 ### The one command that proves the backend
 
-It needs a clone, Foundry, the `.env` file from the Quick Start and a mainnet wallet holding about
-0.4 MON, so it is the deeper proof rather than the first two minutes. What it does:
+It needs a clone, Foundry, the `.env` file from the Quick Start with the keys listed below, and two
+mainnet wallets holding about 0.4 MON between them, so it is the deeper proof rather than the first
+two minutes. It also runs only from the wallet that owns the demo agent, which is explained below.
+What it does:
 
 ```sh
 npm run prove
@@ -492,15 +494,42 @@ PASS: the Moolam prove-it run, end to end, against Monad mainnet.
 finished 2026-09-08T14:10:42.572Z, 128 seconds
 ```
 
+It reads the values below from the root `.env` and checks every one before it sends, pins or saves
+anything, so a run with a value missing prints the name of each and exits, and
+`proofs/prove-it.txt` stays as it was.
+
+| Variable | How to get it |
+| --- | --- |
+| `DEPLOYER_PRIVATE_KEY` | The creator wallet. Any new wallet works: make one in a browser wallet such as MetaMask, or with `cast wallet new`, and paste its private key with the `0x` in front. Then get MON onto it on Monad mainnet: buy MON on an exchange that lists it and withdraw it to this address on the Monad network, or bridge it in. The recorded run spent 0.27 MON from this wallet |
+| `VERIFIER_PRIVATE_KEY` | A second new wallet, made the same way: the outsider every attack is sent from. It must not own an ERC-8004 agent. The recorded run spent 0.09 MON from it |
+| `PROOF_P256_PRIVATE_KEY` | The creator's stand-in passkey: `0x` followed by any 32 random bytes in hex, for example the output of `openssl rand -hex 32`. The first run binds it to the creator wallet |
+| `PINATA_JWT` | An API key from app.pinata.cloud. The run pins four files |
+| `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` | Your Privy app at dashboard.privy.io. The forgery and two of the attacks use the Privy wallets that `npm run prove:privy` creates once |
+| `MONAD_MAINNET_RPC_URL` | Already filled with Monad's public endpoint |
+
+It also needs the contracts built (`forge build` in `packages/contracts`) and port 4010 free, because
+it starts and stops its own copy of the verify service there.
+
+What a stranger can and cannot run. Section 1 registers the new picture as the work of the demo
+agent named in `packages/contracts/deployments/monad-mainnet.json`, agent 10248, and the registry
+accepts that only with a signature from the wallet that owns the agent: the Moolam deployer,
+`0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`. From any other wallet the run binds your passkey (one
+small transaction), pins the four files, and then stops in section 1 because the registry refuses
+the passport with `InvalidGeneratorSignature`. So the full run needs the maintainer's deployer key.
+What anyone can check is the recorded output in `proofs/prove-it.txt`, every transaction in it on
+MonadVision, and the attack outputs saved in `docs/security/attacks/`.
+
 ## Quick Start
 
 ### Prerequisites
 
 - Node 22.13 or newer, per the root `package.json` engines field. The verify service container is
   built on `node:26-bookworm-slim`.
-- Foundry, for anything that touches the contracts, with `forge` on your PATH (`foundryup` installs it
-  in `~/.foundry/bin`).
-- Bun, for the Chainlink workflow and the re-check runner tests.
+- Foundry ([getfoundry.sh](https://getfoundry.sh)), for anything that touches the contracts.
+  `foundryup` puts `forge` and `anvil` in `~/.foundry/bin`, and that folder must be on PATH in the
+  shell you run the commands from. If `forge --version` fails in a new shell, run
+  `export PATH="$HOME/.foundry/bin:$PATH"` there or add that line to your shell profile.
+- Bun ([bun.sh](https://bun.sh)), for the Chainlink workflow and the re-check runner tests.
 - On Windows, `git config --global core.longpaths true` before cloning: a folder deep inside the
   OpenZeppelin submodule is longer than Windows allows by default.
 - WSL2 with Linux Node for the indexer only. `envio codegen` and the indexer tests are Linux builds.
@@ -512,7 +541,15 @@ git clone https://github.com/ramakrishnanhulk20/Moolam.git
 cd Moolam
 npm install
 cp .env.example .env
+cp packages/web/.env.example packages/web/.env.local
 ```
+
+The second file is the web app's own. As copied, it reads Monad mainnet through a public endpoint,
+sends uploads to the verify service you start on port 4010, and reads passports straight from the
+chain because `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` is blank; set that to the public index in
+`.env.example` to read the index instead. The first page you open on the dev server is built on
+that request: on a fresh clone the first load of `/en` took 27 seconds with the index set and five
+minutes reading from the chain.
 
 The contracts need the OpenZeppelin submodule and a build:
 
@@ -538,7 +575,7 @@ is for and which piece stops without it.
 | `MONAD_MAINNET_RPC_URL` | Monad's public endpoint `https://rpc.monad.xyz`, or your own provider |
 | `MONAD_RPC_URL` | Optional and secret: a dedicated endpoint whose address carries its access token. The app's server reads through it first and the public endpoint only when it fails. Server side only, never `NEXT_PUBLIC` |
 | `DEPLOYER_PRIVATE_KEY` | The wallet that deploys and runs the seed and proof scripts. Monad reserves 10 MON per account on top of gas |
-| `PROOF_P256_PRIVATE_KEY` | The proof script's stand-in passkey. It generates one on first run |
+| `PROOF_P256_PRIVATE_KEY` | The proof script's stand-in passkey: `0x` and 32 random bytes in hex, which you make yourself (`openssl rand -hex 32`) |
 | `CRE_ETH_PRIVATE_KEY`, `CRE_WALLET_ADDRESS`, `CRE_API_KEY` | The Chainlink CRE wallet that signs attestation transactions, and the CRE dashboard key or `cre login` |
 | `CRE_WORKFLOW_NAME` | The workflow name in `packages/workflow/moolam-verifier/workflow.yaml`. The receiver is pinned to it, so the two must match |
 | `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` | dashboard.privy.io. The authorization key is what controls server wallets from the backend |
@@ -556,7 +593,7 @@ is for and which piece stops without it.
 
 ```sh
 npm run dev:verifier    # the verify service, on VERIFIER_PORT, which .env.example sets to 4010
-npm run dev:web         # the app
+npm run dev:web         # the app, on http://localhost:3210
 ```
 
 The app is served on port 3210 here, which is why `.env.example` lists `http://localhost:3210` under
@@ -566,25 +603,57 @@ curl against the same URL works.
 
 ### The tests
 
+Run this once before the first test run:
+
+```sh
+npm run spike:verifier
+```
+
+It writes the verify service's test pictures and makes its development signing certificate in one
+process. Without it, the verifier's test workers on a new clone all try to make that certificate at
+the same moment, and 102 of its tests failed on our first run. The platform kit's fork tests also
+read one of those pictures.
+
 | Package | Command | Tests passed | Skipped without secrets |
 | --- | --- | --- | --- |
 | Contracts | `npm test` from `packages/contracts` | 215 | 7 fork suites |
-| Verify service | `npm run test:verifier` | 1219 | 0 |
-| Chain client and agents | `npm run test:agents` | 55 | 18 |
+| Verify service | `npm run test:verifier` | 1224 | 0 |
+| Chain client and agents | `npm run test:agents` | 66 | 6 |
 | Indexer | `npm run test:indexer` | 47 | 0 |
-| Web app | `npm test` from `packages/web` | 3428 | 5 |
+| Web app | `npm test` from `packages/web` | 3476 | 5 |
 | Re-check runner | `npm test` from `packages/recheck-runner` | 314 | 0 |
-| Platform kit | `npm test -w @moolam/platform` | 35 | 17 fork tests |
-| Dreamloom | `npm test -w dreamloom` | 338 | 10 |
+| Platform kit | `npm test -w @moolam/platform` | 51 | 0 |
+| Dreamloom | `npm test -w dreamloom` | 357 | 0 |
 | Chainlink workflow | `bun test` from `packages/workflow/moolam-verifier` | 31 | 0 |
 
-These are the counts from a fresh clone on 7 October 2026, made with no `.env` file.
-The indexer's 47 are from its own run on 3 October, and nothing in the indexer has changed since.
+These are the counts from a fresh clone on 13 October 2026, set up exactly as above: `.env` and
+`packages/web/.env.local` copied from the examples with nothing filled in, and
+`npm run spike:verifier` run first. The indexer's 47 are from its own run on 3 October: on the
+13 October clone its Linux install inside WSL stopped with an npm error, so that row was not run
+again.
 
-The contract suites that fork Monad mainnet need `MONAD_MAINNET_RPC_URL` in the root `.env`. Without
-it `forge test` skips those 7 suites rather than failing. Most of them pin a past block, so the
-endpoint also has to serve old state. The 18 skipped agent tests need that variable or
-`PRIVY_AUTHORIZATION_KEY`. The 5 skipped web tests need a local browser or a live server.
+The 7 contract suites that fork Monad mainnet read `MONAD_MAINNET_RPC_URL` from the shell, not from
+the root `.env`: forge only loads a `.env` from the folder it runs in, which is `packages/contracts`.
+Without the variable they skip rather than fail. Four of them pin a past block, so the endpoint also
+has to serve old state, and a public endpoint spreads requests over nodes that do not all keep it.
+Run the fork suites on their own, one at a time:
+
+```sh
+cd packages/contracts
+MONAD_MAINNET_RPC_URL=https://rpc2.monad.xyz npm run test:fork -- -j 1
+```
+
+On 13 October that passed all 7 suites, 33 tests, in both of two runs, in one to two minutes. The
+same command against `https://rpc1.monad.xyz` lost 3 tests in both runs to a node without old state
+("Block requested not found"), and against `https://rpc-mainnet.monadinfra.com` passed once and lost
+3 once. `https://rpc.monad.xyz` serves no old state at all, so there the four pinned suites fail and
+the three that fork the latest block pass. Running all 22 suites at once against a public endpoint
+also draws "429 Rate limit exceeded". A paid archive endpoint is the dependable choice.
+
+The agents' and the platform kit's fork tests do run on the copied `.env`: they read
+`MONAD_MAINNET_RPC_URL` from the root `.env` themselves and fork the latest block, which the public
+endpoint serves. The 6 skipped agent tests need `PRIVY_AUTHORIZATION_KEY`. The 5 skipped web tests
+need a local browser or a live server.
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -595,8 +664,11 @@ indexer are Linux builds, so both run inside WSL2 with its own Linux `node_modul
 `npm install --no-workspaces` under `packages/indexer`:
 
 ```sh
-wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/d/Projects/Monad && npm run test:indexer'
+wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/c/path/to/Moolam && npm run test:indexer'
 ```
+
+Replace `/mnt/c/path/to/Moolam` with your clone as WSL sees it: a clone at `C:\code\Moolam` is
+`/mnt/c/code/Moolam`.
 
 On Linux or macOS the plain `npm run` commands are all you need.
 
@@ -780,10 +852,10 @@ no trailing slash.
 | Suite | Tests passed | What it covers |
 | --- | --- | --- |
 | Contracts | 215 | 18 on the policy timelock, 76 on the registry covering every rule, custom error and event, 16 on MoolamReceiver and 13 on the SimulationReceivers, 45 on the consent register, 10 on MoolamDecisions, 14 on MoolamLookalikes, 1 on renouncing ownership, 19 fuzz tests, and three invariant suites that each drove 8,192 random calls. The 7 fork suites against real Monad mainnet state run on top of these when `MONAD_MAINNET_RPC_URL` is set |
-| Verify service | 1219 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
-| Chain client and agents | 55 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from, and the receiver attack command. 18 more of its tests need `MONAD_MAINNET_RPC_URL` or `PRIVY_AUTHORIZATION_KEY` and skip without them |
+| Verify service | 1224 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice, and every finding of the eleven review passes shown failing on the code before its fix |
+| Chain client and agents | 66 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from, and the receiver attack command. 6 more of its tests need `PRIVY_AUTHORIZATION_KEY` or other keys and skip without them |
 | Indexer | 47 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, the five consent summaries checked against the web app's own rule for all 256 combinations, and the look-alike records and network-verdict counters |
-| Web app | 3428 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages, the picture download route, and the re-check control that reads its verdict from the chain |
+| Web app | 3476 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages, the picture download route, and the re-check control that reads its verdict from the chain |
 | Re-check runner | 314 | The request queue and the sweep, the daily cap, the per-pass cap and the balance floor counted before any spend, the shape of every value handed to the CLI, fetches of pinned content only, a run called done only from the registry's own log, a report the CLI printed no hash for found on chain, the circuit breaker, and nothing from the env file leaving the process |
 
 The registry's seven invariants all held: the contract balance always covers every liability, the bond

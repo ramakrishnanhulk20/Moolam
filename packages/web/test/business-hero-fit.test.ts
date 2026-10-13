@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * width and the window's height, and a measuring step shrinks it further for
  * the languages that break onto more lines. These tests hold that step's
  * search and the rules the page's markup hands it. The sizes themselves were
- * measured in a real browser, see kitchen/reports/business-hero.
+ * measured in a real browser.
  */
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));

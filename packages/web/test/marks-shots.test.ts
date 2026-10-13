@@ -23,7 +23,7 @@ import { readAnswer } from "@/components/verify/answer";
 import { verifyResponseSchema } from "@/lib/verifier/client";
 
 /**
- * Pictures of the trust mark for the head chef's review (WO-284a): a passport
+ * Pictures of the trust mark for a visual review (WO-284a): a passport
  * in each mark state, the look-alike block, the later line, Moolam's grey
  * search line, the claim block, an Explore sheet with every mark's word, and a
  * verify answer that leads with an earlier registration. Each at 1440 and

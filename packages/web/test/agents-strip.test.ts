@@ -8,7 +8,7 @@ import type { OpenDispute } from "@/lib/disputes/queue";
 
 /**
  * The Agents board with a strip of each agent's newest real pictures, and the
- * agent page with its test images folded away, after work order 216. The index
+ * agent page with its test images folded away, after WO-216. The index
  * and the gateway are fixtures here: what is proven is what the page does with
  * their answers, and that the whole board asks the index once.
  */
@@ -145,7 +145,7 @@ function litMarks(markup: string): string[] {
   return [...markup.matchAll(/role="img" aria-label="([^"]+)"[^>]*>[MRDS]</g)].map((match) => match[1]);
 }
 
-describe("work order 216", () => {
+describe("WO-216", () => {
   it("step 2: the board reads every agent's newest pictures in one query and draws five real ones, or one line", async () => {
     index.ask.mockReset().mockResolvedValue({
       Generator: [

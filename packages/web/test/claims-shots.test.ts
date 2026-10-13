@@ -18,7 +18,7 @@ import { failureKey } from "@/lib/claims/useClaims";
 
 /**
  * Pictures of "Waiting for you" in each of its states at 1440 and 375 px, for
- * the head chef's review (WO-264). No sign-in and no transaction: the session's
+ * a visual review (WO-264). No sign-in and no transaction: the session's
  * address is a fixture, every answer is a fixture, and the markup is the
  * server render the page would hydrate, laid in a headless Chrome over the
  * site's own stylesheet compiled the way the app compiles it.

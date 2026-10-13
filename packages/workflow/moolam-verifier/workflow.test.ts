@@ -2,7 +2,7 @@
  * Drives whole runs of both handlers through the CRE SDK's own test runtime, with the registry, both
  * receivers, the gateway and the verify service's routes mocked: a write only counts when the
  * transaction and the receiver both say it succeeded, and the look-alike step and the catch-up hold
- * L8 to L15 and L17 of kitchen/research/originality-threat-model.md.
+ * L8 to L15 and L17 of docs/security/threat-model.md.
  *
  * Not covered here: what Chainlink's real forwarder or the simulator actually return (the dry-run
  * simulate in the README shows that), node consensus across more than one node, the fingerprint

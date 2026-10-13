@@ -69,8 +69,8 @@ without moving index 0.
    (24 pictures and their 15 copies each, all eight variants, 3,072 in all) it stays within 28 block
    hash bits and 6 pHash bits of the service. All of that gap is the two JPEG decoders (jpeg-js here,
    libjpeg in sharp) rounding pixels differently, and 28 is inside the 36 bits of headroom the live
-   measure left (`kitchen/reports/fingerprint-measure-2026-10-01.md`: the stored block hash and the
-   thumbnail's are at most 4 bits apart on all 39 checkable passports, against a threshold of 40).
+   measure of 2026-10-01 left (the stored block hash and the thumbnail's are at most 4 bits apart on
+   all 39 checkable passports, against a threshold of 40).
 5. **Consensus.** The node function returns `{ recomputed, distance, blockhashDistance, matched }`
    and the eight fingerprint pairs, and `consensusIdenticalAggregation` requires a quorum of nodes
    to have produced the identical answer. The image bytes never go through consensus, so a CDN

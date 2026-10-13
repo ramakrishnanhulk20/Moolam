@@ -1,5 +1,5 @@
-// What this file does not cover: the browser bundle (no client file imports lib/server, which the
-// screen cook's work order and the head chef's leak grep on a built page check), and what the kit
+// What this file does not cover: the browser bundle (no client file imports lib/server, which a
+// leak grep on a built page checks), and what the kit
 // or OpenAI's client might print themselves. The kit's own promise is that it logs nothing; here
 // the kit, OpenAI and the chain are stood in for, and hostile stand-ins throw errors that quote the
 // secrets, to prove Dreamloom's server does not pass them on.

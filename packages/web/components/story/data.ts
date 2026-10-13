@@ -64,7 +64,7 @@ export interface StoryFocal {
   measured: boolean;
   /** The name pinned with the picture, or null when the document gave none. */
   title?: string | null;
-  /** True when this is the head chef's pinned picture rather than the chooser's. */
+  /** True when this is the maintainer's pinned picture rather than the chooser's. */
   pinned?: boolean;
   /** Who the imagined beat credits, by the site's one credit rule. */
   credit?: StoryCredit;
@@ -209,8 +209,8 @@ export interface FocalPick {
 }
 
 /**
- * The pictures the film is told on, in order: the head chef's pick (DECISIONS,
- * 1 October) and then two more original studio pictures, each with a Chainlink
+ * The pictures the film is told on, in order: the maintainer's pick (1 October)
+ * and then two more original studio pictures, each with a Chainlink
  * verdict, nothing a home page should not show and never a famous character.
  * Each is fetched by id in the film's own index query, so it is there however
  * many passports have come since, and has to carry the title it was picked
@@ -225,7 +225,7 @@ export const FOCAL_PICKS: readonly FocalPick[] = [
 
 /**
  * The sign-it-yourself beat's one print: Ram's own picture, drawn on Dreamloom
- * and co-signed by him (DECISIONS, 1 October). The beat is told on this
+ * and co-signed by him on 1 October. The beat is told on this
  * passport or not at all: when it cannot be read or fails the beat's rule, the
  * beat is left out rather than drawn on whatever else is newest.
  */

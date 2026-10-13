@@ -10,7 +10,7 @@ import type { IndexRow, StoryData } from "@/components/story/data";
 
 /**
  * The story-v2 roll-in (WO-279c): the film tells Ram's approved script, light
- * by default, on the head chef's picture, and a beat or a line is only ever in
+ * by default, on the maintainer's picture, and a beat or a line is only ever in
  * the film when the read behind it came back and the thing it shows is live.
  */
 
@@ -123,7 +123,7 @@ describe("the film's picks", () => {
     expect(story.pinnedFocal([rows[0]], [true], ["Newest"], picks)).toBeNull();
   });
 
-  it("are the head chef's pick and two more original studio pictures, and Ram's moon picture for sign it yourself", () => {
+  it("are the maintainer's pick and two more original studio pictures, and Ram's moon picture for sign it yourself", () => {
     expect(story.FOCAL_PICKS).toEqual([
       { id: PINNED, title: "Monsoon Fishing Nets Drying" },
       { id: MARINA, title: "Marina Beach Kite Sellers at Dusk" },

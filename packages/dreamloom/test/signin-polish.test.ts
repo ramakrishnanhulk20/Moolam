@@ -1,5 +1,5 @@
-// What this file does not cover: real layout and the browser's own request log. The screenshot run
-// for this work order measures the phone header in pixels and counts /api/auth/session requests on a
+// What this file does not cover: real layout and the browser's own request log. A screenshot run
+// in a real browser measures the phone header in pixels and counts /api/auth/session requests on a
 // live page. Here: the shared read makes one request however many parts ask, the corner keeps one
 // phone height in every state, each new line shows only in its own case, and /privacy renders.
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -214,7 +214,7 @@ describe("each new line shows only in its own case", () => {
 });
 
 describe("the privacy page", () => {
-  it("renders at /privacy with every part the work order names", () => {
+  it("renders at /privacy with every part the page promises", () => {
     const markup = renderToStaticMarkup(createElement(PrivacyPage));
     const words = text(markup);
     for (const part of [

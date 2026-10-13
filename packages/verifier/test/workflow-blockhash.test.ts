@@ -28,8 +28,8 @@ const CORPUS_SIZE = 24;
 
 /**
  * The published headroom: each threshold less the worst distance between a stored fingerprint and
- * the thumbnail Chainlink fetches, measured by the service over all 39 checkable live passports
- * (kitchen/reports/fingerprint-measure-2026-10-01.md): 4 block hash bits and 3 pHash bits. A port
+ * the thumbnail Chainlink fetches, measured by the service over all 39 checkable live passports on
+ * 2026-10-01: 4 block hash bits and 3 pHash bits. A port
  * further than this from the service could push an honest copy past a threshold.
  */
 const BLOCKHASH_HEADROOM = LOOKALIKE_BLOCKHASH_BITS - 4;

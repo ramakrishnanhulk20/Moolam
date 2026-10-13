@@ -11,7 +11,7 @@ import type { Passport } from "@/lib/chain/registry";
 import type { UnsealResponse } from "@/lib/verifier/client";
 
 /**
- * The loose ends the review fixes left (work order 233): one helper for cutting
+ * The loose ends the review fixes left (WO-233): one helper for cutting
  * a reason out of a sentence, tested in all ten languages; every stored address
  * held to the pinned-file rule before a page draws it or links to it; the agent
  * card fetch refusing addresses that point back into Moolam's own network; the

@@ -12,8 +12,8 @@ import { plateUnread } from "@/components/explore/unread";
 /**
  * The judge's walk of 1 October (WO-293a): the pages that slid sideways on a
  * phone, the Explore plates that read as broken pictures, the Verify kicker on
- * the photo and the chosen chip under 4.5:1. Layout itself needs a browser; the
- * checks for that live in kitchen/reports/walk-fixes. These hold the rules.
+ * the photo and the chosen chip under 4.5:1. Layout itself needs a browser, so it
+ * was checked in one. These hold the rules.
  */
 
 vi.mock("@/lib/i18n/routing", () => ({

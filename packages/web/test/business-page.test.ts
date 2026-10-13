@@ -260,8 +260,8 @@ describe("the page", () => {
 
   it("keeps every price on one line in its own column, with the unit under it (WO-279f)", async () => {
     // "US$ 0,005" broke over two lines on a tablet and on a laptop before the
-    // size was capped to the column. kitchen/reports/film-leftovers holds the
-    // measured widths in four languages.
+    // size was capped to the column. The widths were measured in a real browser
+    // in four languages.
     const html = await renderPage();
     const rows = [...html.matchAll(/<p data-price-row="[^"]*" class="([^"]*)"><span class="([^"]*)">([^<]*)<\/span><span class="([^"]*)">([^<]*)<\/span><\/p>/g)];
     expect(rows.map((row) => row[3])).toEqual(content.PLANS.map((plan) => en.business.pricing.plans[plan].price));

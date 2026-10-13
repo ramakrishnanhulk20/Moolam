@@ -15,7 +15,7 @@ import type { UnsealRecord } from "@/lib/verifier/client";
 
 /**
  * The findings of the section 13 review of 2026-09-29, one describe per step of
- * work order 229. The review read the code and ran nothing, so each case here
+ * WO-229. The review read the code and ran nothing, so each case here
  * was run against the code as it stood before its fix and failed there first.
  * The index, the gateway and the chain are stood in for; nothing here calls out.
  */
