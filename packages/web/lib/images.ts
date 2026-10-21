@@ -42,7 +42,32 @@ export function cidOf(uri: string): string | null {
  * answers a browser would slot straight back in.
  */
 export function pictureSources(uri: string): string[] {
-  return [uri.startsWith("ipfs://") ? `${GATEWAY}${uri.slice("ipfs://".length)}` : uri];
+  if (uri.startsWith("ipfs://")) {
+    return [`${GATEWAY}${uri.slice("ipfs://".length)}`];
+  }
+  const onMoolamGateway = moolamGatewayPath(uri);
+  return [onMoolamGateway === null ? uri : `${GATEWAY}${onMoolamGateway}`];
+}
+
+/**
+ * Moolam's Pinata gateway, which documents written before the site read through another gateway
+ * name by its https address. A link on it is read through the gateway this deploy is set to, so
+ * it neither spends that account's request allowance nor needs the old host allowed.
+ */
+const EARLIER_GATEWAY_HOSTS = ["lavender-personal-grasshopper-978.mypinata.cloud"];
+
+/** The path after /ipfs/ of a link on one of Moolam's gateways, or null for any other address. */
+export function moolamGatewayPath(uri: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.search !== "" || url.hash !== "") return null;
+  if (!PICTURE_HOSTS.includes(url.hostname) && !EARLIER_GATEWAY_HOSTS.includes(url.hostname)) return null;
+  const found = /^\/ipfs\/(.+)$/.exec(url.pathname);
+  return found === null ? null : found[1];
 }
 
 /**

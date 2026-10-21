@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { gatewayUrl } from "@/lib/chain/client";
-import { PICTURE_HOSTS, pictureSources } from "@/lib/images";
+import { moolamGatewayPath, pictureSources } from "@/lib/images";
 import { bareContentId } from "@/lib/passport/original";
 
 // The content id reader moved next to the gateway list it belongs with. The
@@ -174,12 +174,29 @@ export async function readArt(metadataURI: string): Promise<Art> {
     return { missing: true };
   }
   const documentServed = bareContentId(metadataURI) !== null;
+  let askAgain: string | null = null;
   for (const url of pictureSources(pinned)) {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       continue;
     }
     const art = await readFrom(url, documentServed);
-    if (art !== null) {
+    if (art === "unanswered") {
+      askAgain ??= url;
+    } else if (art !== null) {
+      return art;
+    }
+  }
+  // A gateway that gave no answer at all is asked once more, as pinnedBytes in
+  // lib/images.ts does. QuickNode does not hold Moolam's files: it fetches each
+  // one from the IPFS network the first time it is asked, that first ask can
+  // run past the limit, and by the second it has usually fetched the file. On
+  // 21 October six first asks did, and the Explore sheet then held those plates
+  // without a picture for ten minutes. An answer, even a refusal, is final, so
+  // a gateway that answers from its own pins, as Pinata does, is asked exactly
+  // as often as before.
+  if (askAgain !== null) {
+    const art = await readFrom(askAgain, documentServed);
+    if (art !== "unanswered" && art !== null) {
       return art;
     }
   }
@@ -187,17 +204,25 @@ export async function readArt(metadataURI: string): Promise<Art> {
 }
 
 /**
- * One gateway's answer, or null when it did not give a document this can read.
- * `documentServed` is whether the download route would read this document at all.
+ * One gateway's answer: the art, null when it answered with nothing this can
+ * read, or "unanswered" when it gave no answer in time or dropped the
+ * connection. `documentServed` is whether the download route would read this
+ * document at all.
  */
-async function readFrom(url: string, documentServed: boolean): Promise<Art | null> {
+async function readFrom(url: string, documentServed: boolean): Promise<Art | null | "unanswered"> {
+  let document: unknown;
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), next: { revalidate: 300 } });
     if (!response.ok) {
       return null;
     }
+    document = await response.json();
+  } catch (error) {
+    // Text that is not JSON is an answer. A timeout or a dropped connection is not.
+    return error instanceof SyntaxError ? null : "unanswered";
+  }
 
-    const document: unknown = await response.json();
+  try {
     const parsed = metadataSchema.safeParse(document);
     if (!parsed.success) {
       return null;
@@ -345,7 +370,7 @@ export function pinnedUri(value: string): string | undefined {
   } catch {
     return undefined;
   }
-  if (url.protocol !== "https:" || !PICTURE_HOSTS.includes(url.hostname) || url.search !== "" || url.hash !== "") {
+  if (url.protocol !== "https:" || moolamGatewayPath(value) === null) {
     return undefined;
   }
   const onGateway = ON_GATEWAY.exec(url.pathname);

@@ -97,4 +97,32 @@ describe("a document read by readArt", () => {
     await readArt(DOCUMENT);
     expect(String(fetch.mock.calls[0][0])).toBe(gatewayUrl(DOCUMENT));
   });
+
+  it("asks the gateway once more when the first ask gets no answer", async () => {
+    const fetch = vi.fn<(input: string | URL) => Promise<Response>>();
+    fetch.mockRejectedValueOnce(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+    fetch.mockImplementationOnce(answering({ name: "Sakura", thumbnail: "ipfs://bafkreismall" }));
+    vi.stubGlobal("fetch", fetch);
+    const art = await readArt(DOCUMENT);
+    expect(art.thumbnailUrl).toBe(gatewayUrl("ipfs://bafkreismall"));
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([gatewayUrl(DOCUMENT), gatewayUrl(DOCUMENT)]);
+  });
+
+  it("takes a refusal or a document that is not JSON as final, and asks once", async () => {
+    for (const answer of [new Response("not pinned here", { status: 403 }), new Response("<html>")]) {
+      const fetch = vi.fn(async () => answer);
+      vi.stubGlobal("fetch", fetch);
+      expect(await readArt(DOCUMENT)).toEqual({ missing: true });
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("stops after the second ask when neither is answered", async () => {
+    const fetch = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    vi.stubGlobal("fetch", fetch);
+    expect(await readArt(DOCUMENT)).toEqual({ missing: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 });
