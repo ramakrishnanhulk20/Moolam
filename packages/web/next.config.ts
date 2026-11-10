@@ -103,6 +103,20 @@ const nextConfig: NextConfig = {
   // Next allows.
   experimental: { staleTimes: { static: 30 } },
 
+  // Every page lives under a language, so an address shared without one, like
+  // moolam.site/verify in a post, answered 404. These send it to English, which
+  // is the default the bare domain already goes to. Not permanent, so a later
+  // rule can pick the reader's own language instead.
+  async redirects() {
+    const pages = ["verify", "studio", "explore", "agents", "mine", "business", "resolve", "docs"];
+    return [
+      ...pages.map((page) => ({ source: `/${page}`, destination: `/en/${page}`, permanent: false })),
+      { source: "/docs/:path*", destination: "/en/docs/:path*", permanent: false },
+      { source: "/passport/:id", destination: "/en/passport/:id", permanent: false },
+      { source: "/agent/:id", destination: "/en/agent/:id", permanent: false },
+    ];
+  },
+
   async headers() {
     return [
       {
